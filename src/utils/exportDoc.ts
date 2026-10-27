@@ -1,4 +1,6 @@
-import { KitchenConfig } from '../types/kitchen';
+import { KitchenConfig, FrameMember, FrameMemberRole, SECTION_KIND_LABELS } from '../types/kitchen';
+import { getFrameMembers, getFootMembers, FRAME_ROLE_LABELS, AXIS_LABELS } from './frameLayout';
+import { describeCountertop, describeCabinetFinish, describeFrame } from './finishes';
 
 export interface HollowCutPiece {
   id: string;
@@ -39,156 +41,65 @@ export function calculateFabricationCutList(config: KitchenConfig): CutListRepor
   const D = config.totalDepth;
   const H = config.totalHeight;
   const topThick = config.countertopThickness || 4;
-  const plinthH = config.plinthHeight || 10;
+  const plinthH = (config.plinthHeight ?? 10);
   const tubeMm = config.frame?.tubeSize || 40;
   const tubeCm = tubeMm / 10;
   const colCount = config.columns.length;
 
   const hollowPieces: HollowCutPiece[] = [];
 
-  // 1. Tiang Vertikal Sudut (Corner Posts) - 4 pcs
-  const postLengthCm = Number((H - topThick).toFixed(1));
-  hollowPieces.push({
-    id: 'post-corner',
-    category: 'tiang-vertikal',
-    label: `Tiang Kaki Sudut Luar (Corner Posts)`,
-    qty: 4,
-    lengthCm: postLengthCm,
-    tubeSizeMm: tubeMm,
-    notes: `4 sudut meja (depan kiri, depan kanan, belakang kiri, belakang kanan). Ujung bawah dipasang mur tap M10/M12 untuk leveling feet.`,
-    weldPosition: `X=0, X=${W}, Z=0, Z=${D}`,
+  // Kelompokkan batang rangka (otomatis / hasil Editor Rangka 2D) berdasarkan fungsi, sumbu, panjang & ukuran pipa
+  const members = getFrameMembers(config);
+  const groups = new Map<string, FrameMember[]>();
+  members.forEach((m) => {
+    const key = `${m.role}|${m.axis}|${m.length.toFixed(1)}|${m.tubeSize || tubeMm}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(m);
   });
 
-  // 2. Tiang Vertikal Sekat Antar Kolom (Intermediate Divider Posts)
-  const intermediatePostQty = Math.max(0, colCount - 1) * 2;
-  if (intermediatePostQty > 0) {
-    hollowPieces.push({
-      id: 'post-divider',
-      category: 'tiang-vertikal',
-      label: `Tiang Sekat Vertikal Antar Kolom`,
-      qty: intermediatePostQty,
-      lengthCm: postLengthCm,
-      tubeSizeMm: tubeMm,
-      notes: `Tiang penopang pembagi antar ${colCount} kolom laci/kabinet (sepasang depan & belakang).`,
-      weldPosition: `Sesuai batas lebar tiap kolom`,
+  const roleOrder: FrameMemberRole[] = ['post', 'rail-x', 'rail-z', 'sink-cradle', 'stove-cradle', 'custom'];
+  const categoryOf: Record<FrameMemberRole, HollowCutPiece['category']> = {
+    post: 'tiang-vertikal',
+    'rail-x': 'gelagar-panjang',
+    'rail-z': 'palang-kedalaman',
+    'sink-cradle': 'penyangga-wastafel',
+    'stove-cradle': 'penyangga-kompor',
+    custom: 'kustom',
+  };
+  const fmtPos = (m: FrameMember) => `X=${m.x} Y=${m.y} Z=${m.z}`;
+
+  [...groups.entries()]
+    .sort((ga, gb) => {
+      const ra = roleOrder.indexOf(ga[1][0].role);
+      const rb = roleOrder.indexOf(gb[1][0].role);
+      return ra !== rb ? ra - rb : gb[1][0].length - ga[1][0].length;
+    })
+    .forEach(([key, list], idx) => {
+      const first = list[0];
+      const names = [...new Set(list.map((m) => m.label).filter(Boolean))];
+      const positions = list.slice(0, 6).map(fmtPos).join('; ') + (list.length > 6 ? ` … (+${list.length - 6})` : '');
+      hollowPieces.push({
+        id: `grp-${idx}-${key}`,
+        category: categoryOf[first.role],
+        label: `${FRAME_ROLE_LABELS[first.role]} – ${AXIS_LABELS[first.axis]}`,
+        qty: list.length,
+        lengthCm: Number(first.length.toFixed(1)),
+        tubeSizeMm: first.tubeSize || tubeMm,
+        notes: `${names.length > 0 ? names.slice(0, 4).join(', ') + (names.length > 4 ? ', …' : '') + '. ' : ''}Pipa ${first.tubeSize || tubeMm}×${first.tubeSize || tubeMm} mm.`,
+        weldPosition: `Titik awal as (cm, X dari kiri, Y dari lantai, Z dari belakang): ${positions}`,
+      });
     });
-  }
-
-  // 3. Gelagar Memanjang Atas & Bawah (Longitudinal Rails) - 4 pcs
-  const railLengthCm = Number((W - tubeCm * 2).toFixed(1));
-  hollowPieces.push({
-    id: 'rail-longitudinal',
-    category: 'gelagar-panjang',
-    label: `Gelagar Memanjang Utama (Depan & Belakang, Atas & Bawah)`,
-    qty: 4,
-    lengthCm: railLengthCm,
-    tubeSizeMm: tubeMm,
-    notes: `2 batang atas (penahan top table) & 2 batang bawah (setinggi plinth ${plinthH}cm)`,
-    weldPosition: `Menghubungkan tiang kaki sudut kiri ke tiang sudut kanan`,
-  });
-
-  // 4. Gelagar Kedalaman Samping Kiri & Kanan (Depth Crossbars) - 4 pcs
-  const depthCrossbarCm = Number((D - tubeCm * 2).toFixed(1));
-  hollowPieces.push({
-    id: 'crossbar-ends',
-    category: 'palang-kedalaman',
-    label: `Palang Kedalaman Sisi Samping Luar (Kiri & Kanan)`,
-    qty: 4,
-    lengthCm: depthCrossbarCm,
-    tubeSizeMm: tubeMm,
-    notes: `2 palang atas & 2 palang bawah pada kedua sisi luar meja`,
-    weldPosition: `Melintang dari tiang depan ke tiang belakang di sisi X=0 dan X=${W}`,
-  });
-
-  // 5. Palang Kedalaman Pengikat Sekat Antar Kolom
-  const intermediateCrossbarQty = Math.max(0, colCount - 1) * 2;
-  if (intermediateCrossbarQty > 0) {
-    hollowPieces.push({
-      id: 'crossbar-intermediate',
-      category: 'palang-kedalaman',
-      label: `Palang Kedalaman Sekat Antar Kolom`,
-      qty: intermediateCrossbarQty,
-      lengthCm: depthCrossbarCm,
-      tubeSizeMm: tubeMm,
-      notes: `Pengikat tiang sekat depan dan tiang sekat belakang (atas & bawah) menjaga kesikuan rangka`,
-      weldPosition: `Melintang pada tiap sambungan kolom`,
-    });
-  }
-
-  // 6. Besi Penyangga Wastafel (Sink Cradle)
-  const sinkSupp = config.frame?.supports?.find((s) => s.type === 'sink-cradle');
-  if (config.sink.enabled && (sinkSupp?.enabled !== false)) {
-    const sinkCrossbarCm = Number((D - 4).toFixed(1));
-    const sinkStrapCm = Number((config.sink.width + 6).toFixed(1));
-    const cradleY = Number((H - config.sink.bowlDepth - tubeCm - 0.5).toFixed(1));
-
-    hollowPieces.push({
-      id: 'sink-cradle-side',
-      category: 'penyangga-wastafel',
-      label: `Besi Penyangga Sisi Kiri & Kanan Bak Wastafel`,
-      qty: 2,
-      lengthCm: sinkCrossbarCm,
-      tubeSizeMm: tubeMm,
-      notes: `Dipasang melintang dari depan ke belakang di samping kiri & kanan bak wastafel (jarak X = ${Math.round(config.sink.posX - config.sink.width / 2)} cm & ${Math.round(config.sink.posX + config.sink.width / 2)} cm dari sisi kiri meja)`,
-      weldPosition: `Ketinggian Y = ${cradleY} cm dari lantai`,
-    });
-
-    hollowPieces.push({
-      id: 'sink-cradle-bottom',
-      category: 'penyangga-wastafel',
-      label: `Besi Tali Gantung Penahan Dasar Bak Wastafel (Bottom Strap)`,
-      qty: 1,
-      lengthCm: sinkStrapCm,
-      tubeSizeMm: tubeMm,
-      notes: `Palang horizontal penopang dasar mangkuk bak cuci agar tidak ambles saat bak penuh air & cucian piring`,
-      weldPosition: `Tepat di bawah titik pusat as wastafel (X = ${config.sink.posX} cm, Z = ${config.sink.posY} cm)`,
-    });
-  }
-
-  // 7. Besi Penyangga Kompor Tanam (Stove Support Heavy Crossbars)
-  const stoveSupp = config.frame?.supports?.find((s) => s.type === 'stove-cradle');
-  if (config.stove.enabled && (stoveSupp?.enabled !== false)) {
-    const stoveCrossbarCm = Number((D - 4).toFixed(1));
-    const stoveSupportY = Number((H - config.stove.recessDepth - tubeCm - 1).toFixed(1));
-
-    hollowPieces.push({
-      id: 'stove-crossbars',
-      category: 'penyangga-kompor',
-      label: `Besi Gelagar Penyangga Kompor Tanam Heavy-Duty`,
-      qty: 2,
-      lengthCm: stoveCrossbarCm,
-      tubeSizeMm: tubeMm,
-      notes: `Dipasang melintang di sisi kiri & kanan bibir bodi kompor (jarak X = ${Math.round(config.stove.posX - config.stove.width / 2)} cm & ${Math.round(config.stove.posX + config.stove.width / 2)} cm)`,
-      weldPosition: `Ketinggian Y = ${stoveSupportY} cm dari lantai`,
-    });
-  }
-
-  // 8. Custom Support Beams added by user
-  config.frame?.supports?.forEach((s) => {
-    if (!s.enabled || s.type === 'sink-cradle' || s.type === 'stove-cradle') return;
-    const len = s.length || (s.type === 'vertical-post' ? postLengthCm : 60);
-    const size = s.tubeSize || tubeMm;
-
-    hollowPieces.push({
-      id: s.id,
-      category: 'kustom',
-      label: s.name || `Batang Penyangga Tambahan (${s.type})`,
-      qty: 1,
-      lengthCm: len,
-      tubeSizeMm: size,
-      notes: `Batang kustom tipe ${s.type}. Posisi: X=${s.posX}cm, Y=${s.posY}cm, Z=${s.posZ ?? 30}cm`,
-      weldPosition: `X=${s.posX} cm, Y=${s.posY} cm, Z=${s.posZ ?? 30} cm`,
-    });
-  });
 
   // Calculate total meters and 6m bars
   const totalLengthCm = hollowPieces.reduce((sum, item) => sum + item.qty * item.lengthCm, 0);
   const totalSteelLengthM = Number((totalLengthCm / 100).toFixed(2));
   const wastePercentage = 12; // 12% kerugian pemotongan
   const standard6mBarsNeeded = Math.ceil((totalSteelLengthM * (1 + wastePercentage / 100)) / 6);
-  const levelingFeetCount = 4 + intermediatePostQty;
+  const levelingFeetCount = getFootMembers(config, members).length;
+
 
   // Panel Cutting List (Multiplex 18mm & 9mm)
+  const cabinetFinishName = describeCabinetFinish(config);
   const panelPieces: PanelCutPiece[] = [];
   const carcaseH = H - topThick - plinthH;
   const carcaseD = D - (config.countertopOverhangFront || 2);
@@ -235,15 +146,23 @@ export function calculateFabricationCutList(config: KitchenConfig): CutListRepor
   config.columns.forEach((col, idx) => {
     if (col.type === 'drawers' && col.drawers) {
       col.drawers.forEach((dr, dIdx) => {
+        const kind = dr.kind || 'drawer';
+        if (kind === 'open' || kind === 'empty') return;
+        const isDouble = kind === 'door-double';
         panelPieces.push({
           id: `drawer-face-${col.id}-${dr.id}`,
-          name: `Muka Laci Kolom ${idx + 1} (${dr.name || `Laci #${dIdx + 1}`})`,
-          qty: 1,
-          widthCm: Number((col.width - 0.4).toFixed(1)),
+          name: `${kind === 'drawer' ? 'Muka Laci' : SECTION_KIND_LABELS[kind]} Kolom ${idx + 1} (${dr.name || `Baris #${dIdx + 1}`})`,
+          qty: isDouble ? 2 : 1,
+          widthCm: Number((isDouble ? (col.width - 0.6) / 2 : col.width - 0.4).toFixed(1)),
           heightCm: Number((dr.height - 0.4).toFixed(1)),
           thickMm: 18,
-          material: `Multiplex 18mm + HPL ${config.cabinetFinish}`,
-          notes: `Edging keliling 2mm. Celah antar muka laci disetel 3mm.`,
+          material: `Multiplex 18mm + ${cabinetFinishName}`,
+          notes:
+            kind === 'drawer'
+              ? `Edging keliling 2mm. Celah antar muka laci disetel 3mm.`
+              : kind === 'false-panel'
+              ? 'Panel mati dipasang tetap (tidak dibuka)'
+              : `Engsel sendok slow motion ${isDouble ? '2 pasang' : '1 pasang'}`,
         });
       });
     } else if (col.type === 'door-double' || col.type === 'sink-cabinet') {
@@ -254,7 +173,7 @@ export function calculateFabricationCutList(config: KitchenConfig): CutListRepor
         widthCm: Number(((col.width - 0.6) / 2).toFixed(1)),
         heightCm: Number((carcaseH - 0.4).toFixed(1)),
         thickMm: 18,
-        material: `Multiplex 18mm + HPL ${config.cabinetFinish}`,
+        material: `Multiplex 18mm + ${cabinetFinishName}`,
         notes: `Engsel sendok slow motion 2 pasang`,
       });
     } else if (col.type.startsWith('door-single') || col.type === 'gas-compartment') {
@@ -265,7 +184,7 @@ export function calculateFabricationCutList(config: KitchenConfig): CutListRepor
         widthCm: Number((col.width - 0.4).toFixed(1)),
         heightCm: Number((carcaseH - 0.4).toFixed(1)),
         thickMm: 18,
-        material: `Multiplex 18mm + HPL ${config.cabinetFinish}`,
+        material: `Multiplex 18mm + ${cabinetFinishName}`,
         notes: `Bukaan swing sesuai tipe kolom`,
       });
     }
@@ -290,7 +209,7 @@ export function generateDocHtml(config: KitchenConfig): string {
   const D = config.totalDepth;
   const H = config.totalHeight;
   const topThick = config.countertopThickness || 4;
-  const plinthH = config.plinthHeight || 10;
+  const plinthH = (config.plinthHeight ?? 10);
   const tubeMm = config.frame?.tubeSize || 40;
   const currentDate = new Date().toLocaleDateString('id-ID', {
     day: 'numeric',
@@ -433,9 +352,9 @@ export function generateDocHtml(config: KitchenConfig): string {
     • <strong>Panjang Total (Width):</strong> ${W} cm (${(W / 100).toFixed(2)} meter)<br/>
     • <strong>Kedalaman Meja (Depth):</strong> ${D} cm (Standar ergonomis: 60 cm)<br/>
     • <strong>Tinggi Meja (Height):</strong> ${H} cm (Tinggi kerja nyaman dari lantai)<br/>
-    • <strong>Tebal Top Table:</strong> ${topThick} cm | <strong>Tinggi Kaki / Plinth:</strong> ${plinthH} cm<br/>
-    • <strong>Rangka Utama:</strong> ${config.frame?.material || 'Besi Hollow Kotak'} ukuran <strong>${tubeMm}×${tubeMm} mm</strong><br/>
-    • <strong>Finishing Kabinet:</strong> ${config.cabinetFinish} | <strong>Top Table:</strong> ${config.countertopMaterial}
+    • <strong>Tebal Top Table:</strong> ${topThick} cm | <strong>Tinggi Kaki / Plinth:</strong> ${plinthH > 0 ? `${plinthH} cm (${config.legType === 'frame' ? 'kaki dari rangka' : config.legType === 'feet' ? 'kaki stel terbuka' : 'plinth tertutup'})` : 'tanpa kaki'}<br/>
+    • <strong>Rangka Utama:</strong> ${describeFrame(config)}${config.frame?.customLayout ? ' (layout rangka manual)' : ''} ukuran <strong>${tubeMm}×${tubeMm} mm</strong><br/>
+    • <strong>Finishing Kabinet:</strong> ${describeCabinetFinish(config)} | <strong>Top Table:</strong> ${describeCountertop(config)}
   </div>
 
   <!-- BAGIAN 1: DAFTAR POTONGAN BESI HOLLOW (CUTTING LIST BENGKEL LAS) -->
@@ -483,7 +402,7 @@ export function generateDocHtml(config: KitchenConfig): string {
   <div class="alert-box" style="border-left-color: #d97706; background-color: #fffbeb;">
     <strong>CATATAN KHUSUS BENGKEL LAS (PENGELASAN & LEVELING):</strong><br/>
     1. Pastikan setiap sudut sambungan di-las penuh (full weld) dan di-gerinda rata (flush grind) di sisi atas agar tidak mengganjal marmer.<br/>
-    2. Pada bagian bawah tiang vertikal (${cutList.levelingFeetCount} titik tiang), las pelat tutup mur tanam (M10/M12) untuk memasang <strong>${cutList.levelingFeetCount} unit Kaki Adjuster Leveler Stainless/Karet</strong>.<br/>
+    2. ${cutList.levelingFeetCount > 0 ? `Pada bagian bawah tiang vertikal (${cutList.levelingFeetCount} titik tiang), las pelat tutup mur tanam (M10/M12) untuk memasang <strong>${cutList.levelingFeetCount} unit Kaki Adjuster Leveler Stainless/Karet</strong>.` : 'Tidak memakai kaki adjuster: ujung bawah tiang ditutup plat/dop karet langsung menapak lantai.'}<br/>
     3. Oleskan <strong>Epoxy Zinc-Chromate Primer 2 lapis</strong> sebagai lapisan dasar anti-karat sebelum finishing cat doff / powder coating.
   </div>
 
@@ -594,11 +513,11 @@ export function generateDocHtml(config: KitchenConfig): string {
           <td>
             ${
               col.type === 'drawers' && col.drawers
-                ? `Total ${col.drawers.length} Laci:<br/>` +
+                ? `Susunan ${col.drawers.length} baris (atas ke bawah):<br/>` +
                   col.drawers
                     .map(
                       (d, di) =>
-                        `• Laci ${di + 1} (${d.name || 'Laci'}): Tinggi muka <strong>${d.height} cm</strong>`
+                        `• ${di + 1}. ${SECTION_KIND_LABELS[d.kind || 'drawer']} (${d.name || '-'}): Tinggi <strong>${d.height} cm</strong>`
                     )
                     .join('<br/>')
                 : col.type === 'sink-cabinet'

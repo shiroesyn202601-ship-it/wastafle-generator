@@ -1,5 +1,7 @@
 import React, { useRef } from 'react';
-import { KitchenConfig } from '../types/kitchen';
+import { KitchenConfig, SECTION_KIND_LABELS } from '../types/kitchen';
+import { describeCountertop } from '../utils/finishes';
+import { getSinkStoveGap } from '../utils/layoutOps';
 import { Printer, Download, Eye, Layers } from 'lucide-react';
 
 interface Props {
@@ -21,6 +23,7 @@ export const BlueprintView2D: React.FC<Props> = ({ config }) => {
   } = config;
 
   const carcaseH = H - topT - plinthH;
+  const legType = config.legType ?? 'plinth';
   const panelThick = 1.8; // 18mm standard in cm
 
   // SVG Scaling and Coordinates
@@ -185,22 +188,27 @@ export const BlueprintView2D: React.FC<Props> = ({ config }) => {
                       strokeWidth="1.5"
                     />
                     <text x={originX + 10} y={topY + (topT * scale) / 2 + 3} fill="#e5e7eb" fontSize="9">
-                      Top Table {topT}cm ({config.countertopMaterial})
+                      Top Table {topT}cm ({describeCountertop(config)})
                     </text>
 
-                    {/* Plinth Kickboard Bottom */}
-                    <rect
-                      x={originX + 5 * scale}
-                      y={plinthY}
-                      width={(W - 10) * scale}
-                      height={plinthH * scale}
-                      fill="#1f2937"
-                      stroke="#4b5563"
-                      strokeWidth="1.2"
-                    />
-                    <text x={originX + (W * scale) / 2} y={plinthY + (plinthH * scale) / 2 + 4} fill="#9ca3af" textAnchor="middle" fontSize="9">
-                      Plinth Kaki ({plinthH} cm)
-                    </text>
+                    {/* Plinth / Kaki */}
+                    {plinthH > 0 && (
+                      <>
+                        <rect
+                          x={originX + 5 * scale}
+                          y={plinthY}
+                          width={(W - 10) * scale}
+                          height={plinthH * scale}
+                          fill={legType === 'plinth' ? '#1f2937' : 'none'}
+                          stroke="#4b5563"
+                          strokeWidth="1.2"
+                          strokeDasharray={legType === 'plinth' ? undefined : '4,3'}
+                        />
+                        <text x={originX + (W * scale) / 2} y={plinthY + (plinthH * scale) / 2 + 4} fill="#9ca3af" textAnchor="middle" fontSize="9">
+                          {legType === 'frame' ? 'Kaki dari Rangka' : legType === 'feet' ? 'Kaki Stel Terbuka' : 'Plinth Kaki'} ({plinthH} cm)
+                        </text>
+                      </>
+                    )}
 
                     {/* Carcase Outer Box */}
                     <rect
@@ -266,42 +274,69 @@ export const BlueprintView2D: React.FC<Props> = ({ config }) => {
                                 let dY = originY;
 
                                 return drawers.map((d, dIdx) => {
-                                  const dH = (d.height / totalDH) * carcaseH;
+                                  const dH = (d.height / (totalDH || 1)) * carcaseH;
                                   const dHpx = dH * scale;
                                   const thisDY = dY;
                                   dY += dHpx;
+                                  const kind = d.kind || 'drawer';
+                                  const isVoid = kind === 'open' || kind === 'empty';
+                                  const bx = thisX + 3;
+                                  const by = thisDY + 3;
+                                  const bw = colWpx - 6;
+                                  const bh = dHpx - 6;
 
                                   return (
                                     <g key={d.id || dIdx}>
                                       <rect
-                                        x={thisX + 3}
-                                        y={thisDY + 3}
-                                        width={colWpx - 6}
-                                        height={dHpx - 6}
-                                        fill="#27272a"
+                                        x={bx}
+                                        y={by}
+                                        width={bw}
+                                        height={bh}
+                                        fill={isVoid ? 'none' : kind === 'drawer' ? '#27272a' : '#1c1c20'}
                                         stroke="#71717a"
                                         strokeWidth="1"
+                                        strokeDasharray={isVoid ? '4,3' : undefined}
                                         rx="2"
                                       />
-                                      {/* Handle notch */}
-                                      <line
-                                        x1={thisX + colWpx / 2 - 20}
-                                        y1={thisDY + 10}
-                                        x2={thisX + colWpx / 2 + 20}
-                                        y2={thisDY + 10}
-                                        stroke="#fbbf24"
-                                        strokeWidth="2.5"
-                                        strokeLinecap="round"
-                                      />
-                                      {/* Text info */}
+                                      {kind === 'drawer' && (
+                                        <line
+                                          x1={thisX + colWpx / 2 - 20}
+                                          y1={thisDY + 10}
+                                          x2={thisX + colWpx / 2 + 20}
+                                          y2={thisDY + 10}
+                                          stroke="#fbbf24"
+                                          strokeWidth="2.5"
+                                          strokeLinecap="round"
+                                        />
+                                      )}
+                                      {kind === 'door-double' && (
+                                        <line x1={bx + bw / 2} y1={by} x2={bx + bw / 2} y2={by + bh} stroke="#71717a" strokeWidth="1" />
+                                      )}
+                                      {/* Garis arah bukaan pintu (segitiga menuju sisi engsel) */}
+                                      {(kind === 'door-left' || kind === 'door-right') && (
+                                        <polyline
+                                          points={
+                                            kind === 'door-left'
+                                              ? `${bx + bw},${by} ${bx},${by + bh / 2} ${bx + bw},${by + bh}`
+                                              : `${bx},${by} ${bx + bw},${by + bh / 2} ${bx},${by + bh}`
+                                          }
+                                          fill="none"
+                                          stroke="#38bdf8"
+                                          strokeWidth="0.8"
+                                          strokeDasharray="5,3"
+                                        />
+                                      )}
+                                      {kind === 'open' && (
+                                        <line x1={bx} y1={by + bh / 2} x2={bx + bw} y2={by + bh / 2} stroke="#52525b" strokeWidth="1.5" />
+                                      )}
                                       <text
                                         x={thisX + colWpx / 2}
                                         y={thisDY + dHpx / 2 + 4}
-                                        fill="#e4e4e7"
+                                        fill={kind === 'drawer' ? '#e4e4e7' : '#93c5fd'}
                                         textAnchor="middle"
                                         fontSize="9"
                                       >
-                                        {d.name || `Laci ${dIdx + 1}`} ({Math.round(d.height)} cm)
+                                        {kind === 'drawer' ? d.name || `Laci ${dIdx + 1}` : SECTION_KIND_LABELS[kind]} ({Math.round(d.height)} cm)
                                       </text>
                                     </g>
                                   );
@@ -566,13 +601,14 @@ export const BlueprintView2D: React.FC<Props> = ({ config }) => {
               {/* Clearance Arrow between Sink and Stove */}
               {sink.enabled && stove.enabled && (
                 (() => {
-                  const sinkRight = sink.posX + sink.width / 2;
-                  const stoveLeft = stove.posX - stove.width / 2;
-                  const gap = stoveLeft - sinkRight;
+                  const gap = getSinkStoveGap(config);
+                  const sinkIsLeft = sink.posX <= stove.posX;
+                  const leftEdge = sinkIsLeft ? sink.posX + sink.width / 2 : stove.posX + stove.width / 2;
+                  const rightEdge = sinkIsLeft ? stove.posX - stove.width / 2 : sink.posX - sink.width / 2;
 
                   if (gap > 0) {
-                    const startX = svgPadX + sinkRight * scale;
-                    const endX = svgPadX + stoveLeft * scale;
+                    const startX = svgPadX + leftEdge * scale;
+                    const endX = svgPadX + rightEdge * scale;
                     const lineY = svgPadY + (D / 2) * scale;
 
                     return (
@@ -648,7 +684,7 @@ export const BlueprintView2D: React.FC<Props> = ({ config }) => {
               <p className="text-neutral-200 font-bold">Panjang Total: {W} cm</p>
               <p className="text-neutral-200">Kedalaman: {D} cm</p>
               <p className="text-neutral-200">Tinggi Finish: {H} cm</p>
-              <p className="text-neutral-400">Tinggi Kaki Plinth: {plinthH} cm</p>
+              <p className="text-neutral-400">Tinggi Kaki: {plinthH > 0 ? `${plinthH} cm` : 'tanpa kaki'}</p>
               <p className="text-neutral-400">Tebal Top Table: {topT} cm</p>
             </div>
 

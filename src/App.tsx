@@ -14,6 +14,7 @@ import { MaterialControls } from './components/MaterialControls';
 import { BottomSimulationDock } from './components/BottomSimulationDock';
 import { PresetModal } from './components/PresetModal';
 import { ExportDocModal } from './components/ExportDocModal';
+import { FrameEditor2D } from './components/FrameEditor2D';
 import {
   Box,
   Layers,
@@ -32,9 +33,10 @@ import {
   Sparkles,
   CheckCircle,
   FileText,
+  Grid3x3,
 } from 'lucide-react';
 
-type ViewMode = '3d' | 'blueprint' | 'rab';
+type ViewMode = '3d' | 'frame' | 'blueprint' | 'rab';
 type SidebarTab = 'dimensions' | 'appliances' | 'materials';
 
 export default function App() {
@@ -188,7 +190,7 @@ export default function App() {
                 <span className="text-neutral-600">·</span>
                 <span>{config.columns.length} Modul</span>
                 <span className="text-neutral-600">·</span>
-                <span className="text-neutral-300">Rangka Hollow</span>
+                <span className="text-neutral-300">{config.frame?.customLayout ? 'Rangka Manual' : 'Rangka Otomatis'}</span>
               </p>
             </div>
           </div>
@@ -217,6 +219,17 @@ export default function App() {
           >
             <Box className="w-3.5 h-3.5 text-amber-400" />
             <span>3D Visual</span>
+          </button>
+          <button
+            onClick={() => setViewMode('frame')}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
+              viewMode === 'frame'
+                ? 'bg-white/15 text-white shadow-sm ring-1 ring-white/10'
+                : 'text-neutral-400 hover:text-neutral-200'
+            }`}
+          >
+            <Grid3x3 className="w-3.5 h-3.5 text-orange-400" />
+            <span>Editor Rangka 2D</span>
           </button>
           <button
             onClick={() => setViewMode('blueprint')}
@@ -351,7 +364,7 @@ export default function App() {
               />
             )}
             {activeTab === 'materials' && (
-              <MaterialControls config={config} onChange={updateConfig} />
+              <MaterialControls config={config} onChange={updateConfig} onOpenFrameEditor={() => setViewMode('frame')} />
             )}
           </div>
         </aside>
@@ -363,6 +376,12 @@ export default function App() {
               <ThreeKitchenScene config={config} />
               <BottomSimulationDock config={config} onChange={updateConfig} />
             </>
+          )}
+
+          {viewMode === 'frame' && (
+            <div className="w-full h-full overflow-hidden">
+              <FrameEditor2D config={config} onChange={updateConfig} />
+            </div>
           )}
 
           {viewMode === 'blueprint' && (

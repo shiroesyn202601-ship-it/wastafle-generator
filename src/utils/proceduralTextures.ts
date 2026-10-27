@@ -307,3 +307,231 @@ export function createContactShadowTexture(): THREE.CanvasTexture {
   textureCache.set(cacheKey, texture);
   return texture;
 }
+
+// ---------- HPL & Kayu FJL ----------
+
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+  const n = parseInt(full, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function rgba(hex: string, alpha: number, shift = 0): string {
+  const [r, g, b] = hexToRgb(hex).map((v) => Math.max(0, Math.min(255, Math.round(v + shift))));
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function finishTexture(canvas: HTMLCanvasElement, cacheKey: string): THREE.CanvasTexture {
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  textureCache.set(cacheKey, texture);
+  return texture;
+}
+
+export interface HplTextureSpec {
+  id: string;
+  pattern: 'solid' | 'wood' | 'marble' | 'concrete' | 'linen' | 'terrazzo';
+  base: string;
+  accent: string;
+}
+
+/** Tekstur lembar HPL sesuai pola (polos, serat kayu, marmer, beton, linen, terrazzo) */
+export function createHplTexture(spec: HplTextureSpec): THREE.CanvasTexture {
+  const cacheKey = `hpl-${spec.id}`;
+  if (textureCache.has(cacheKey)) return textureCache.get(cacheKey)!;
+
+  const size = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = spec.base;
+  ctx.fillRect(0, 0, size, size);
+
+  if (spec.pattern === 'wood') {
+    for (let i = 0; i < 260; i++) {
+      const x = Math.random() * size;
+      ctx.strokeStyle = Math.random() < 0.65 ? rgba(spec.accent, 0.12 + Math.random() * 0.25) : rgba(spec.base, 0.35, 25);
+      ctx.lineWidth = 0.6 + Math.random() * 2.6;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.bezierCurveTo(x + (Math.random() - 0.5) * 18, size * 0.3, x + (Math.random() - 0.5) * 30, size * 0.7, x + (Math.random() - 0.5) * 18, size);
+      ctx.stroke();
+    }
+    // Lengkung serat kayu (motif cathedral)
+    for (let c = 0; c < 3; c++) {
+      const cx = Math.random() * size;
+      const cy = Math.random() * size;
+      for (let k = 0; k < 7; k++) {
+        ctx.strokeStyle = rgba(spec.accent, 0.18);
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, 6 + k * 7, 40 + k * 22, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+  } else if (spec.pattern === 'marble') {
+    for (let i = 0; i < 30; i++) {
+      const cx = Math.random() * size;
+      const cy = Math.random() * size;
+      const r = 40 + Math.random() * 140;
+      const grad = ctx.createRadialGradient(cx, cy, 5, cx, cy, r);
+      grad.addColorStop(0, rgba(spec.accent, 0.12));
+      grad.addColorStop(1, rgba(spec.accent, 0));
+      ctx.fillStyle = grad;
+      ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+    }
+    for (let v = 0; v < 7; v++) {
+      let x = Math.random() * size;
+      let y = 0;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      while (y < size) {
+        y += 6 + Math.random() * 14;
+        x += (Math.random() - 0.5) * 22;
+        ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = rgba(spec.accent, 0.35 + Math.random() * 0.35);
+      ctx.lineWidth = 0.8 + Math.random() * 2.2;
+      ctx.stroke();
+    }
+  } else if (spec.pattern === 'concrete') {
+    for (let i = 0; i < 70; i++) {
+      const cx = Math.random() * size;
+      const cy = Math.random() * size;
+      const r = 20 + Math.random() * 90;
+      const grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, r);
+      const dark = Math.random() < 0.5;
+      grad.addColorStop(0, dark ? rgba(spec.accent, 0.18) : rgba(spec.base, 0.25, 30));
+      grad.addColorStop(1, rgba(spec.base, 0));
+      ctx.fillStyle = grad;
+      ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+    }
+    for (let i = 0; i < 1400; i++) {
+      ctx.fillStyle = rgba(spec.accent, 0.35);
+      ctx.fillRect(Math.random() * size, Math.random() * size, 1 + Math.random() * 1.5, 1 + Math.random() * 1.5);
+    }
+  } else if (spec.pattern === 'linen') {
+    for (let y = 0; y < size; y += 2) {
+      ctx.fillStyle = rgba(spec.accent, 0.08 + Math.random() * 0.14);
+      ctx.fillRect(0, y, size, 1);
+    }
+    for (let x = 0; x < size; x += 2) {
+      ctx.fillStyle = rgba(spec.accent, 0.06 + Math.random() * 0.12);
+      ctx.fillRect(x, 0, 1, size);
+    }
+  } else if (spec.pattern === 'terrazzo') {
+    const chipColors = [spec.accent, '#ffffff', '#6b7280', '#d6d3d1'];
+    for (let i = 0; i < 650; i++) {
+      const cx = Math.random() * size;
+      const cy = Math.random() * size;
+      const r = 1.5 + Math.random() * (Math.random() < 0.1 ? 9 : 4);
+      ctx.fillStyle = rgba(chipColors[i % chipColors.length], 0.75);
+      ctx.beginPath();
+      for (let p = 0; p < 6; p++) {
+        const a = (p / 6) * Math.PI * 2;
+        const rr = r * (0.6 + Math.random() * 0.5);
+        if (p === 0) ctx.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+        else ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+  } else {
+    // Polos: noise sangat halus agar tidak terlihat seperti plastik datar
+    for (let i = 0; i < 2500; i++) {
+      ctx.fillStyle = Math.random() < 0.5 ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)';
+      ctx.fillRect(Math.random() * size, Math.random() * size, 2, 2);
+    }
+  }
+
+  return finishTexture(canvas, cacheKey);
+}
+
+const previewCache = new Map<string, string>();
+
+/** Gambar kecil (data URL) dari tekstur HPL untuk swatch di panel kontrol */
+export function getHplPreviewUrl(spec: HplTextureSpec): string {
+  if (previewCache.has(spec.id)) return previewCache.get(spec.id)!;
+  const src = createHplTexture(spec).image as HTMLCanvasElement;
+  const c = document.createElement('canvas');
+  c.width = 64;
+  c.height = 64;
+  c.getContext('2d')!.drawImage(src, 0, 0, 160, 160, 0, 0, 64, 64);
+  const url = c.toDataURL('image/jpeg', 0.8);
+  previewCache.set(spec.id, url);
+  return url;
+}
+
+/**
+ * Tekstur papan kayu FJL (Finger Joint Laminated): bilah-bilah kayu memanjang (sumbu X)
+ * dengan sambungan jari zig-zag di beberapa titik dan warna bilah bervariasi.
+ * 1 repeat tekstur = 1 meter (sesuai UV top table).
+ */
+export function createFjlTexture(id: string, base: string, light: string, dark: string): THREE.CanvasTexture {
+  const cacheKey = `fjl-${id}`;
+  if (textureCache.has(cacheKey)) return textureCache.get(cacheKey)!;
+
+  const size = 1024;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  const tones = [base, light, dark];
+  const stripCount = 25; // ±4 cm per bilah
+  const stripH = size / stripCount;
+
+  for (let s = 0; s < stripCount; s++) {
+    const y0 = s * stripH;
+    // Titik sambungan sepanjang bilah (selalu ada di x=0 agar tile menyambung)
+    const joints = [0];
+    let jx = 150 + Math.random() * 350;
+    while (jx < size - 120) {
+      joints.push(jx);
+      jx += 220 + Math.random() * 420;
+    }
+    joints.push(size);
+
+    for (let j = 0; j < joints.length - 1; j++) {
+      const x0 = joints[j];
+      const x1 = joints[j + 1];
+      const tone = tones[Math.floor(Math.random() * tones.length)];
+      ctx.fillStyle = rgba(tone, 1, (Math.random() - 0.5) * 18);
+      ctx.fillRect(x0, y0, x1 - x0, stripH);
+      // Serat memanjang
+      for (let g = 0; g < 9; g++) {
+        const gy = y0 + Math.random() * stripH;
+        ctx.strokeStyle = rgba(dark, 0.15 + Math.random() * 0.2);
+        ctx.lineWidth = 0.6 + Math.random() * 1.4;
+        ctx.beginPath();
+        ctx.moveTo(x0, gy);
+        ctx.bezierCurveTo(x0 + (x1 - x0) * 0.3, gy + (Math.random() - 0.5) * 6, x0 + (x1 - x0) * 0.7, gy + (Math.random() - 0.5) * 6, x1, gy + (Math.random() - 0.5) * 4);
+        ctx.stroke();
+      }
+    }
+
+    // Garis sambungan jari zig-zag
+    joints.slice(1, -1).forEach((x) => {
+      ctx.strokeStyle = rgba(dark, 0.7, -25);
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      const teeth = 4;
+      for (let k = 0; k <= teeth * 2; k++) {
+        const ty = y0 + (k / (teeth * 2)) * stripH;
+        const tx = x + (k % 2 === 0 ? -7 : 7);
+        if (k === 0) ctx.moveTo(tx, ty);
+        else ctx.lineTo(tx, ty);
+      }
+      ctx.stroke();
+    });
+
+    // Garis lem antar bilah
+    ctx.fillStyle = rgba(dark, 0.55, -30);
+    ctx.fillRect(0, y0, size, 1.2);
+  }
+
+  return finishTexture(canvas, cacheKey);
+}

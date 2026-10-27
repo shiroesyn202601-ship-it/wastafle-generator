@@ -25,7 +25,9 @@ import {
   Building,
   Layers,
   Sliders,
+  ArrowLeftRight,
 } from 'lucide-react';
+import { mirrorKitchenLayout } from '../utils/layoutOps';
 
 interface Props {
   config: KitchenConfig;
@@ -159,6 +161,26 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
             <span>Atur Posisi Ideal</span>
           </button>
         </div>
+
+        {/* Tukar posisi wastafel & kompor (cermin layout kiri-kanan) */}
+        <button
+          onClick={() => onChange(mirrorKitchenLayout(config))}
+          className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-gradient-to-r from-blue-950/50 to-amber-950/40 hover:from-blue-900/50 hover:to-amber-900/40 border border-white/10 rounded-lg transition cursor-pointer"
+          title="Cerminkan layout: posisi wastafel & kompor, urutan modul kabinet, arah engsel pintu, dan rangka"
+        >
+          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-blue-300">
+            <Droplets className="w-3.5 h-3.5" />
+            {sink.posX <= stove.posX ? 'Kiri' : 'Kanan'}
+          </span>
+          <span className="flex items-center gap-1.5 text-xs font-bold text-white">
+            <ArrowLeftRight className="w-4 h-4" />
+            Tukar Posisi Wastafel ⇄ Kompor
+          </span>
+          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-300">
+            {stove.posX < sink.posX ? 'Kiri' : 'Kanan'}
+            <Flame className="w-3.5 h-3.5" />
+          </span>
+        </button>
 
         {/* Clearance Metric Bar */}
         <div className="space-y-1">

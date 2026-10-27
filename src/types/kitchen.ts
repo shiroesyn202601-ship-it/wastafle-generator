@@ -8,10 +8,31 @@ export type ColumnType =
   | 'pullout-spice' 
   | 'sink-cabinet';
 
+// Jenis isi tiap baris (segmen) dalam kolom bertipe 'drawers' (susunan bebas)
+export type SectionKind =
+  | 'drawer' // Laci geser
+  | 'door-left' // Pintu engsel kiri
+  | 'door-right' // Pintu engsel kanan
+  | 'door-double' // Pintu ganda
+  | 'open' // Rak terbuka (ada ambalan, tanpa muka)
+  | 'empty' // Rongga kosong (tanpa muka & ambalan, mis. untuk tong sampah / oven)
+  | 'false-panel'; // Panel mati (muka tetap, tidak bisa dibuka)
+
+export const SECTION_KIND_LABELS: Record<SectionKind, string> = {
+  drawer: 'Laci',
+  'door-left': 'Pintu (Engsel Kiri)',
+  'door-right': 'Pintu (Engsel Kanan)',
+  'door-double': 'Pintu Ganda',
+  open: 'Rak Terbuka',
+  empty: 'Kosong',
+  'false-panel': 'Panel Mati',
+};
+
 export interface DrawerConfig {
   id: string;
   height: number; // in cm
   name?: string; // e.g. "Laci Sendok", "Laci Piring", "Laci Wajan"
+  kind?: SectionKind; // default 'drawer'; urutan array = dari atas ke bawah
 }
 
 export interface ColumnConfig {
@@ -232,9 +253,44 @@ export type CountertopMaterial =
   | 'concrete-grey'
   | 'terrazzo-white'
   | 'stainless-steel'
+  | 'hpl'
+  | 'wood-fjl'
   | 'custom';
 
-export type CabinetFinish = 
+// HPL (High Pressure Laminate): warna polos & motif
+export type HplPattern = 'solid' | 'wood' | 'marble' | 'concrete' | 'linen' | 'terrazzo';
+export type HplSurface = 'doff' | 'glossy' | 'texture';
+export type HplGroup = 'Polos' | 'Motif Kayu' | 'Batu & Marmer' | 'Beton & Tekstur';
+
+export interface HplSwatch {
+  id: string;
+  name: string;
+  group: HplGroup;
+  pattern: HplPattern;
+  base: string; // hex warna dasar
+  accent: string; // hex warna serat / urat / bintik
+}
+
+export interface HplSelection {
+  swatchId: string;
+  surface: HplSurface;
+}
+
+// Kayu FJL (Finger Joint Laminated) untuk top table
+export type FjlSpecies = 'jati' | 'mahoni' | 'pinus' | 'karet' | 'meranti' | 'sungkai' | 'akasia';
+
+export interface FjlSelection {
+  species: FjlSpecies;
+  coat: 'doff' | 'glossy';
+}
+
+// Kaki meja
+export type LegType =
+  | 'plinth' // Kaki stel tertutup papan plinth (kickboard)
+  | 'feet' // Kaki stel terbuka tanpa plinth
+  | 'frame'; // Kaki dibuat dari rangka sendiri (tiang sampai lantai, tanpa kaki stel)
+
+export type CabinetFinish =
   | 'wood-natural' 
   | 'wood-walnut' 
   | 'wood-teak'
@@ -245,9 +301,10 @@ export type CabinetFinish =
   | 'navy-blue'
   | 'terracotta-warm'
   | 'sand-beige'
+  | 'hpl'
   | 'custom';
 
-export type FrameMaterial = 
+export type FrameMaterial =
   | 'hollow-steel-black' 
   | 'hollow-steel-stainless' 
   | 'hollow-steel-gold' 
@@ -276,6 +333,25 @@ export interface FrameSupport {
   enabled: boolean;
 }
 
+export type FrameAxis = 'x' | 'y' | 'z';
+export type FrameMemberRole = 'post' | 'rail-x' | 'rail-z' | 'sink-cradle' | 'stove-cradle' | 'custom';
+
+// Satu batang rangka (pipa hollow) lurus searah sumbu.
+// Koordinat dalam cm, titik awal garis as (centerline):
+//   x = dari sisi kiri meja, y = dari lantai, z = dari sisi belakang (dinding).
+// Batang memanjang ke arah + sumbunya sepanjang `length`.
+export interface FrameMember {
+  id: string;
+  axis: FrameAxis;
+  x: number;
+  y: number;
+  z: number;
+  length: number;
+  role: FrameMemberRole;
+  label?: string;
+  tubeSize?: number; // mm, default frame.tubeSize
+}
+
 export interface FrameConfig {
   material: FrameMaterial;
   tubeSize: number; // 30, 40, or 50 mm
@@ -283,6 +359,9 @@ export interface FrameConfig {
   customRoughness: number;
   customMetalness: number;
   supports?: FrameSupport[];
+  paintColor?: string | null; // warna cat / powder coating rangka (null = warna bawaan material)
+  customLayout?: boolean; // true = rangka diedit manual lewat Editor Rangka 2D
+  members?: FrameMember[]; // dipakai saat customLayout = true
 }
 
 export type HandleStyle = 
@@ -310,7 +389,8 @@ export interface KitchenConfig {
   totalDepth: number; // 50 to 80 cm
   totalHeight: number; // 75 to 100 cm (ergonomic height)
   countertopThickness: number; // 2 to 6 cm
-  plinthHeight: number; // 6 to 15 cm (kaki/kickboard)
+  plinthHeight: number; // 0 to 30 cm (kaki/kickboard), 0 = tanpa kaki
+  legType?: LegType; // default 'plinth'
   countertopOverhangFront: number; // 0 to 4 cm
   backsplashEnabled: boolean;
   backsplashHeight: number; // 10 to 60 cm
@@ -325,8 +405,11 @@ export interface KitchenConfig {
   // Materials & Finishes
   countertopMaterial: CountertopMaterial;
   customCountertopColor?: string;
+  countertopHpl?: HplSelection;
+  countertopFjl?: FjlSelection;
   cabinetFinish: CabinetFinish;
   customCabinetColor?: string;
+  cabinetHpl?: HplSelection;
   frame: FrameConfig;
   handleStyle: HandleStyle;
 
@@ -364,6 +447,8 @@ export const MATERIAL_LABELS: Record<CountertopMaterial, { name: string; desc: s
   'concrete-grey': { name: 'Beton / Semen Ekspos', desc: 'Gaya industrial raw kontemporer', color: '#7a8088' },
   'terrazzo-white': { name: 'Terrazzo Cor Modern', desc: 'Batu komposit bintik marmer unik', color: '#e5e7eb' },
   'stainless-steel': { name: 'Stainless Steel Komersil', desc: 'Higienis tahan panas & minyak', color: '#c5c8cc' },
+  'hpl': { name: 'HPL (Warna & Motif)', desc: 'Multiplex dilapis HPL, puluhan pilihan', color: '#7c8a6e' },
+  'wood-fjl': { name: 'Kayu FJL (Finger Joint)', desc: 'Papan sambung kayu solid laminasi', color: '#b07a45' },
   'custom': { name: 'Warna Top Table Kustom', desc: 'Sesuaikan warna hex sendiri', color: '#8b5cf6' },
 };
 
@@ -378,6 +463,7 @@ export const CABINET_FINISH_LABELS: Record<CabinetFinish, { name: string; desc: 
   'navy-blue': { name: 'Navy Midnight Mewah', desc: 'Aksen mewah berani', color: '#1e2d42' },
   'terracotta-warm': { name: 'Terracotta Earthy', desc: 'Hangat bernuansa tanah liat Mediterania', color: '#b85d43' },
   'sand-beige': { name: 'Sand Beige Japandi', desc: 'Krem netral hangat dan tenang', color: '#d4c7b8' },
+  'hpl': { name: 'Katalog HPL (Warna & Motif)', desc: 'Pilih warna polos, motif kayu, marmer, beton', color: '#8a6a4a' },
   'custom': { name: 'Warna Kabinet Kustom', desc: 'Pilih warna finishing sendiri', color: '#10b981' },
 };
 
@@ -387,6 +473,7 @@ export const DEFAULT_KITCHEN_CONFIG: KitchenConfig = {
   totalHeight: 85, // default tinggi 85cm
   countertopThickness: 4,
   plinthHeight: 10,
+  legType: 'plinth',
   countertopOverhangFront: 2,
   backsplashEnabled: true,
   backsplashHeight: 20,
@@ -456,8 +543,11 @@ export const DEFAULT_KITCHEN_CONFIG: KitchenConfig = {
 
   countertopMaterial: 'marble-black',
   customCountertopColor: '#1c1d21',
+  countertopHpl: { swatchId: 'wood-walnut', surface: 'doff' },
+  countertopFjl: { species: 'jati', coat: 'doff' },
   cabinetFinish: 'wood-natural',
   customCabinetColor: '#c49a6c',
+  cabinetHpl: { swatchId: 'solid-sage', surface: 'doff' },
 
   frame: {
     material: 'hollow-steel-black',

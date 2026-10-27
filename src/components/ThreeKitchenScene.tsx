@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { KitchenConfig } from '../types/kitchen';
+import { KitchenConfig, DrawerConfig } from '../types/kitchen';
 import {
   createWoodTexture,
   createMarbleTexture,
@@ -10,7 +10,12 @@ import {
   createTileBacksplashTexture,
   createFloorTileTexture,
   createContactShadowTexture,
+  createHplTexture,
+  createFjlTexture,
 } from '../utils/proceduralTextures';
+import { getHplSwatch, getFjlSpecies, HPL_SURFACE_LABELS } from '../utils/finishes';
+import { getFrameMembers, getFootMembers, memberTubeCm } from '../utils/frameLayout';
+import { getSinkStoveGap } from '../utils/layoutOps';
 
 interface Props {
   config: KitchenConfig;
@@ -407,6 +412,22 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
         metalness: 0.88,
         wireframe: isWire,
       });
+    } else if (config.countertopMaterial === 'hpl') {
+      countertopMat = new THREE.MeshStandardMaterial({
+        map: createHplTexture(getHplSwatch(config.countertopHpl)),
+        roughness: HPL_SURFACE_LABELS[config.countertopHpl?.surface || 'doff'].roughness,
+        metalness: 0.04,
+        wireframe: isWire,
+      });
+    } else if (config.countertopMaterial === 'wood-fjl') {
+      const species = config.countertopFjl?.species || 'jati';
+      const sp = getFjlSpecies(config.countertopFjl);
+      countertopMat = new THREE.MeshStandardMaterial({
+        map: createFjlTexture(species, sp.base, sp.light, sp.dark),
+        roughness: config.countertopFjl?.coat === 'glossy' ? 0.2 : 0.5,
+        metalness: 0.03,
+        wireframe: isWire,
+      });
     } else {
       countertopMat = new THREE.MeshStandardMaterial({
         color: new THREE.Color(config.customCountertopColor || '#1a1a1a'),
@@ -491,6 +512,13 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
         metalness: 0.05,
         wireframe: isWire,
       });
+    } else if (config.cabinetFinish === 'hpl') {
+      cabinetFaceMat = new THREE.MeshStandardMaterial({
+        map: createHplTexture(getHplSwatch(config.cabinetHpl)),
+        roughness: HPL_SURFACE_LABELS[config.cabinetHpl?.surface || 'doff'].roughness,
+        metalness: 0.04,
+        wireframe: isWire,
+      });
     } else {
       cabinetFaceMat = new THREE.MeshStandardMaterial({
         color: new THREE.Color(config.customCabinetColor || '#c49a6c'),
@@ -541,6 +569,16 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
       frameMat = cabinetInternalMat;
     }
 
+    // Warna cat / powder coating rangka menimpa warna bawaan material
+    if (frameConfig.paintColor) {
+      frameMat = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(frameConfig.paintColor),
+        roughness: 0.5,
+        metalness: frameConfig.material === 'solid-wood' || frameConfig.material === 'plywood-box' ? 0.05 : 0.45,
+        wireframe: isWire,
+      });
+    }
+
     const handleMat = new THREE.MeshStandardMaterial({
       color: config.handleStyle === 'bar-gold' ? 0xd4af37 : config.handleStyle === 'bar-black' ? 0x1a1a1a : 0x888b91,
       roughness: config.handleStyle === 'bar-gold' ? 0.25 : 0.4,
@@ -556,8 +594,9 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
     // 1. PLINTH / KICKBOARD
     const plinthRecess = 0.05;
     const plinthMat = new THREE.MeshStandardMaterial({ color: 0x1f2226, roughness: 0.7, metalness: 0.1, wireframe: isWire });
-    if (!isFrameOnly) {
-      const plinthGeo = new THREE.BoxGeometry(W - 0.02, plinthH, carcaseD - plinthRecess);
+    const legType = config.legType ?? 'plinth';
+    if (!isFrameOnly && legType === 'plinth' && plinthH > 0.005) {
+      const plinthGeo =new THREE.BoxGeometry(W - 0.02, plinthH, carcaseD - plinthRecess);
       const plinthMesh = new THREE.Mesh(plinthGeo, plinthMat);
       plinthMesh.position.set(0, plinthH / 2, backZ + (carcaseD - plinthRecess) / 2);
       plinthMesh.castShadow = true;
@@ -695,7 +734,7 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
         }
       }
 
-      if (lighting.ledStripPosition === 'under-plinth' || lighting.ledStripPosition === 'both') {
+      if ((lighting.ledStripPosition === 'under-plinth' || lighting.ledStripPosition === 'both') && plinthH > 0.03) {
         const plinthStripY = plinthH + 0.004;
         const plinthStripZ = frontFaceZ - 0.01;
 
@@ -718,28 +757,11 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
       }
     }
 
-    // 5. BESI HOLLOW CHASSIS FRAME + CUSTOM BESIN PENYANGGA (SINK & STOVE CRADLE)
-    const tubeM = (frameConfig.tubeSize || 40) / 1000;
+    // 5. RANGKA BESI HOLLOW (dari daftar batang: otomatis atau hasil Editor Rangka 2D)
     const columnCount = config.columns.length;
 
     if (isHollowChassis || isFrameOnly) {
-      buildHollowFrameStructure(
-        kitchenGroup,
-        W,
-        D,
-        H,
-        topThick,
-        plinthH,
-        leftX,
-        backZ,
-        carcaseD,
-        tubeM,
-        frameMat,
-        config.columns,
-        config.sink,
-        config.stove,
-        frameConfig.supports || []
-      );
+      buildFrameFromMembers(kitchenGroup, config, leftX, backZ, plinthH, frameMat);
     }
 
     // 6. CARCASE SOLID SIDE ENCLOSURE (FIX FOR PEEK-THROUGH GAP)
@@ -837,7 +859,7 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
         const frontZ = frontFaceZ;
 
         if (col.type === 'drawers') {
-          const drawers = col.drawers && col.drawers.length > 0
+          const drawers: DrawerConfig[] = col.drawers && col.drawers.length > 0
             ? col.drawers
             : Array.from({ length: col.drawerCount || 3 }, (_, i) => ({
                 id: `gen-d-${i}`,
@@ -845,11 +867,87 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
                 name: `Laci ${i + 1}`,
               }));
 
-          const totalDrawerH = drawers.reduce((sum, d) => sum + d.height, 0);
-          let currY = plinthH + 0.005;
+          const totalDrawerH = drawers.reduce((sum, d) => sum + d.height, 0) || 1;
+          // Urutan array = dari atas ke bawah
+          let sectionTopY = plinthH + carcaseH - 0.005;
 
-          drawers.forEach((drawerItem) => {
+          drawers.forEach((drawerItem, sIdx) => {
             const drawerH = (drawerItem.height / totalDrawerH) * (carcaseH - 0.015);
+            const kind = drawerItem.kind || 'drawer';
+            const centerY = sectionTopY - drawerH / 2;
+            const sectionBottomY = sectionTopY - drawerH;
+            const isLast = sIdx === drawers.length - 1;
+            sectionTopY -= drawerH + 0.004;
+
+            // Ambalan pemisah di bawah segmen non-laci (kecuali paling bawah yang sudah ada alas kabinet)
+            if (kind !== 'drawer' && !isLast) {
+              const sepMesh = new THREE.Mesh(new THREE.BoxGeometry(innerW, panelThick, innerD), cabinetInternalMat);
+              sepMesh.position.set(colCenterX, sectionBottomY - 0.002, backZ + carcaseD / 2);
+              kitchenGroup.add(sepMesh);
+            }
+
+            if (kind === 'empty') return;
+
+            if (kind === 'open') {
+              if (drawerH > 0.3) {
+                const shelfMesh = new THREE.Mesh(new THREE.BoxGeometry(innerW, panelThick, innerD), cabinetInternalMat);
+                shelfMesh.position.set(colCenterX, centerY, backZ + carcaseD / 2);
+                kitchenGroup.add(shelfMesh);
+              }
+              return;
+            }
+
+            if (kind === 'false-panel') {
+              const panelMesh = new THREE.Mesh(new THREE.BoxGeometry(innerW, drawerH - 0.004, panelThick), cabinetFaceMat);
+              panelMesh.position.set(colCenterX, centerY, frontZ + panelThick / 2);
+              panelMesh.castShadow = true;
+              kitchenGroup.add(panelMesh);
+              return;
+            }
+
+            if (kind === 'door-left' || kind === 'door-right') {
+              const isLeft = kind === 'door-left';
+              const doorH = drawerH - 0.004;
+              const hingeGroup = new THREE.Group();
+              hingeGroup.position.set(isLeft ? colCenterX - innerW / 2 : colCenterX + innerW / 2, centerY, frontZ);
+              const doorMesh = new THREE.Mesh(new THREE.BoxGeometry(innerW, doorH, panelThick), cabinetFaceMat);
+              doorMesh.position.set(isLeft ? innerW / 2 : -innerW / 2, 0, panelThick / 2);
+              doorMesh.castShadow = true;
+              hingeGroup.add(doorMesh);
+              addDoorHandle(doorMesh, innerW, doorH, isLeft ? 'right' : 'left', config.handleStyle, handleMat);
+              kitchenGroup.add(hingeGroup);
+              animatedPartsRef.current.doors.push({ mesh: hingeGroup, maxAngle: Math.PI * 0.55, isLeftHinge: isLeft });
+              return;
+            }
+
+            if (kind === 'door-double') {
+              const doorH = drawerH - 0.004;
+              const doorHalfW = innerW / 2 - 0.002;
+              const leftHinge = new THREE.Group();
+              leftHinge.position.set(colCenterX - innerW / 2, centerY, frontZ);
+              const leftDoorMesh = new THREE.Mesh(new THREE.BoxGeometry(doorHalfW, doorH, panelThick), cabinetFaceMat);
+              leftDoorMesh.position.set(doorHalfW / 2, 0, panelThick / 2);
+              leftDoorMesh.castShadow = true;
+              leftHinge.add(leftDoorMesh);
+              addDoorHandle(leftDoorMesh, doorHalfW, doorH, 'right', config.handleStyle, handleMat);
+              kitchenGroup.add(leftHinge);
+
+              const rightHinge = new THREE.Group();
+              rightHinge.position.set(colCenterX + innerW / 2, centerY, frontZ);
+              const rightDoorMesh = new THREE.Mesh(new THREE.BoxGeometry(doorHalfW, doorH, panelThick), cabinetFaceMat);
+              rightDoorMesh.position.set(-doorHalfW / 2, 0, panelThick / 2);
+              rightDoorMesh.castShadow = true;
+              rightHinge.add(rightDoorMesh);
+              addDoorHandle(rightDoorMesh, doorHalfW, doorH, 'left', config.handleStyle, handleMat);
+              kitchenGroup.add(rightHinge);
+
+              animatedPartsRef.current.doors.push(
+                { mesh: leftHinge, maxAngle: Math.PI * 0.55, isLeftHinge: true },
+                { mesh: rightHinge, maxAngle: Math.PI * 0.55, isLeftHinge: false }
+              );
+              return;
+            }
+
             const drawerGroup = new THREE.Group();
 
             const faceMesh = new THREE.Mesh(new THREE.BoxGeometry(innerW, drawerH - 0.004, panelThick), cabinetFaceMat);
@@ -881,7 +979,7 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
             drawerGroup.add(slideL);
             drawerGroup.add(slideR);
 
-            drawerGroup.position.set(colCenterX, currY + drawerH / 2, frontZ);
+            drawerGroup.position.set(colCenterX, centerY, frontZ);
             kitchenGroup.add(drawerGroup);
 
             animatedPartsRef.current.drawers.push({
@@ -889,8 +987,6 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
               maxOffset: boxD * 0.75,
               baseZ: frontZ,
             });
-
-            currY += drawerH + 0.004;
           });
         } else if (col.type === 'sink-cabinet') {
           const dummyH = 0.16;
@@ -1259,9 +1355,7 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
 
     // 10. 3D SAFETY CLEARANCE INDICATOR
     if (config.showSafetyClearance && config.sink.enabled && config.stove.enabled) {
-      const sinkRight = config.sink.posX + config.sink.width / 2;
-      const stoveLeft = config.stove.posX - config.stove.width / 2;
-      let gapCm = stoveLeft - sinkRight;
+      const gapCm = getSinkStoveGap(config);
 
       const isDangerous = gapCm < 40;
       const ribbonColor = gapCm < 0 ? 0xff2222 : isDangerous ? 0xffaa00 : 0x00cc66;
@@ -1280,205 +1374,44 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
     }
   }, [config]);
 
-  // Procedural Hollow Tube Chassis + SINK & STOVE SUPPORT CRADLES
-  function buildHollowFrameStructure(
+  // Rangka dari daftar batang (cm -> meter). Kaki stel dipasang di bawah tiang yang menapak di atas zona kaki.
+  function buildFrameFromMembers(
     parent: THREE.Group,
-    W: number,
-    D: number,
-    H: number,
-    topThick: number,
-    plinthH: number,
+    cfg: KitchenConfig,
     leftX: number,
     backZ: number,
-    carcaseD: number,
-    tube: number,
-    mat: THREE.Material,
-    columns: KitchenConfig['columns'],
-    sink: KitchenConfig['sink'],
-    stove: KitchenConfig['stove'],
-    customSupports: KitchenConfig['frame']['supports']
+    plinthH: number,
+    mat: THREE.Material
   ) {
     const frameGroup = new THREE.Group();
-    const frameH = H - topThick;
-    const frameBottomY = plinthH;
-    const postH = frameH - plinthH;
-    const frontZ = backZ + carcaseD;
+    const members = getFrameMembers(cfg);
 
-    const postGeo = new THREE.BoxGeometry(tube, postH, tube);
-    const footGeo = new THREE.CylinderGeometry(tube * 0.7, tube * 0.8, plinthH * 0.8, 16);
-    const footMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.9, roughness: 0.2 });
-
-    const postLocations: { x: number; z: number }[] = [
-      { x: leftX + tube / 2, z: frontZ - tube / 2 },
-      { x: leftX + W - tube / 2, z: frontZ - tube / 2 },
-      { x: leftX + tube / 2, z: backZ + tube / 2 },
-      { x: leftX + W - tube / 2, z: backZ + tube / 2 },
-    ];
-
-    const totalCustomColW = columns.reduce((s, c) => s + c.width, 0);
-    let accumX = leftX;
-    columns.forEach((col, idx) => {
-      if (idx < columns.length - 1) {
-        accumX += (col.width / (totalCustomColW || 1)) * W;
-        postLocations.push({ x: accumX, z: frontZ - tube / 2 });
-        postLocations.push({ x: accumX, z: backZ + tube / 2 });
-      }
+    members.forEach((m) => {
+      const t = memberTubeCm(m, cfg) / 100;
+      const len = Math.max(0.005, m.length / 100);
+      const geo = new THREE.BoxGeometry(m.axis === 'x' ? len : t, m.axis === 'y' ? len : t, m.axis === 'z' ? len : t);
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(
+        leftX + m.x / 100 + (m.axis === 'x' ? len / 2 : 0),
+        m.y / 100 + (m.axis === 'y' ? len / 2 : 0),
+        backZ + m.z / 100 + (m.axis === 'z' ? len / 2 : 0)
+      );
+      mesh.castShadow = true;
+      frameGroup.add(mesh);
     });
 
-    postLocations.forEach((pos) => {
-      const postMesh = new THREE.Mesh(postGeo, mat);
-      postMesh.position.set(pos.x, frameBottomY + postH / 2, pos.z);
-      postMesh.castShadow = true;
-      frameGroup.add(postMesh);
-
-      const foot = new THREE.Mesh(footGeo, footMat);
-      foot.position.set(pos.x, plinthH * 0.4, pos.z);
-      frameGroup.add(foot);
-    });
-
-    // Top Perimeter Rails
-    const topY = frameH - tube / 2;
-    const frontTopRail = new THREE.Mesh(new THREE.BoxGeometry(W, tube, tube), mat);
-    frontTopRail.position.set(0, topY, frontZ - tube / 2);
-    frameGroup.add(frontTopRail);
-    const backTopRail = new THREE.Mesh(new THREE.BoxGeometry(W, tube, tube), mat);
-    backTopRail.position.set(0, topY, backZ + tube / 2);
-    frameGroup.add(backTopRail);
-
-    const leftTopCross = new THREE.Mesh(new THREE.BoxGeometry(tube, tube, carcaseD - tube * 2), mat);
-    leftTopCross.position.set(leftX + tube / 2, topY, backZ + carcaseD / 2);
-    frameGroup.add(leftTopCross);
-    const rightTopCross = leftTopCross.clone();
-    rightTopCross.position.x = leftX + W - tube / 2;
-    frameGroup.add(rightTopCross);
-
-    // Bottom Perimeter Rails
-    const bottomRailY = frameBottomY + tube / 2;
-    const frontBottomRail = new THREE.Mesh(new THREE.BoxGeometry(W, tube, tube), mat);
-    frontBottomRail.position.set(0, bottomRailY, frontZ - tube / 2);
-    frameGroup.add(frontBottomRail);
-    const backBottomRail = new THREE.Mesh(new THREE.BoxGeometry(W, tube, tube), mat);
-    backBottomRail.position.set(0, bottomRailY, backZ + tube / 2);
-    frameGroup.add(backBottomRail);
-
-    const leftBottomCross = new THREE.Mesh(new THREE.BoxGeometry(tube, tube, carcaseD - tube * 2), mat);
-    leftBottomCross.position.set(leftX + tube / 2, bottomRailY, backZ + carcaseD / 2);
-    frameGroup.add(leftBottomCross);
-    const rightBottomCross = leftBottomCross.clone();
-    rightBottomCross.position.x = leftX + W - tube / 2;
-    frameGroup.add(rightBottomCross);
-
-    // Appliance Cutout Bounding Boxes in Frame Coordinates
-    const sinkMinX = sink.enabled ? (leftX + sink.posX / 100) - (sink.width / 100) / 2 : -999;
-    const sinkMaxX = sink.enabled ? (leftX + sink.posX / 100) + (sink.width / 100) / 2 : -999;
-    const stoveMinX = stove.enabled ? (leftX + stove.posX / 100) - (stove.width / 100) / 2 : -999;
-    const stoveMaxX = stove.enabled ? (leftX + stove.posX / 100) + (stove.width / 100) / 2 : -999;
-
-    // Intermediate Cross Rails (NEVER cross through sink bowl or stove recess)
-    let divX = leftX;
-    columns.forEach((col, idx) => {
-      if (idx < columns.length - 1) {
-        divX += (col.width / (totalCustomColW || 1)) * W;
-        const inSinkZone = sink.enabled && divX >= sinkMinX - 0.04 && divX <= sinkMaxX + 0.04;
-        const inStoveZone = stove.enabled && divX >= stoveMinX - 0.04 && divX <= stoveMaxX + 0.04;
-
-        if (!inSinkZone && !inStoveZone) {
-          const topMidCross = new THREE.Mesh(new THREE.BoxGeometry(tube, tube, carcaseD - tube * 2), mat);
-          topMidCross.position.set(divX, topY, backZ + carcaseD / 2);
-          frameGroup.add(topMidCross);
-        }
-
-        const bottomMidCross = new THREE.Mesh(new THREE.BoxGeometry(tube, tube, carcaseD - tube * 2), mat);
-        bottomMidCross.position.set(divX, bottomRailY, backZ + carcaseD / 2);
-        frameGroup.add(bottomMidCross);
-      }
-    });
-
-    // BESI PENYANGGA WASTAFEL (SINK CRADLE SUPPORT BARS - STRICTLY CLEAR OF BOWL)
-    const sinkSupport = customSupports?.find((s) => s.type === 'sink-cradle');
-    if ((sinkSupport?.enabled !== false) && sink.enabled) {
-      const sx = leftX + sink.posX / 100;
-      const sz = backZ + sink.posY / 100;
-      const sw = sink.width / 100;
-      const sl = sink.length / 100;
-      const sDepth = sink.bowlDepth / 100;
-      const isUndermount = sink.mounting === 'undermount';
-      // Basin bottom in world Y
-      const bowlFloorY = (isUndermount ? (H - topThick) : H) - sDepth;
-      // Safety clearance: cradle sits strictly underneath basin floor without penetrating
-      const cradleY = bowlFloorY - tube / 2 - 0.012;
-
-      // Front-to-back crossbeams flanking the sink outside bowl walls
-      const beamL = new THREE.Mesh(new THREE.BoxGeometry(tube, tube, carcaseD - 0.04), mat);
-      beamL.position.set(sx - sw / 2 - tube / 2 - 0.012, cradleY, backZ + carcaseD / 2);
-      frameGroup.add(beamL);
-
-      const beamR = new THREE.Mesh(new THREE.BoxGeometry(tube, tube, carcaseD - 0.04), mat);
-      beamR.position.set(sx + sw / 2 + tube / 2 + 0.012, cradleY, backZ + carcaseD / 2);
-      frameGroup.add(beamR);
-
-      // Two cradle straps supporting front & back of bowl, leaving center drain hole completely free
-      const strapW = sw + tube * 2 + 0.024;
-      const strapFrontZ = Math.min(frontZ - tube - 0.02, sz + sl * 0.28);
-      const strapBackZ = Math.max(backZ + tube + 0.02, sz - sl * 0.28);
-
-      const strapFront = new THREE.Mesh(new THREE.BoxGeometry(strapW, tube * 0.5, tube), mat);
-      strapFront.position.set(sx, cradleY, strapFrontZ);
-      frameGroup.add(strapFront);
-
-      const strapBack = new THREE.Mesh(new THREE.BoxGeometry(strapW, tube * 0.5, tube), mat);
-      strapBack.position.set(sx, cradleY, strapBackZ);
-      frameGroup.add(strapBack);
+    const feet = getFootMembers(cfg, members);
+    if (feet.length > 0 && plinthH > 0.005) {
+      const footMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.9, roughness: 0.2 });
+      feet.forEach((m) => {
+        const t = memberTubeCm(m, cfg) / 100;
+        const footH = Math.min(plinthH, m.y / 100);
+        if (footH <= 0.003) return;
+        const foot = new THREE.Mesh(new THREE.CylinderGeometry(t * 0.45, t * 0.6, footH, 16), footMat);
+        foot.position.set(leftX + m.x / 100, footH / 2, backZ + m.z / 100);
+        frameGroup.add(foot);
+      });
     }
-
-    // BESI PENYANGGA KOMPOR (STOVE SUPPORT CROSSBARS)
-    const stoveSupport = customSupports?.find((s) => s.type === 'stove-cradle');
-    if ((stoveSupport?.enabled !== false) && stove.enabled) {
-      const stx = leftX + stove.posX / 100;
-      const stz = backZ + stove.posY / 100;
-      const stw = stove.width / 100;
-      const stl = stove.length / 100;
-      const rDepth = stove.recessDepth / 100;
-      const stoveBottomY = H - rDepth;
-      const stoveSupportY = stoveBottomY - tube / 2 - 0.012;
-
-      // Heavy crossbars supporting the drop-in stove
-      const stBeamL = new THREE.Mesh(new THREE.BoxGeometry(tube, tube, carcaseD - 0.04), mat);
-      stBeamL.position.set(stx - stw / 2 - tube / 2 - 0.01, stoveSupportY, backZ + carcaseD / 2);
-      frameGroup.add(stBeamL);
-
-      const stBeamR = new THREE.Mesh(new THREE.BoxGeometry(tube, tube, carcaseD - 0.04), mat);
-      stBeamR.position.set(stx + stw / 2 + tube / 2 + 0.01, stoveSupportY, backZ + carcaseD / 2);
-      frameGroup.add(stBeamR);
-
-      const stTie = new THREE.Mesh(new THREE.BoxGeometry(stw + tube * 2 + 0.02, tube * 0.5, tube), mat);
-      stTie.position.set(stx, stoveSupportY, Math.max(backZ + tube + 0.02, stz - stl * 0.25));
-      frameGroup.add(stTie);
-    }
-
-    // OTHER CUSTOM SUPPORT BARS ADDED BY USER
-    customSupports?.forEach((supp) => {
-      if (!supp.enabled || supp.type === 'sink-cradle' || supp.type === 'stove-cradle') return;
-      const sTube = (supp.tubeSize || 40) / 1000;
-      const sX = leftX + supp.posX / 100;
-      const sY = supp.posY / 100;
-      const sZ = backZ + (supp.posZ || 30) / 100;
-      const sLen = (supp.length || 60) / 100;
-
-      if (supp.type === 'crossbeam-x') {
-        const bar = new THREE.Mesh(new THREE.BoxGeometry(sLen, sTube, sTube), mat);
-        bar.position.set(sX, sY, sZ);
-        frameGroup.add(bar);
-      } else if (supp.type === 'crossbeam-z') {
-        const bar = new THREE.Mesh(new THREE.BoxGeometry(sTube, sTube, sLen), mat);
-        bar.position.set(sX, sY, sZ);
-        frameGroup.add(bar);
-      } else if (supp.type === 'vertical-post') {
-        const bar = new THREE.Mesh(new THREE.BoxGeometry(sTube, postH, sTube), mat);
-        bar.position.set(sX, plinthH + postH / 2, sZ);
-        frameGroup.add(bar);
-      }
-    });
 
     parent.add(frameGroup);
   }

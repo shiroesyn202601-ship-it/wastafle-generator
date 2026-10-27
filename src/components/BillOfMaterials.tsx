@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { KitchenConfig } from '../types/kitchen';
 import { Calculator, Download, Printer, CheckCircle, Info, FileText } from 'lucide-react';
-import { downloadDocFile } from '../utils/exportDoc';
+import { downloadDocFile, calculateFabricationCutList } from '../utils/exportDoc';
+import { describeCountertop, describeCabinetFinish, describeFrame } from '../utils/finishes';
 
 interface Props {
   config: KitchenConfig;
@@ -25,15 +26,19 @@ export const BillOfMaterials: React.FC<Props> = ({ config, onOpenDocModal }) => 
   // 1. Countertop area in m2
   const topAreaM2 = Number(((W * D) / 10000).toFixed(2));
 
-  // 2. Total drawer count
+  // 2. Total drawer count (kolom susunan bebas dihitung per baris berjenis laci)
+  const sectionsOf = (col: (typeof columns)[number]) => col.drawers || [];
   const totalDrawers = columns.reduce((acc, col) => {
-    if (col.type === 'drawers') return acc + (col.drawers?.length || col.drawerCount || 3);
+    if (col.type === 'drawers') return acc + sectionsOf(col).filter((s) => (s.kind || 'drawer') === 'drawer').length;
     if (col.type === 'pullout-spice') return acc + 1;
     return acc;
   }, 0);
 
   // 3. Total doors count
   const totalDoors = columns.reduce((acc, col) => {
+    if (col.type === 'drawers') {
+      return acc + sectionsOf(col).reduce((s, d) => s + (d.kind === 'door-double' ? 2 : d.kind === 'door-left' || d.kind === 'door-right' ? 1 : 0), 0);
+    }
     if (col.type === 'door-double' || col.type === 'sink-cabinet') return acc + 2;
     if (col.type === 'door-single-left' || col.type === 'door-single-right' || col.type === 'gas-compartment') return acc + 1;
     return acc;
@@ -59,11 +64,10 @@ export const BillOfMaterials: React.FC<Props> = ({ config, onOpenDocModal }) => 
   // 6. Frame Steel Hollow calculation (6m standard bar length)
   const isHollow = config.frame?.material.startsWith('hollow-steel') || config.frame?.material.startsWith('aluminium') || config.frame?.material === 'custom';
   const tubeSize = config.frame?.tubeSize || 40;
-  const postCount = 4 + Math.max(0, columns.length - 1) * 2;
-  const totalPostsM = (postCount * (H - (config.countertopThickness || 4))) / 100;
-  const perimeterRailsM = ((W * 4 + D * 4) / 100);
-  const totalHollowM = totalPostsM + perimeterRailsM;
-  const hollowBars = Math.max(1, Math.ceil((totalHollowM * 1.15) / 6));
+  // Dihitung dari batang rangka sebenarnya (otomatis / hasil Editor Rangka 2D)
+  const frameCut = calculateFabricationCutList(config);
+  const postCount = frameCut.levelingFeetCount;
+  const hollowBars = Math.max(1, frameCut.standard6mBarsNeeded);
 
   // Default Unit Prices in IDR (Rp)
   const [prices, setPrices] = useState<Record<string, number>>({
@@ -95,11 +99,15 @@ export const BillOfMaterials: React.FC<Props> = ({ config, onOpenDocModal }) => 
             id: 'hollow-bar',
             category: 'Kayu & Panel' as const,
             name: `Besi Hollow Kotak ${tubeSize}×${tubeSize} mm (Batang 6m)`,
-            specs: `Rangka struktur utama tiang kaki & gelagar penopang (${config.frame?.material})`,
+            specs: `${frameCut.totalSteelLengthM} m total potongan, ${describeFrame(config)}`,
             qty: hollowBars,
             unit: 'batang (6m)',
             unitPrice: prices['hollow-bar'],
           },
+        ]
+      : []),
+    ...(isHollow && postCount > 0
+      ? [
           {
             id: 'adjuster-feet',
             category: 'Hardware & Aksesoris' as const,
@@ -132,7 +140,7 @@ export const BillOfMaterials: React.FC<Props> = ({ config, onOpenDocModal }) => 
     {
       id: 'hpl',
       category: 'Finishing & Top Table',
-      name: `Finishing HPL Exterior (${config.cabinetFinish})`,
+      name: `Finishing Muka Kabinet (${describeCabinetFinish(config)})`,
       specs: 'Laminasi pelindung anti-air & anti-gores (122 × 244 cm)',
       qty: hplSheets,
       unit: 'lembar',
@@ -141,7 +149,7 @@ export const BillOfMaterials: React.FC<Props> = ({ config, onOpenDocModal }) => 
     {
       id: 'top-stone',
       category: 'Finishing & Top Table',
-      name: `Top Table Meja (${config.countertopMaterial})`,
+      name: `Top Table Meja (${describeCountertop(config)})`,
       specs: `Tebal ${config.countertopThickness}cm, bevel tepi, lubang tanam sink & kompor`,
       qty: topAreaM2,
       unit: 'm²',
@@ -301,7 +309,7 @@ export const BillOfMaterials: React.FC<Props> = ({ config, onOpenDocModal }) => 
           <div className="p-3.5 bg-neutral-900 border border-neutral-800 rounded-xl">
             <span className="text-[11px] text-neutral-400">Luas Top Table Marmer</span>
             <p className="text-base font-bold text-purple-400 mt-0.5">{topAreaM2} m²</p>
-            <span className="text-[10px] text-neutral-500">{config.countertopMaterial}</span>
+            <span className="text-[10px] text-neutral-500">{describeCountertop(config)}</span>
           </div>
         </div>
 

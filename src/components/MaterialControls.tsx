@@ -11,7 +11,10 @@ import {
   MATERIAL_LABELS,
   CABINET_FINISH_LABELS,
   FRAME_MATERIAL_LABELS,
+  FjlSpecies,
 } from '../types/kitchen';
+import { FRAME_PAINT_COLORS, FJL_SPECIES } from '../utils/finishes';
+import { HplPicker } from './HplPicker';
 import {
   Palette,
   Check,
@@ -33,9 +36,10 @@ import {
 interface Props {
   config: KitchenConfig;
   onChange: (updated: Partial<KitchenConfig>) => void;
+  onOpenFrameEditor?: () => void;
 }
 
-export const MaterialControls: React.FC<Props> = ({ config, onChange }) => {
+export const MaterialControls: React.FC<Props> = ({ config, onChange, onOpenFrameEditor }) => {
   const {
     countertopMaterial,
     customCountertopColor,
@@ -266,6 +270,57 @@ export const MaterialControls: React.FC<Props> = ({ config, onChange }) => {
           </div>
         </div>
 
+        {/* Warna Cat / Powder Coating Rangka */}
+        <div className="pt-2 border-t border-white/[0.06] space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-neutral-300">Warna Cat Rangka (Powder Coating):</span>
+            <span className="text-[10px] font-mono text-neutral-400">
+              {frame.paintColor
+                ? FRAME_PAINT_COLORS.find((c) => c.hex.toLowerCase() === frame.paintColor!.toLowerCase())?.name || frame.paintColor
+                : 'Bawaan material'}
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              onClick={() => onChange({ frame: { ...frame, paintColor: null } })}
+              className={`h-6 px-2 rounded-md text-[10px] border transition cursor-pointer ${
+                !frame.paintColor ? 'border-amber-400 text-white bg-white/10' : 'border-white/15 text-neutral-400 hover:text-white'
+              }`}
+              title="Pakai warna asli material (tanpa cat)"
+            >
+              Bawaan
+            </button>
+            {FRAME_PAINT_COLORS.map((c) => {
+              const isSel = frame.paintColor?.toLowerCase() === c.hex.toLowerCase();
+              return (
+                <button
+                  key={c.hex}
+                  onClick={() => onChange({ frame: { ...frame, paintColor: c.hex } })}
+                  title={c.name}
+                  className={`w-6 h-6 rounded-md border transition cursor-pointer flex items-center justify-center ${
+                    isSel ? 'border-white ring-2 ring-amber-400/70' : 'border-white/20 hover:border-white/60'
+                  }`}
+                  style={{ backgroundColor: c.hex }}
+                >
+                  {isSel && <Check className="w-3 h-3 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)]" />}
+                </button>
+              );
+            })}
+            <label
+              className="h-6 px-1.5 rounded-md border border-white/15 flex items-center gap-1 text-[10px] text-neutral-400 hover:text-white cursor-pointer"
+              title="Warna bebas"
+            >
+              <input
+                type="color"
+                value={frame.paintColor || '#1b1c1f'}
+                onChange={(e) => onChange({ frame: { ...frame, paintColor: e.target.value } })}
+                className="w-4 h-4 bg-transparent border-0 cursor-pointer"
+              />
+              Lainnya
+            </label>
+          </div>
+        </div>
+
         {/* Custom Frame Color Picker */}
         {frame.material === 'custom' && (
           <div className="p-2.5 bg-black/40 rounded-lg border border-white/10 space-y-2">
@@ -317,6 +372,27 @@ export const MaterialControls: React.FC<Props> = ({ config, onChange }) => {
             <Plus className="w-3.5 h-3.5" />
             <span>Tambah Rangka</span>
           </button>
+        </div>
+
+        {/* Editor rangka 2D */}
+        <div
+          className={`p-2.5 rounded-lg border text-[11px] flex items-center justify-between gap-2 ${
+            frame.customLayout ? 'bg-amber-950/30 border-amber-500/40 text-amber-200' : 'bg-black/30 border-white/5 text-neutral-400'
+          }`}
+        >
+          <span>
+            {frame.customLayout
+              ? 'Rangka sedang diedit manual di Editor Rangka 2D. Pengaturan penyangga di bawah tidak berlaku sampai rangka di-reset ke otomatis.'
+              : 'Rangka dibuat otomatis mengikuti modul. Buka editor untuk menambah, mengurangi, atau memindah batang.'}
+          </span>
+          {onOpenFrameEditor && (
+            <button
+              onClick={onOpenFrameEditor}
+              className="shrink-0 px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-neutral-950 text-[11px] font-bold rounded-md cursor-pointer"
+            >
+              Editor Rangka 2D
+            </button>
+          )}
         </div>
 
         {/* Toggle Besi Penyangga Wastafel */}
@@ -600,6 +676,65 @@ export const MaterialControls: React.FC<Props> = ({ config, onChange }) => {
             </div>
           </div>
         )}
+
+        {countertopMaterial === 'hpl' && (
+          <HplPicker
+            title="Pilih HPL Top Table"
+            value={config.countertopHpl}
+            onChange={(sel) => onChange({ countertopHpl: sel })}
+          />
+        )}
+
+        {countertopMaterial === 'wood-fjl' && (
+          <div className="p-2.5 bg-black/40 rounded-lg border border-white/10 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-neutral-200">Jenis Kayu FJL</span>
+              <span className="text-[10px] text-neutral-500">Papan sambung jari (finger joint) laminasi</span>
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              {(Object.keys(FJL_SPECIES) as FjlSpecies[]).map((sp) => {
+                const item = FJL_SPECIES[sp];
+                const isSel = (config.countertopFjl?.species || 'jati') === sp;
+                return (
+                  <button
+                    key={sp}
+                    onClick={() => onChange({ countertopFjl: { species: sp, coat: config.countertopFjl?.coat || 'doff' } })}
+                    className={`flex items-center gap-2 p-1.5 rounded-md border text-left transition cursor-pointer ${
+                      isSel ? 'bg-purple-950/30 border-purple-500/80' : 'bg-black/30 border-white/[0.06] hover:border-white/20'
+                    }`}
+                  >
+                    <span
+                      className="w-6 h-6 rounded shrink-0 border border-white/20"
+                      style={{
+                        background: `repeating-linear-gradient(0deg, ${item.base} 0 5px, ${item.light} 5px 9px, ${item.dark} 9px 11px)`,
+                      }}
+                    />
+                    <span>
+                      <span className="block text-[11px] font-semibold text-white">{item.name}</span>
+                      <span className="block text-[9px] text-neutral-400 line-clamp-1">{item.desc}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex items-center justify-between pt-1 border-t border-white/5">
+              <span className="text-[10px] text-neutral-400">Finishing coating:</span>
+              <div className="flex gap-1">
+                {(['doff', 'glossy'] as const).map((coat) => (
+                  <button
+                    key={coat}
+                    onClick={() => onChange({ countertopFjl: { species: config.countertopFjl?.species || 'jati', coat } })}
+                    className={`px-2 py-0.5 rounded text-[10px] cursor-pointer ${
+                      (config.countertopFjl?.coat || 'doff') === coat ? 'bg-amber-500 text-neutral-950 font-bold' : 'bg-white/5 text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    {coat === 'doff' ? 'Doff (Natural)' : 'Glossy'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 5. FINISHING KABINET & MUKA LACI */}
@@ -660,6 +795,14 @@ export const MaterialControls: React.FC<Props> = ({ config, onChange }) => {
               <span className="font-mono text-neutral-400">{customCabinetColor || '#c49a6c'}</span>
             </div>
           </div>
+        )}
+
+        {cabinetFinish === 'hpl' && (
+          <HplPicker
+            title="Pilih HPL Muka Laci, Pintu & Panel Samping"
+            value={config.cabinetHpl}
+            onChange={(sel) => onChange({ cabinetHpl: sel })}
+          />
         )}
       </div>
 

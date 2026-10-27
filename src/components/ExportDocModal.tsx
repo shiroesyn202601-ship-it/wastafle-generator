@@ -34,7 +34,7 @@ export const ExportDocModal: React.FC<Props> = ({ isOpen, onClose, config }) => 
   const D = config.totalDepth;
   const H = config.totalHeight;
   const topThick = config.countertopThickness || 4;
-  const plinthH = config.plinthHeight || 10;
+  const plinthH = (config.plinthHeight ?? 10);
   const tubeMm = config.frame?.tubeSize || 40;
 
   const clearanceGap = Math.round(
@@ -515,7 +515,7 @@ export const ExportDocModal: React.FC<Props> = ({ isOpen, onClose, config }) => 
 
                 <ol className="list-decimal pl-5 space-y-2.5 text-xs text-neutral-300 leading-relaxed">
                   <li>
-                    <strong>Pemotongan Besi Hollow:</strong> Potong seluruh tiang vertikal ({cutList.hollowPieces.find(p=>p.id==='post-corner')?.lengthCm} cm) dan gelagar memanjang ({cutList.hollowPieces.find(p=>p.id==='rail-longitudinal')?.lengthCm} cm). Gunakan mata potong gergaji miter cold-saw agar sudut siku rata.
+                    <strong>Pemotongan Besi Hollow:</strong> Potong seluruh tiang vertikal ({cutList.hollowPieces.find(p=>p.category==='tiang-vertikal')?.lengthCm ?? '-'} cm) dan gelagar memanjang ({cutList.hollowPieces.find(p=>p.category==='gelagar-panjang')?.lengthCm ?? '-'} cm) sesuai tabel potongan. Gunakan mata potong gergaji miter cold-saw agar sudut siku rata.
                   </li>
                   <li>
                     <strong>Pengelasan Rangka Utama (Squareness):</strong> Buat modul kotak luar terlebih dahulu. Cek kesikuan diagonal kanan dan kiri harus sama persis (toleransi selisih max 1 mm).
@@ -527,7 +527,15 @@ export const ExportDocModal: React.FC<Props> = ({ isOpen, onClose, config }) => 
                     <strong>Pemasangan Besi Penyangga Kompor:</strong> Pasang crossbar penahan bodi kompor tanam ({config.stove.width}×{config.stove.length} cm) dengan jarak ventilasi bawah minimal 20mm.
                   </li>
                   <li>
-                    <strong>Pemberian Tap Mur Leveler:</strong> Las mur M10/M12 di bagian bawah tiap kaki tiang ({cutList.levelingFeetCount} titik) untuk memasang kaki adjuster karet agar meja dapat di-waterpass saat lantai bergelombang.
+                    {cutList.levelingFeetCount > 0 ? (
+                      <>
+                        <strong>Pemberian Tap Mur Leveler:</strong> Las mur M10/M12 di bagian bawah tiap kaki tiang ({cutList.levelingFeetCount} titik) untuk memasang kaki adjuster karet agar meja dapat di-waterpass saat lantai bergelombang.
+                      </>
+                    ) : (
+                      <>
+                        <strong>Ujung Bawah Tiang:</strong> Tidak memakai kaki adjuster (kaki dari rangka / tanpa kaki). Tutup ujung tiang dengan plat atau dop karet agar lantai tidak tergores.
+                      </>
+                    )}
                   </li>
                   <li>
                     <strong>Epoxy Primer & Cat Finishing Rangka:</strong> Bersihkan bekas percikan las (spatter), semprot Epoxy Zinc Chromate 2 lapis, lalu aplikasikan cat hitam doff atau powder coating.
