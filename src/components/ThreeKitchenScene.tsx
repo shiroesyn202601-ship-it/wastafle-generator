@@ -85,7 +85,11 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
     const width = container.clientWidth || 800;
     const height = container.clientHeight || 600;
 
-    const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 50);
+    // Layar tegak (HP): perbesar FOV vertikal agar lebar meja tetap terlihat utuh
+    const fitFov = (aspect: number) =>
+      aspect >= 1.4 ? 38 : Math.min(90, (2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(57) / 2) / aspect) * 180) / Math.PI);
+
+    const camera = new THREE.PerspectiveCamera(fitFov(width / height), width / height, 0.1, 50);
     camera.position.set(1.6, 1.7, 3.2);
     cameraRef.current = camera;
 
@@ -223,6 +227,7 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
       const w = container.clientWidth;
       const h = container.clientHeight;
       camera.aspect = w / h;
+      camera.fov = fitFov(w / h);
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
     };
@@ -1707,8 +1712,8 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
       <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
 
       {/* Camera angle buttons */}
-      <div className="absolute top-3 left-3 z-10 flex flex-wrap gap-1.5 p-1.5 bg-neutral-900/85 backdrop-blur-md rounded-xl border border-neutral-700/60 shadow-lg text-xs text-neutral-300">
-        <span className="px-2 py-1 font-semibold text-neutral-400">Sudut:</span>
+      <div className="absolute top-2 left-2 right-2 sm:top-3 sm:left-3 sm:right-auto z-10 flex flex-wrap gap-1 sm:gap-1.5 p-1 sm:p-1.5 bg-neutral-900/85 backdrop-blur-md rounded-xl border border-neutral-700/60 shadow-lg text-xs text-neutral-300">
+        <span className="hidden sm:inline px-2 py-1 font-semibold text-neutral-400">Sudut:</span>
         <button
           onClick={() => setCameraPreset('iso')}
           className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 hover:text-white transition-colors"
@@ -1745,7 +1750,7 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
 
       {/* Frame Only Active Badge */}
       {config.showFrameOnly && (
-        <div className="absolute top-14 left-3 z-10 flex items-center gap-2 px-3 py-1.5 bg-blue-950/90 border border-blue-500 rounded-xl text-xs font-semibold text-blue-300 shadow-xl backdrop-blur-md">
+        <div className="absolute top-24 sm:top-14 left-2 sm:left-3 z-10 flex items-center gap-2 px-3 py-1.5 bg-blue-950/90 border border-blue-500 rounded-xl text-xs font-semibold text-blue-300 shadow-xl backdrop-blur-md">
           <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
           <span>Mode Rangka & Besi Penyangga Saja</span>
         </div>
@@ -1753,7 +1758,7 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
 
       {/* Safety Clearance Status Badge */}
       {config.sink.enabled && config.stove.enabled && (
-        <div className="absolute top-3 right-3 z-10 p-2.5 bg-neutral-900/90 backdrop-blur-md rounded-xl border border-neutral-700/60 shadow-lg max-w-xs text-xs">
+        <div className="absolute top-auto bottom-28 right-2 lg:bottom-auto lg:top-3 lg:right-3 z-10 p-2 sm:p-2.5 bg-neutral-900/90 backdrop-blur-md rounded-xl border border-neutral-700/60 shadow-lg max-w-xs text-xs">
           {(() => {
             const sinkLeft = config.sink.posX - config.sink.width / 2;
             const sinkRight = config.sink.posX + config.sink.width / 2;
@@ -1797,7 +1802,7 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
       )}
 
       {/* Realtime Size Badge */}
-      <div className="absolute bottom-3 left-3 z-10 pointer-events-none px-3 py-1.5 bg-black/60 backdrop-blur-sm rounded-lg text-xs font-mono text-neutral-300 border border-white/10">
+      <div className="hidden lg:block absolute bottom-3 left-3 z-10 pointer-events-none px-3 py-1.5 bg-black/60 backdrop-blur-sm rounded-lg text-xs font-mono text-neutral-300 border border-white/10">
         Dimensi Meja: {config.totalWidth} × {config.totalDepth} × {config.totalHeight} cm | Lubang Cekung: {config.sink.bowlDepth}cm
       </div>
     </div>

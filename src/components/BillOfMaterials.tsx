@@ -248,7 +248,7 @@ export const BillOfMaterials: React.FC<Props> = ({ config, onOpenDocModal }) => 
   };
 
   return (
-    <div className="w-full h-full overflow-y-auto bg-neutral-950 text-neutral-100 p-6 flex flex-col items-center">
+    <div className="w-full h-full overflow-y-auto bg-neutral-950 text-neutral-100 p-3 sm:p-6 flex flex-col items-center">
       {/* RAB Header */}
       <div className="w-full max-w-5xl flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-neutral-800">
         <div>

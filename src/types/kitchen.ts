@@ -467,137 +467,164 @@ export const CABINET_FINISH_LABELS: Record<CabinetFinish, { name: string; desc: 
   'custom': { name: 'Warna Kabinet Kustom', desc: 'Pilih warna finishing sendiri', color: '#10b981' },
 };
 
+// Konfigurasi default: desain meja 270cm (kompor kiri, wastafel kanan, kaki dari rangka, top table kayu FJL jati)
 export const DEFAULT_KITCHEN_CONFIG: KitchenConfig = {
-  totalWidth: 270, // default panjang 270cm
-  totalDepth: 60,  // default lebar (kedalaman) 60cm
-  totalHeight: 85, // default tinggi 85cm
-  countertopThickness: 4,
-  plinthHeight: 10,
-  legType: 'plinth',
-  countertopOverhangFront: 2,
-  backsplashEnabled: true,
-  backsplashHeight: 20,
-
-  columns: [
+  "totalWidth": 270,
+  "totalDepth": 60,
+  "totalHeight": 85,
+  "countertopThickness": 3,
+  "plinthHeight": 3,
+  "legType": "frame",
+  "countertopOverhangFront": 2,
+  "backsplashEnabled": true,
+  "backsplashHeight": 20,
+  "columns": [
     {
-      id: 'col-1',
-      width: 70,
-      type: 'sink-cabinet',
-      drawerCount: 1,
-      drawers: [{ id: 'd-1', height: 16, name: 'Panel Sifon Wastafel' }],
-      shelfCount: 1,
+      "id": "col-4",
+      "width": 80,
+      "type": "gas-compartment",
+      "drawerCount": 0,
+      "drawers": [],
+      "shelfCount": 1
     },
     {
-      id: 'col-2',
-      width: 40,
-      type: 'pullout-spice',
-      drawerCount: 1,
-      drawers: [{ id: 'd-2', height: 71, name: 'Rak Botol & Bumbu Tarik' }],
-      shelfCount: 2,
-    },
-    {
-      id: 'col-3',
-      width: 80,
-      type: 'drawers',
-      drawerCount: 3,
-      drawers: [
-        { id: 'd-3a', height: 15, name: 'Laci Sendok & Garpu' },
-        { id: 'd-3b', height: 26, name: 'Laci Piring & Mangkok' },
-        { id: 'd-3c', height: 30, name: 'Laci Panci & Wajan' },
+      "id": "col-3",
+      "width": 80,
+      "type": "drawers",
+      "drawerCount": 2,
+      "drawers": [
+        {
+          "id": "d-3a",
+          "height": 10,
+          "name": "Laci Sendok & Garpu"
+        },
+        {
+          "id": "d-3b",
+          "height": 26,
+          "name": "Laci Piring & Mangkok",
+          "kind": "door-right"
+        },
+        {
+          "id": "d-3c",
+          "height": 30,
+          "name": "Laci Panci & Wajan"
+        }
       ],
-      shelfCount: 0,
+      "shelfCount": 0
     },
     {
-      id: 'col-4',
-      width: 80,
-      type: 'gas-compartment',
-      drawerCount: 0,
-      drawers: [],
-      shelfCount: 1,
+      "id": "col-2",
+      "width": 40,
+      "type": "pullout-spice",
+      "drawerCount": 1,
+      "drawers": [
+        {
+          "id": "d-2",
+          "height": 71,
+          "name": "Rak Botol & Bumbu Tarik"
+        }
+      ],
+      "shelfCount": 2
     },
+    {
+      "id": "col-1",
+      "width": 70,
+      "type": "door-single-right",
+      "drawerCount": 1,
+      "drawers": [
+        {
+          "id": "d-1",
+          "height": 16,
+          "name": "Panel Sifon Wastafel"
+        }
+      ],
+      "shelfCount": 1
+    }
   ],
-
-  sink: {
-    enabled: true,
-    posX: 38,
-    posY: 30,
-    width: 60,
-    length: 44,
-    bowlDepth: 20,
-    model: 'single',
-    mounting: 'undermount',
-    faucet: 'gooseneck',
-    finish: 'stainless',
+  "sink": {
+    "enabled": true,
+    "posX": 232,
+    "posY": 30,
+    "width": 60,
+    "length": 44,
+    "bowlDepth": 20,
+    "model": "single",
+    "mounting": "undermount",
+    "faucet": "gooseneck",
+    "finish": "stainless"
   },
-
-  stove: {
-    enabled: true,
-    posX: 228,
-    posY: 30,
-    width: 74,
-    length: 44,
-    recessDepth: 7,
-    type: 'gas-2',
-    hasKnobs: true,
+  "stove": {
+    "enabled": true,
+    "posX": 42,
+    "posY": 30,
+    "width": 74,
+    "length": 44,
+    "recessDepth": 7,
+    "type": "gas-2",
+    "hasKnobs": true
   },
-
-  countertopMaterial: 'marble-black',
-  customCountertopColor: '#1c1d21',
-  countertopHpl: { swatchId: 'wood-walnut', surface: 'doff' },
-  countertopFjl: { species: 'jati', coat: 'doff' },
-  cabinetFinish: 'wood-natural',
-  customCabinetColor: '#c49a6c',
-  cabinetHpl: { swatchId: 'solid-sage', surface: 'doff' },
-
-  frame: {
-    material: 'hollow-steel-black',
-    tubeSize: 40,
-    customColor: '#1e2124',
-    customRoughness: 0.35,
-    customMetalness: 0.85,
-    supports: [
+  "countertopMaterial": "wood-fjl",
+  "customCountertopColor": "#1c1d21",
+  "countertopHpl": {
+    "swatchId": "wood-walnut",
+    "surface": "doff"
+  },
+  "countertopFjl": {
+    "species": "jati",
+    "coat": "doff"
+  },
+  "cabinetFinish": "navy-blue",
+  "customCabinetColor": "#c49a6c",
+  "cabinetHpl": {
+    "swatchId": "solid-sage",
+    "surface": "doff"
+  },
+  "frame": {
+    "material": "hollow-steel-black",
+    "tubeSize": 40,
+    "customColor": "#1e2124",
+    "customRoughness": 0.35,
+    "customMetalness": 0.85,
+    "supports": [
       {
-        id: 'supp-sink',
-        name: 'Besi Penyangga Wastafel',
-        type: 'sink-cradle',
-        posX: 38,
-        posY: 62,
-        posZ: 30,
-        length: 68,
-        tubeSize: 40,
-        enabled: true,
+        "id": "supp-sink",
+        "name": "Besi Penyangga Wastafel",
+        "type": "sink-cradle",
+        "posX": 232,
+        "posY": 62,
+        "posZ": 30,
+        "length": 68,
+        "tubeSize": 40,
+        "enabled": true
       },
       {
-        id: 'supp-stove',
-        name: 'Besi Penyangga Kompor',
-        type: 'stove-cradle',
-        posX: 228,
-        posY: 76,
-        posZ: 30,
-        length: 80,
-        tubeSize: 40,
-        enabled: true,
-      },
-    ],
+        "id": "supp-stove",
+        "name": "Besi Penyangga Kompor",
+        "type": "stove-cradle",
+        "posX": 42,
+        "posY": 76,
+        "posZ": 30,
+        "length": 80,
+        "tubeSize": 40,
+        "enabled": true
+      }
+    ]
   },
-
-  handleStyle: 'profile-j',
-
-  lighting: {
-    ledStripEnabled: true,
-    ledStripColor: '#ffc87a',
-    ledStripBrightness: 85,
-    ledStripPosition: 'both',
-    ambientTemperature: 'warm',
-    ambientIntensity: 1.0,
+  "handleStyle": "profile-j",
+  "lighting": {
+    "ledStripEnabled": true,
+    "ledStripColor": "#ffc87a",
+    "ledStripBrightness": 85,
+    "ledStripPosition": "both",
+    "ambientTemperature": "warm",
+    "ambientIntensity": 1
   },
-
-  showFrameOnly: false,
-  drawersOpenPercent: 0,
-  doorsOpenPercent: 0,
-  showXRayWireframe: false,
-  showDimensions3D: true,
-  showSafetyClearance: true,
+  "showFrameOnly": false,
+  "drawersOpenPercent": 0,
+  "doorsOpenPercent": 0,
+  "showXRayWireframe": false,
+  "showDimensions3D": true,
+  "showSafetyClearance": true
 };
 
 export interface KitchenPreset {
@@ -733,7 +760,7 @@ export const KITCHEN_PRESETS: KitchenPreset[] = [
       },
       stove: {
         enabled: true,
-        posX: 172,
+        posX: 166,
         posY: 30,
         width: 73,
         length: 43,

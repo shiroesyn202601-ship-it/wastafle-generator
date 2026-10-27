@@ -56,7 +56,7 @@ export const BlueprintView2D: React.FC<Props> = ({ config }) => {
   };
 
   return (
-    <div className="w-full h-full overflow-y-auto bg-neutral-950 text-neutral-100 p-6 flex flex-col items-center">
+    <div className="w-full h-full overflow-y-auto bg-neutral-950 text-neutral-100 p-3 sm:p-6 flex flex-col items-center">
       {/* Blueprint Header & Actions */}
       <div className="w-full max-w-5xl flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-neutral-800">
         <div>
@@ -91,7 +91,7 @@ export const BlueprintView2D: React.FC<Props> = ({ config }) => {
 
       <div ref={printRef} className="w-full max-w-5xl space-y-8 print:p-0 print:m-0">
         {/* 1. TAMPAK DEPAN (FRONT ELEVATION) */}
-        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-xl relative overflow-x-auto">
+        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-3 sm:p-6 shadow-xl relative overflow-x-auto">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Layers className="w-4 h-4 text-blue-400" />
@@ -104,7 +104,7 @@ export const BlueprintView2D: React.FC<Props> = ({ config }) => {
             </span>
           </div>
 
-          <div className="flex justify-center bg-neutral-950/80 p-6 rounded-xl border border-neutral-800/80 min-w-[700px]">
+          <div className="flex justify-center bg-neutral-950/80 p-3 sm:p-6 rounded-xl border border-neutral-800/80 min-w-[700px]">
             <svg
               id="blueprint-front-svg"
               width={frontSvgW}
@@ -459,7 +459,7 @@ export const BlueprintView2D: React.FC<Props> = ({ config }) => {
         </div>
 
         {/* 2. TAMPAK ATAS (TOP PLAN & CUTOUTS) */}
-        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-xl relative overflow-x-auto">
+        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-3 sm:p-6 shadow-xl relative overflow-x-auto">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Eye className="w-4 h-4 text-emerald-400" />
@@ -472,7 +472,7 @@ export const BlueprintView2D: React.FC<Props> = ({ config }) => {
             </span>
           </div>
 
-          <div className="flex justify-center bg-neutral-950/80 p-6 rounded-xl border border-neutral-800/80 min-w-[700px]">
+          <div className="flex justify-center bg-neutral-950/80 p-3 sm:p-6 rounded-xl border border-neutral-800/80 min-w-[700px]">
             <svg
               width={topSvgW}
               height={topSvgH}

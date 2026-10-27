@@ -18,7 +18,8 @@ interface Props {
 }
 
 export const BottomSimulationDock: React.FC<Props> = ({ config, onChange }) => {
-  const [collapsed, setCollapsed] = useState(false);
+  // Di layar kecil dock tertutup dulu agar tampilan 3D tidak tertutup
+  const [collapsed, setCollapsed] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1024);
 
   const {
     drawersOpenPercent,
@@ -34,8 +35,8 @@ export const BottomSimulationDock: React.FC<Props> = ({ config, onChange }) => {
   return (
     <div
       className={`fixed z-30 transition-all duration-300 ease-out left-1/2 -translate-x-1/2 ${
-        collapsed ? 'bottom-2' : 'bottom-4'
-      } max-w-4xl w-[94vw] select-none`}
+        collapsed ? 'bottom-16 lg:bottom-2' : 'bottom-16 lg:bottom-4'
+      } max-w-4xl w-[96vw] lg:w-[94vw] select-none`}
     >
       {/* Sleek Collapse / Expand Trigger */}
       <div className="flex justify-center">
@@ -59,8 +60,8 @@ export const BottomSimulationDock: React.FC<Props> = ({ config, onChange }) => {
 
       {/* Main Dock Body */}
       {!collapsed && (
-        <div className="bg-neutral-900/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-3.5 shadow-2xl text-neutral-200">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 items-center">
+        <div className="bg-neutral-900/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 sm:p-3.5 shadow-2xl text-neutral-200 max-h-[45dvh] overflow-y-auto">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 items-center">
             {/* 1. Tarik Laci Keluar */}
             <div className="bg-neutral-950/70 p-2.5 rounded-xl border border-white/5 space-y-1.5">
               <div className="flex items-center justify-between text-xs">

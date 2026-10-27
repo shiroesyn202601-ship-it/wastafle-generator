@@ -14,7 +14,7 @@ export const PresetModal: React.FC<Props> = ({ isOpen, onClose, onSelectPreset, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-neutral-900 border border-neutral-700/80 rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative space-y-5 text-neutral-100">
+      <div className="bg-neutral-900 border border-neutral-700/80 rounded-2xl max-w-2xl w-full max-h-[90dvh] overflow-y-auto p-4 sm:p-6 shadow-2xl relative space-y-5 text-neutral-100">
         <div className="flex items-center justify-between pb-3 border-b border-neutral-800">
           <div className="flex items-center gap-2">
             <LayoutGrid className="w-5 h-5 text-amber-400" />

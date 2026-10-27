@@ -1,5 +1,7 @@
 import React from 'react';
 import { KitchenConfig, ColumnConfig, ColumnType, LegType, SectionKind, SECTION_KIND_LABELS } from '../types/kitchen';
+import { ColumnOrderStrip } from './ColumnOrderStrip';
+import { reorderColumns } from '../utils/layoutOps';
 import { Plus, Trash2, Sliders, Columns, Maximize2, SplitSquareVertical, Layers } from 'lucide-react';
 
 interface Props {
@@ -392,29 +394,8 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
           </div>
         </div>
 
-        {/* Visual Bar of Columns */}
-        <div className="p-2 bg-black/40 rounded-lg border border-white/5 space-y-1">
-          <div className="text-[10px] text-neutral-400 flex justify-between font-mono">
-            <span>Proporsi Modul:</span>
-            <span>Total: {columns.reduce((s, c) => s + c.width, 0)} cm</span>
-          </div>
-          <div className="flex h-7 w-full rounded-md overflow-hidden gap-0.5 border border-white/10">
-            {columns.map((col, idx) => {
-              const totalColW = columns.reduce((s, c) => s + c.width, 0);
-              const pct = (col.width / (totalColW || 1)) * 100;
-              return (
-                <div
-                  key={col.id || idx}
-                  style={{ width: `${pct}%` }}
-                  className="bg-white/10 hover:bg-white/15 transition-colors flex items-center justify-center text-[10px] font-mono font-bold text-neutral-200 border-r border-black/40 last:border-none"
-                  title={`Kolom ${idx + 1}: ${col.width}cm (${col.type})`}
-                >
-                  K{idx + 1} ({col.width}cm)
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        {/* Urutan kolom: drag & drop */}
+        <ColumnOrderStrip config={config} onChange={onChange} />
 
         {/* List of Individual Columns */}
         <div className="space-y-2.5">
@@ -433,6 +414,24 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
                   </span>
                 </div>
 
+                <div className="flex items-center gap-0.5 ml-auto mr-1">
+                  <button
+                    onClick={() => onChange(reorderColumns(config, cIdx, cIdx - 1))}
+                    disabled={cIdx === 0}
+                    className="px-1.5 py-0.5 rounded text-[11px] text-neutral-400 hover:text-white hover:bg-white/10 disabled:opacity-20 cursor-pointer"
+                    title="Pindah ke kiri"
+                  >
+                    ◀
+                  </button>
+                  <button
+                    onClick={() => onChange(reorderColumns(config, cIdx, cIdx + 1))}
+                    disabled={cIdx === columns.length - 1}
+                    className="px-1.5 py-0.5 rounded text-[11px] text-neutral-400 hover:text-white hover:bg-white/10 disabled:opacity-20 cursor-pointer"
+                    title="Pindah ke kanan"
+                  >
+                    ▶
+                  </button>
+                </div>
                 <button
                   onClick={() => handleRemoveColumn(col.id)}
                   disabled={columns.length <= 1}

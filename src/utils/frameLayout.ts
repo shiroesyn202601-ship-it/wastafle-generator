@@ -141,30 +141,85 @@ export function generateAutoFrameMembers(config: KitchenConfig): FrameMember[] {
 
   const supports = config.frame?.supports || [];
 
-  // Penyangga wastafel: 2 palang kedalaman di samping bak + 2 strap di bawah dasar bak
+  /**
+   * Penyangga alat (wastafel/kompor) yang tersambung ke rangka utama:
+   * - Palang kedalaman (Z) di kiri & kanan alat, dari tiang belakang ke tiang depan.
+   * - Jika di posisi palang sudah ada tiang rangka (sekat kolom / sudut), palang menempel ke tiang itu.
+   *   Jika tidak, dipasang tiang gantung depan & belakang yang menggantung dari gelagar atas.
+   * - Strap / pengikat memanjang (X) dari as palang kiri ke as palang kanan.
+   */
+  const addCradle = (
+    prefix: string,
+    role: 'sink-cradle' | 'stove-cradle',
+    name: string,
+    cx: number,
+    halfW: number,
+    cy: number,
+    straps: { z: number; label: string }[]
+  ) => {
+    const appMinX = cx - halfW;
+    const appMaxX = cx + halfW;
+    const sides = [
+      { key: 'l', label: 'Kiri', x: appMinX - t / 2 - 1.2, dir: -1 },
+      { key: 'r', label: 'Kanan', x: appMaxX + t / 2 + 1.2, dir: 1 },
+    ].map((side) => {
+      // Alat terlalu mepet tepi meja: palang ditahan di tiang sudut
+      if (side.x < t / 2 || side.x > W - t / 2) {
+        return { ...side, x: side.x < t / 2 ? t / 2 : W - t / 2, onPost: true };
+      }
+      // Tempelkan ke tiang terdekat bila jaraknya < 1.25× pipa dan tiang itu tidak masuk ke area alat
+      const near = postXs.find((px) => Math.abs(px - side.x) <= t * 1.25);
+      const clear = near !== undefined && (side.dir < 0 ? near + t / 2 <= appMinX : near - t / 2 >= appMaxX);
+      return { ...side, x: clear ? near! : side.x, onPost: clear };
+    });
+
+    sides.forEach((side) => {
+      add({ id: `${prefix}-${side.key}`, axis: 'z', role, label: `${name} ${side.label}`, x: side.x, y: cy, z: t, length: carcaseD - 2 * t });
+      // Tiang gantung hanya perlu bila palang tidak menempel tiang dan berada di bawah gelagar atas
+      if (!side.onPost && topY - cy >= t) {
+        [
+          { z: zFront, label: 'Depan' },
+          { z: zBack, label: 'Belakang' },
+        ].forEach((h) => {
+          add({
+            id: `${prefix}-${side.key}-hang-${h.label === 'Depan' ? 'f' : 'b'}`,
+            axis: 'y',
+            role,
+            label: `Tiang Gantung ${name} ${side.label} ${h.label}`,
+            x: side.x,
+            y: cy - t / 2,
+            z: h.z,
+            length: topY - cy,
+          });
+        });
+      }
+    });
+
+    const xL = sides[0].x;
+    const xR = sides[1].x;
+    straps.forEach((s, i) => {
+      add({ id: `${prefix}-strap-${i}`, axis: 'x', role, label: s.label, x: xL, y: cy, z: s.z, length: xR - xL });
+    });
+  };
+
+  // Penyangga wastafel: palang di samping bak + 2 strap di bawah dasar bak
   const sinkSupp = supports.find((s) => s.type === 'sink-cradle');
   if (sink.enabled && sinkSupp?.enabled !== false) {
     const bowlFloorY = (sink.mounting === 'undermount' ? H - topT : H) - sink.bowlDepth;
     const cy = bowlFloorY - t / 2 - 1.2;
-    const offs = sink.width / 2 + t / 2 + 1.2;
-    add({ id: 'auto-sink-l', axis: 'z', role: 'sink-cradle', label: 'Penyangga Wastafel Kiri', x: sink.posX - offs, y: cy, z: 2, length: carcaseD - 4 });
-    add({ id: 'auto-sink-r', axis: 'z', role: 'sink-cradle', label: 'Penyangga Wastafel Kanan', x: sink.posX + offs, y: cy, z: 2, length: carcaseD - 4 });
-    const strapW = sink.width + 2 * t + 2.4;
-    const zF = Math.min(carcaseD - t - 2, sink.posY + sink.length * 0.28);
-    const zB = Math.max(t + 2, sink.posY - sink.length * 0.28);
-    add({ id: 'auto-sink-sf', axis: 'x', role: 'sink-cradle', label: 'Strap Dasar Bak Depan', x: sink.posX - strapW / 2, y: cy, z: zF, length: strapW });
-    add({ id: 'auto-sink-sb', axis: 'x', role: 'sink-cradle', label: 'Strap Dasar Bak Belakang', x: sink.posX - strapW / 2, y: cy, z: zB, length: strapW });
+    addCradle('auto-sink', 'sink-cradle', 'Penyangga Wastafel', sink.posX, sink.width / 2, cy, [
+      { z: Math.min(carcaseD - t - 2, sink.posY + sink.length * 0.28), label: 'Strap Dasar Bak Depan' },
+      { z: Math.max(t + 2, sink.posY - sink.length * 0.28), label: 'Strap Dasar Bak Belakang' },
+    ]);
   }
 
-  // Penyangga kompor: 2 palang kedalaman di samping bodi kompor + 1 pengikat
+  // Penyangga kompor: palang di samping bodi kompor + 1 pengikat
   const stoveSupp = supports.find((s) => s.type === 'stove-cradle');
   if (stove.enabled && stoveSupp?.enabled !== false) {
     const sy = H - stove.recessDepth - t / 2 - 1.2;
-    const offs = stove.width / 2 + t / 2 + 1;
-    add({ id: 'auto-stove-l', axis: 'z', role: 'stove-cradle', label: 'Penyangga Kompor Kiri', x: stove.posX - offs, y: sy, z: 2, length: carcaseD - 4 });
-    add({ id: 'auto-stove-r', axis: 'z', role: 'stove-cradle', label: 'Penyangga Kompor Kanan', x: stove.posX + offs, y: sy, z: 2, length: carcaseD - 4 });
-    const tieW = stove.width + 2 * t + 2;
-    add({ id: 'auto-stove-tie', axis: 'x', role: 'stove-cradle', label: 'Pengikat Penyangga Kompor', x: stove.posX - tieW / 2, y: sy, z: Math.max(t + 2, stove.posY - stove.length * 0.25), length: tieW });
+    addCradle('auto-stove', 'stove-cradle', 'Penyangga Kompor', stove.posX, stove.width / 2 - 0.2, sy, [
+      { z: Math.max(t + 2, stove.posY - stove.length * 0.25), label: 'Pengikat Penyangga Kompor' },
+    ]);
   }
 
   // Batang kustom lama (dari panel Material)
@@ -208,6 +263,50 @@ export function boxesIntersect(a: Box3, b: Box3, eps = 0.1): boolean {
   return true;
 }
 
+/** Dua batang dianggap tersambung (bisa dilas) bila bersentuhan atau bertumpuk, toleransi 0.3 cm */
+export function boxesTouch(a: Box3, b: Box3, tol = 0.3): boolean {
+  for (let i = 0; i < 3; i++) {
+    if (a.max[i] < b.min[i] - tol || b.max[i] < a.min[i] - tol) return false;
+  }
+  return true;
+}
+
+export type AxisIndex = 0 | 1 | 2;
+export const AXIS_INDEX: Record<FrameAxis, AxisIndex> = { x: 0, y: 1, z: 2 };
+
+/**
+ * Titik magnet per sumbu (cm) dari batang lain: sisi min, as tengah, sisi max.
+ * Dipakai editor 2D supaya batang yang digeser/ditarik otomatis menempel ke batang terdekat.
+ */
+export function getSnapTargets(config: KitchenConfig, members: FrameMember[], excludeId: string): number[][] {
+  const { W, H, D, plinthH, frameH } = getFrameDims(config);
+  const targets: number[][] = [
+    [0, W],
+    [0, plinthH, frameH, H],
+    [0, D],
+  ];
+  members.forEach((m) => {
+    if (m.id === excludeId) return;
+    const b = memberBox(m, memberTubeCm(m, config));
+    for (let i = 0; i < 3; i++) {
+      targets[i].push(b.min[i], (b.min[i] + b.max[i]) / 2, b.max[i]);
+    }
+  });
+  return targets;
+}
+
+/** Cari geseran terkecil agar salah satu `anchors` jatuh tepat di salah satu `targets` (dalam batas `threshold`) */
+export function findSnap(anchors: number[], targets: number[], threshold: number): { delta: number; target: number } | null {
+  let best: { delta: number; target: number } | null = null;
+  anchors.forEach((a) => {
+    targets.forEach((t) => {
+      const d = t - a;
+      if (Math.abs(d) <= threshold && (!best || Math.abs(d) < Math.abs(best.delta))) best = { delta: d, target: t };
+    });
+  });
+  return best;
+}
+
 /** Ruang yang dipakai bak wastafel & bodi kompor tanam (cm) */
 export function getApplianceBoxes(config: KitchenConfig): { kind: 'sink' | 'stove'; label: string; box: Box3 }[] {
   const { H, topT } = getFrameDims(config);
@@ -247,9 +346,13 @@ export function getFrameWarnings(config: KitchenConfig, members: FrameMember[]):
   const { W, H, D } = getFrameDims(config);
   const appliances = getApplianceBoxes(config);
   const warnings: FrameWarning[] = [];
-  members.forEach((m) => {
-    const box = memberBox(m, memberTubeCm(m, config));
+  const boxes = members.map((m) => memberBox(m, memberTubeCm(m, config)));
+  members.forEach((m, i) => {
+    const box = boxes[i];
     const name = m.label || FRAME_ROLE_LABELS[m.role];
+    if (members.length > 1 && !boxes.some((b, j) => j !== i && boxesTouch(box, b))) {
+      warnings.push({ memberId: m.id, message: `${name} tidak tersambung ke rangka` });
+    }
     appliances.forEach((a) => {
       if (boxesIntersect(box, a.box)) warnings.push({ memberId: m.id, message: `${name} menembus ${a.label}` });
     });

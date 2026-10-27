@@ -32,6 +32,8 @@ jobs:
         run: npm run build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
+          # OAuth Client ID Google (Settings > Secrets and variables > Actions > Variables)
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
 
       - uses: actions/configure-pages@v5
 
