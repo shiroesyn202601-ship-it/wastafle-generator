@@ -1,0 +1,6 @@
+{
+  "name": "KitchenCraft 3D - Desain Meja Wastafel, Kompor & Laci Kustom",
+  "description": "Aplikasi desain meja dapur, wastafel cuci piring, kompor tanam, dan kabinet laci kustom dengan visualisasi 3D interaktif, cetak blueprint 2D, dan estimasi biaya bahan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
