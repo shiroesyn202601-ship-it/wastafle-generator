@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { KitchenConfig } from '../types/kitchen';
-import { calculateFabricationCutList, downloadDocFile } from '../utils/exportDoc';
+import { calculateFabricationCutList, downloadDocFile, printDocFile } from '../utils/exportDoc';
 import {
   FileText,
   Download,
@@ -48,7 +48,7 @@ export const ExportDocModal: React.FC<Props> = ({ isOpen, onClose, config }) => 
   };
 
   const handlePrint = () => {
-    window.print();
+    printDocFile(config);
   };
 
   const handleCopySummary = () => {

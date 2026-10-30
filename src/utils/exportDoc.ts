@@ -248,13 +248,26 @@ export function generateDocHtml(config: KitchenConfig): string {
   </xml>
   <![endif]-->
   <style>
+    @page {
+      size: A4;
+      margin: 12mm;
+    }
+    @page WordSection1 {
+      size: 21cm 29.7cm;
+      margin: 1.2cm 1.2cm 1.2cm 1.2cm;
+    }
+    div.WordSection1 {
+      page: WordSection1;
+    }
     body {
       font-family: 'Calibri', 'Segoe UI', Arial, sans-serif;
       font-size: 11pt;
       line-height: 1.45;
       color: #222222;
       background-color: #ffffff;
-      margin: 20mm 20mm 20mm 20mm;
+      margin: 0;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     h1 {
       font-size: 18pt;
@@ -344,6 +357,7 @@ export function generateDocHtml(config: KitchenConfig): string {
   </style>
 </head>
 <body>
+<div class="WordSection1">
 
   <!-- KOP DOKUMEN -->
   <div style="text-align: right; font-size: 9pt; color: #64748b; margin-bottom: 8pt;">
@@ -618,8 +632,47 @@ export function generateDocHtml(config: KitchenConfig): string {
     Dokumen ini dicetak otomatis dari KitchenCraft 3D Studio Studio Desain Wastafel & Meja Kompor Kustom. Ukuran dan toleransi fabrikasi mengacu pada standar SNI mebel interior (±2mm).
   </div>
 
+</div>
 </body>
 </html>`;
+}
+
+/**
+ * Prints the same SPK document used for the .doc export through a hidden iframe,
+ * so the PDF/print output is a clean paged document instead of the on-screen modal.
+ */
+export function printDocFile(config: KitchenConfig): void {
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentDocument;
+  const win = iframe.contentWindow;
+  if (!doc || !win) {
+    document.body.removeChild(iframe);
+    return;
+  }
+
+  doc.open();
+  doc.write(generateDocHtml(config));
+  doc.close();
+
+  const cleanup = () => {
+    if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+  };
+
+  setTimeout(() => {
+    win.addEventListener('afterprint', () => setTimeout(cleanup, 0));
+    win.focus();
+    win.print();
+    // fallback for browsers that don't fire afterprint
+    setTimeout(cleanup, 60000);
+  }, 250);
 }
 
 /**
