@@ -624,6 +624,37 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
     </label>
   );
 
+  // ---------- Posisi batang terpilih: jarak sisi pipa ke batas rangka & ke batang tetangga ----------
+  const AXIS_POS: Record<FrameAxis, { title: string; span: number; minL: string; maxL: string; below: string; above: string }> = {
+    y: { title: 'Vertikal (tinggi)', span: frameH, minL: 'Sisi bawah ke lantai', maxL: 'Sisi atas ke bawah top', below: 'di bawah', above: 'di atas' },
+    z: { title: 'Kedalaman', span: carcaseD, minL: 'Ke belakang (dinding)', maxL: 'Ke depan', below: 'di belakang', above: 'di depan' },
+    x: { title: 'Memanjang', span: W, minL: 'Ke sisi kiri', maxL: 'Ke sisi kanan', below: 'di kiri', above: 'di kanan' },
+  };
+
+  /** Geser batang terpilih di satu sumbu sejauh `shift` cm */
+  const shiftSelected = (axis: FrameAxis, shift: number) => {
+    if (!selected || Math.abs(shift) < 0.05) return;
+    updateMember(selected.id, { [axis]: r1(selected[axis] + shift) });
+  };
+
+  /** Batang terdekat searah sumbu (dir -1 = sisi min, +1 = sisi max) yang bertumpang-tindih di dua sumbu lainnya */
+  const neighborAlong = (axis: FrameAxis, dir: -1 | 1) => {
+    if (!selected) return null;
+    const i = AXIS_INDEX[axis];
+    const sb = memberBox(selected, memberTubeCm(selected, config));
+    let best: { m: FrameMember; gap: number; face: number } | null = null;
+    members.forEach((m) => {
+      if (m.id === selected.id) return;
+      const b = memberBox(m, memberTubeCm(m, config));
+      const overlaps = [0, 1, 2].every((k) => k === i || (b.max[k] > sb.min[k] + 0.05 && b.min[k] < sb.max[k] - 0.05));
+      if (!overlaps) return;
+      const gap = dir < 0 ? sb.min[i] - b.max[i] : b.min[i] - sb.max[i];
+      if (gap < -0.05) return;
+      if (!best || gap < best.gap) best = { m, gap: r1(gap), face: dir < 0 ? b.max[i] : b.min[i] };
+    });
+    return best as { m: FrameMember; gap: number; face: number } | null;
+  };
+
   const totalLength = members.reduce((s, m) => s + m.length, 0);
   const connectedCount = selected
     ? (() => {
@@ -788,17 +819,55 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
                 ))}
               </select>
 
-              <div className="grid grid-cols-2 gap-2">
-                <NumField label="X (dari kiri)" value={selected.x} onCommit={(v) => updateMember(selected.id, { x: v })} />
-                <NumField label="Y (dari lantai)" value={selected.y} onCommit={(v) => updateMember(selected.id, { y: v })} />
-                <NumField
-                  label="Z (dari belakang)"
-                  value={selected.z}
-                  hint={`depan ${r1(carcaseD - selected.z)}`}
-                  onCommit={(v) => updateMember(selected.id, { z: v })}
-                />
-                <NumField label="Panjang (cm)" value={selected.length} onCommit={(v) => updateMember(selected.id, { length: Math.max(1, v) })} />
-              </div>
+              {(['y', 'z', 'x'] as FrameAxis[]).map((axis) => {
+                const info = AXIS_POS[axis];
+                const i = AXIS_INDEX[axis];
+                const sb = memberBox(selected, memberTubeCm(selected, config));
+                const toMin = r1(sb.min[i]);
+                const toMax = r1(info.span - sb.max[i]);
+                const nbs = axis === selected.axis ? [] : ([-1, 1] as const).map((dir) => ({ dir, nb: neighborAlong(axis, dir) }));
+                return (
+                  <div key={axis} className="p-2 rounded-lg bg-black/25 border border-white/[0.06] space-y-1.5">
+                    <div className="flex items-center justify-between text-[10px] font-semibold text-neutral-300">
+                      <span>{info.title}</span>
+                      <span className="font-mono text-neutral-500">as {selected[axis]}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {axis === selected.axis ? (
+                        <>
+                          <NumField label="Panjang (cm)" value={selected.length} onCommit={(v) => updateMember(selected.id, { length: Math.max(1, v) })} />
+                          <NumField label={`Awal: ${info.minL.toLowerCase()}`} value={toMin} onCommit={(v) => shiftSelected(axis, v - toMin)} />
+                        </>
+                      ) : (
+                        <>
+                          <NumField label={info.minL} value={toMin} onCommit={(v) => shiftSelected(axis, v - toMin)} />
+                          <NumField label={info.maxL} value={toMax} onCommit={(v) => shiftSelected(axis, toMax - v)} />
+                        </>
+                      )}
+                    </div>
+                    {nbs.some((n) => n.nb) && (
+                      <div className="grid grid-cols-2 gap-2">
+                        {nbs.map(({ dir, nb }) =>
+                          nb ? (
+                            <NumField
+                              key={dir}
+                              label={`Jarak ke batang ${dir < 0 ? info.below : info.above}`}
+                              hint={nb.m.label?.slice(0, 14)}
+                              value={nb.gap}
+                              onCommit={(v) => shiftSelected(axis, dir < 0 ? v - nb.gap : nb.gap - v)}
+                            />
+                          ) : (
+                            <div key={dir} />
+                          )
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              <p className="text-[10px] text-neutral-500 leading-snug">
+                Jarak diukur dari sisi luar pipa (bukan as). Kedalaman juga bisa diseret di Tampak Kiri/Kanan/Atas.
+              </p>
 
               <label className="flex items-center justify-between text-[11px] text-neutral-400">
                 Ukuran pipa
