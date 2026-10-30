@@ -1,5 +1,5 @@
 import { KitchenConfig, FrameMember, FrameMemberRole, SECTION_KIND_LABELS } from '../types/kitchen';
-import { getFrameMembers, getFootMembers, FRAME_ROLE_LABELS, AXIS_LABELS } from './frameLayout';
+import { getFrameMembers, getFootMembers, getMemberEndCuts, describeEndCut, endCutShapeKey, EndCut, FRAME_ROLE_LABELS, AXIS_LABELS } from './frameLayout';
 import { describeCountertop, describeCabinetFinish, describeFrame } from './finishes';
 
 export interface HollowCutPiece {
@@ -11,6 +11,8 @@ export interface HollowCutPiece {
   tubeSizeMm: number;
   notes: string;
   weldPosition?: string;
+  memberIds?: string[]; // id batang rangka dalam kelompok ini (untuk gambar posisi)
+  endCuts?: [EndCut, EndCut]; // bentuk potongan ujung awal & akhir
 }
 
 export interface PanelCutPiece {
@@ -50,9 +52,11 @@ export function calculateFabricationCutList(config: KitchenConfig): CutListRepor
 
   // Kelompokkan batang rangka (otomatis / hasil Editor Rangka 2D) berdasarkan fungsi, sumbu, panjang & ukuran pipa
   const members = getFrameMembers(config);
+  const endCuts = getMemberEndCuts(config, members);
   const groups = new Map<string, FrameMember[]>();
   members.forEach((m) => {
-    const key = `${m.role}|${m.axis}|${m.length.toFixed(1)}|${m.tubeSize || tubeMm}`;
+    const cutKey = endCutShapeKey(endCuts.get(m.id)!);
+    const key = `${m.role}|${m.axis}|${m.length.toFixed(1)}|${m.tubeSize || tubeMm}|${cutKey}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(m);
   });
@@ -78,6 +82,8 @@ export function calculateFabricationCutList(config: KitchenConfig): CutListRepor
       const first = list[0];
       const names = [...new Set(list.map((m) => m.label).filter(Boolean))];
       const positions = list.slice(0, 6).map(fmtPos).join('; ') + (list.length > 6 ? ` … (+${list.length - 6})` : '');
+      const cuts = endCuts.get(first.id)!;
+      const cutText = `Ujung: ${describeEndCut(cuts[0], first.axis)} / ${describeEndCut(cuts[1], first.axis)}.`;
       hollowPieces.push({
         id: `grp-${idx}-${key}`,
         category: categoryOf[first.role],
@@ -85,8 +91,10 @@ export function calculateFabricationCutList(config: KitchenConfig): CutListRepor
         qty: list.length,
         lengthCm: Number(first.length.toFixed(1)),
         tubeSizeMm: first.tubeSize || tubeMm,
-        notes: `${names.length > 0 ? names.slice(0, 4).join(', ') + (names.length > 4 ? ', …' : '') + '. ' : ''}Pipa ${first.tubeSize || tubeMm}×${first.tubeSize || tubeMm} mm.`,
+        notes: `${names.length > 0 ? names.slice(0, 4).join(', ') + (names.length > 4 ? ', …' : '') + '. ' : ''}Pipa ${first.tubeSize || tubeMm}×${first.tubeSize || tubeMm} mm. ${cutText}`,
         weldPosition: `Titik awal as (cm, X dari kiri, Y dari lantai, Z dari belakang): ${positions}`,
+        memberIds: list.map((m) => m.id),
+        endCuts: cuts,
       });
     });
 

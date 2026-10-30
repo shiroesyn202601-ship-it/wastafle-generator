@@ -2,13 +2,15 @@ import React, { useRef } from 'react';
 import { KitchenConfig, SECTION_KIND_LABELS } from '../types/kitchen';
 import { describeCountertop } from '../utils/finishes';
 import { getSinkStoveGap } from '../utils/layoutOps';
+import { FrameCutListTable } from './FrameCutListTable';
 import { Printer, Download, Eye, Layers } from 'lucide-react';
 
 interface Props {
   config: KitchenConfig;
+  onChange?: (updates: Partial<KitchenConfig>) => void;
 }
 
-export const BlueprintView2D: React.FC<Props> = ({ config }) => {
+export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
   const printRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -707,6 +709,9 @@ export const BlueprintView2D: React.FC<Props> = ({ config }) => {
             </div>
           </div>
         </div>
+
+        {/* 4. DAFTAR POTONGAN BESI RANGKA */}
+        <FrameCutListTable config={config} onChange={onChange} />
       </div>
     </div>
   );

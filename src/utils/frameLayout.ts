@@ -65,6 +65,8 @@ export function generateAutoFrameMembers(config: KitchenConfig): FrameMember[] {
   const topY = frameH - t / 2;
   const bottomY = plinthH + t / 2;
   const boundaries = getColumnBoundaries(config);
+  // Miter 45°: gelagar & palang atas bertemu ujung-ke-ujung di sudut, tiang sudut berhenti di bawahnya
+  const miter = config.frame?.cornerJoint === 'miter';
 
   // Tiang vertikal: 4 sudut + sekat antar kolom (depan & belakang)
   const postXs = [t / 2, ...boundaries, W - t / 2];
@@ -81,7 +83,7 @@ export function generateAutoFrameMembers(config: KitchenConfig): FrameMember[] {
         x: px,
         y: postBottom,
         z: pz,
-        length: frameH - postBottom,
+        length: frameH - postBottom - (miter && isCorner ? t : 0),
       });
     });
   });
@@ -97,10 +99,10 @@ export function generateAutoFrameMembers(config: KitchenConfig): FrameMember[] {
         axis: 'x',
         role: 'rail-x',
         label: `Gelagar ${lvl.name} ${pz === zFront ? 'Depan' : 'Belakang'}`,
-        x: t,
+        x: miter && lvl.y === topY ? 0 : t,
         y: lvl.y,
         z: pz,
-        length: W - 2 * t,
+        length: miter && lvl.y === topY ? W : W - 2 * t,
       });
     });
   });
@@ -121,8 +123,8 @@ export function generateAutoFrameMembers(config: KitchenConfig): FrameMember[] {
         label: `Palang Samping ${side.name} ${lvl.name}`,
         x: side.x,
         y: lvl.y,
-        z: t,
-        length: carcaseD - 2 * t,
+        z: miter && lvl.y === topY ? 0 : t,
+        length: miter && lvl.y === topY ? carcaseD : carcaseD - 2 * t,
       });
     });
   });
@@ -273,6 +275,67 @@ export function boxesTouch(a: Box3, b: Box3, tol = 0.3): boolean {
 
 export type AxisIndex = 0 | 1 | 2;
 export const AXIS_INDEX: Record<FrameAxis, AxisIndex> = { x: 0, y: 1, z: 2 };
+
+/** Bentuk potongan satu ujung batang hollow */
+export interface EndCut {
+  angle: 90 | 45;
+  /** Miter: sumbu batang pasangan di sudut (bidang potong = sumbu batang ini + sumbu ini) */
+  mateAxis?: FrameAxis;
+  /** Miter: arah badan batang pasangan di sepanjang mateAxis (+1/-1) = sisi pendek (dalam) potongan */
+  innerSign?: 1 | -1;
+}
+
+const AXES: FrameAxis[] = ['x', 'y', 'z'];
+
+/**
+ * Deteksi potongan ujung tiap batang dari geometri rangka:
+ * dua batang tegak lurus yang ujungnya bertemu tepat di satu sudut (sudut L) → miter 45°,
+ * selain itu (menempel ke sisi batang lain / ujung bebas) → potong lurus 90°.
+ * Hasil: [ujung awal, ujung akhir] per id batang.
+ */
+export function getMemberEndCuts(config: KitchenConfig, members: FrameMember[]): Map<string, [EndCut, EndCut]> {
+  const tol = 0.3;
+  const boxes = members.map((m) => memberBox(m, memberTubeCm(m, config)));
+  const out = new Map<string, [EndCut, EndCut]>();
+  members.forEach((a, ia) => {
+    const i = AXIS_INDEX[a.axis];
+    const boxA = boxes[ia];
+    const cuts: [EndCut, EndCut] = [{ angle: 90 }, { angle: 90 }];
+    ([0, 1] as const).forEach((ka) => {
+      const endA = ka === 0 ? boxA.min[i] : boxA.max[i];
+      members.forEach((b, ib) => {
+        if (ib === ia || b.axis === a.axis || cuts[ka].angle === 45) return;
+        const j = AXIS_INDEX[b.axis];
+        const boxB = boxes[ib];
+        // Ujung A harus rata dengan sisi luar B di sumbu A
+        if (Math.abs(endA - (ka === 0 ? boxB.min[i] : boxB.max[i])) > tol) return;
+        // Salah satu ujung B harus rata dengan sisi luar A di sumbu B
+        const kb = Math.abs(boxB.min[j] - boxA.min[j]) <= tol ? 0 : Math.abs(boxB.max[j] - boxA.max[j]) <= tol ? 1 : -1;
+        if (kb < 0) return;
+        // Sumbu ketiga harus sebidang (kedua batang menempati pipa yang sama)
+        const k = 3 - i - j;
+        if (Math.abs(boxA.min[k] - boxB.min[k]) > tol || Math.abs(boxA.max[k] - boxB.max[k]) > tol) return;
+        cuts[ka] = { angle: 45, mateAxis: AXES[j], innerSign: kb === 0 ? 1 : -1 };
+      });
+    });
+    out.set(a.id, cuts);
+  });
+  return out;
+}
+
+/** Kode bentuk potongan untuk pengelompokan: dua miter sisi-dalam sama = trapesium, berlawanan = jajaran genjang */
+export function endCutShapeKey(cuts: [EndCut, EndCut]): string {
+  const [a, b] = cuts;
+  if (a.angle === 90 && b.angle === 90) return 'lurus';
+  if (a.angle !== b.angle) return 'miter-1';
+  if (a.mateAxis !== b.mateAxis) return 'miter-2-silang';
+  return a.innerSign === b.innerSign ? 'miter-2-trapesium' : 'miter-2-jajargenjang';
+}
+
+export function describeEndCut(c: EndCut, axis: FrameAxis): string {
+  if (c.angle === 90) return 'Lurus 90°';
+  return `Miter 45° (bidang ${[axis, c.mateAxis].map((s) => s!.toUpperCase()).sort().join('–')})`;
+}
 
 /**
  * Titik magnet per sumbu (cm) dari batang lain: sisi min, as tengah, sisi max.

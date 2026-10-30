@@ -421,7 +421,7 @@ export default function App() {
           )}
           {viewMode === 'blueprint' && (
             <div className="w-full h-full overflow-hidden">
-              <BlueprintView2D config={config} />
+              <BlueprintView2D config={config} onChange={updateConfig} />
             </div>
           )}
           {viewMode === 'rab' && (

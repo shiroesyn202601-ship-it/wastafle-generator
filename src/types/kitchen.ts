@@ -362,6 +362,7 @@ export interface FrameConfig {
   paintColor?: string | null; // warna cat / powder coating rangka (null = warna bawaan material)
   customLayout?: boolean; // true = rangka diedit manual lewat Editor Rangka 2D
   members?: FrameMember[]; // dipakai saat customLayout = true
+  cornerJoint?: 'butt' | 'miter'; // sambungan sudut atas rangka otomatis: potong lurus 90° (default) / miter 45°
 }
 
 export type HandleStyle = 
