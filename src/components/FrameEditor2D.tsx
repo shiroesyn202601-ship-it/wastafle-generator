@@ -110,6 +110,8 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
   const [magnet, setMagnet] = useState(true);
   const [guides, setGuides] = useState<Guide[]>([]);
   const [history, setHistory] = useState<FrameMember[][]>([]);
+  // Tinggi as palang baru yang disambung dari tiang terpilih (ikut titik klik di tiang)
+  const [connectY, setConnectY] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<DragState | null>(null);
 
@@ -267,6 +269,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
     const id = wasSelected ? selectedId! : candidates[0];
     setSelectedId(id);
     const orig = baseMembers.find((m) => m.id === id)!;
+    if (orig.axis === 'y' && def.v === 'y') setConnectY(snapV(Math.min(Math.max(pt.v, orig.y), orig.y + orig.length)));
     dragRef.current = { mode: 'move', id, start: pt, orig, moved: false, wasSelected, candidates };
     svgRef.current?.setPointerCapture(e.pointerId);
   };
@@ -341,6 +344,43 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
     addMember({ axis: 'x', role: 'custom', label: 'Palang Memanjang Tambahan', x: r1(W / 2 - 30), y: view === 'top' ? topY : midY, z: zSide, length: 60 });
   const addRailZ = () =>
     addMember({ axis: 'z', role: 'custom', label: 'Palang Kedalaman Tambahan', x: xSide, y: view === 'top' ? topY : midY, z: r1(tube), length: r1(carcaseD - 2 * tube) });
+
+  /**
+   * Tarik garis dari as tiang terpilih pada tinggi `y` ke arah `axis`/`dir`,
+   * kembalikan batang pertama yang ditabrak (bukan batang sejajar) beserta muka & celahnya.
+   */
+  const connectTarget = (axis: 'x' | 'z', dir: -1 | 1, y: number) => {
+    if (!selected || selected.axis !== 'y') return null;
+    const i = AXIS_INDEX[axis];
+    const other = axis === 'x' ? 2 : 0;
+    const sb = memberBox(selected, memberTubeCm(selected, config));
+    const ray = selected[axis === 'x' ? 'z' : 'x'];
+    let best: { m: FrameMember; start: number; length: number } | null = null;
+    members.forEach((m) => {
+      if (m.id === selected.id || m.axis === axis) return;
+      const b = memberBox(m, memberTubeCm(m, config));
+      if (ray < b.min[other] - 0.05 || ray > b.max[other] + 0.05) return;
+      if (y < b.min[1] - 0.05 || y > b.max[1] + 0.05) return;
+      const gap = dir < 0 ? sb.min[i] - b.max[i] : b.min[i] - sb.max[i];
+      if (gap < 1) return;
+      if (!best || gap < best.length) best = { m, start: dir < 0 ? b.max[i] : sb.max[i], length: gap };
+    });
+    return best as { m: FrameMember; start: number; length: number } | null;
+  };
+
+  const connectFromSelected = (axis: 'x' | 'z', dir: -1 | 1, y: number) => {
+    const t = connectTarget(axis, dir, y);
+    if (!selected || !t) return;
+    addMember({
+      axis,
+      role: 'custom',
+      label: axis === 'z' ? 'Palang Kedalaman Tambahan' : 'Palang Memanjang Tambahan',
+      x: axis === 'x' ? r1(t.start) : selected.x,
+      y: r1(y),
+      z: axis === 'z' ? r1(t.start) : selected.z,
+      length: r1(t.length),
+    });
+  };
 
   const duplicateSelected = (mirror?: 'x' | 'z') => {
     if (!selected) return;
@@ -818,6 +858,46 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
                   </option>
                 ))}
               </select>
+
+              {selected.axis === 'y' &&
+                (() => {
+                  const cy = r1(Math.min(Math.max(connectY ?? midY, selected.y), selected.y + selected.length));
+                  const dirs: { axis: 'x' | 'z'; dir: -1 | 1; label: string }[] = [
+                    { axis: 'z', dir: -1, label: 'Ke Belakang' },
+                    { axis: 'z', dir: 1, label: 'Ke Depan' },
+                    { axis: 'x', dir: -1, label: 'Ke Kiri' },
+                    { axis: 'x', dir: 1, label: 'Ke Kanan' },
+                  ];
+                  return (
+                    <div className="p-2 rounded-lg bg-emerald-500/[0.06] border border-emerald-500/25 space-y-1.5">
+                      <div className="text-[10px] font-semibold text-emerald-300">Sambung Palang dari Tiang Ini</div>
+                      <NumField label="Tinggi as palang dari lantai (cm)" value={cy} onCommit={(v) => setConnectY(v)} />
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {dirs.map(({ axis, dir, label }) => {
+                          const t = connectTarget(axis, dir, cy);
+                          return (
+                            <button
+                              key={label}
+                              disabled={!t}
+                              onClick={() => connectFromSelected(axis, dir, cy)}
+                              title={t ? `Palang ${r1(t.length)} cm ke ${t.m.label || FRAME_ROLE_LABELS[t.m.role]}` : 'Tidak ada batang di arah ini'}
+                              className="flex flex-col items-center py-1.5 rounded-md bg-emerald-600/20 hover:bg-emerald-600/35 border border-emerald-500/30 text-[11px] font-semibold text-emerald-200 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                              <span className="flex items-center gap-1">
+                                <Plus className="w-3 h-3" /> {label}
+                              </span>
+                              <span className="text-[9px] font-mono font-normal text-emerald-300/70">{t ? `${r1(t.length)} cm` : '—'}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-[10px] text-neutral-500 leading-snug">
+                        Klik tiang di ketinggian yang diinginkan (tampak depan/belakang/samping), lalu pilih arah. Palang otomatis
+                        menempel ke batang terdekat di arah itu.
+                      </p>
+                    </div>
+                  );
+                })()}
 
               {(['y', 'z', 'x'] as FrameAxis[]).map((axis) => {
                 const info = AXIS_POS[axis];
