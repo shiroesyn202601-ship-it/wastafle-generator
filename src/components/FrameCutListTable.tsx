@@ -447,7 +447,8 @@ export const CutListSheet: React.FC<{
   height: number;
   showTotals: boolean;
   showViews?: boolean; // sisipkan gambar 5 tampak di bawah kepala lembar
-}> = ({ config, cutList, members, rows, page, pages, height, showTotals, showViews }) => {
+  pixelScale?: number; // ukuran piksel SVG dikali faktor ini (export PNG resolusi tinggi)
+}> = ({ config, cutList, members, rows, page, pages, height, showTotals, showViews, pixelScale = 1 }) => {
   const byId = new Map(members.map((m) => [m.id, m]));
   const tube = config.frame?.tubeSize || 40;
   const totalPcs = cutList.hollowPieces.reduce((s, p) => s + p.qty, 0);
@@ -460,7 +461,7 @@ export const CutListSheet: React.FC<{
   const font = 'Arial, Helvetica, sans-serif';
 
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={SHEET_W} height={height} viewBox={`0 0 ${SHEET_W} ${height}`} fontFamily={font}>
+    <svg xmlns="http://www.w3.org/2000/svg" width={SHEET_W * pixelScale} height={height * pixelScale} viewBox={`0 0 ${SHEET_W} ${height}`} fontFamily={font}>
       <defs>
         <marker id="cut-arrow-paper" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
           <path d="M 0 0 L 10 5 L 0 10 z" fill={PAPER.dim} />
@@ -626,33 +627,44 @@ export function printCutListPdf(config: KitchenConfig) {
 export function downloadCutListPng(config: KitchenConfig) {
   const { cutList, members, rows } = sheetProps(config);
   const height = M + HEAD_H + VIEWS_H + TH_H + rows.length * ROW_H + TOTAL_H + M;
-  const markup = renderSvgMarkup(
-    <CutListSheet config={config} cutList={cutList} members={members} rows={rows} page={1} pages={1} height={height} showTotals showViews />
-  );
-  const url = URL.createObjectURL(new Blob([markup], { type: 'image/svg+xml;charset=utf-8' }));
-  const img = new Image();
-  img.onload = () => {
-    const scale = 2;
-    const canvas = document.createElement('canvas');
-    canvas.width = SHEET_W * scale;
-    canvas.height = height * scale;
-    const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    URL.revokeObjectURL(url);
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `potongan-besi-rangka-${config.totalWidth}cm.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(a.href);
-    }, 'image/png');
+
+  // Resolusi 4× (±4500 px lebar); turun otomatis bila browser menolak kanvas sebesar itu (mis. HP)
+  const render = (scale: number) => {
+    const markup = renderSvgMarkup(
+      <CutListSheet config={config} cutList={cutList} members={members} rows={rows} page={1} pages={1} height={height} showTotals showViews pixelScale={scale} />
+    );
+    const url = URL.createObjectURL(new Blob([markup], { type: 'image/svg+xml;charset=utf-8' }));
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(SHEET_W * scale);
+      canvas.height = Math.round(height * scale);
+      const ctx = canvas.getContext('2d');
+      URL.revokeObjectURL(url);
+      if (!ctx) {
+        if (scale > 1.5) render(scale / 2);
+        return;
+      }
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          if (scale > 1.5) render(scale / 2);
+          return;
+        }
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `potongan-besi-rangka-${config.totalWidth}cm.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+      }, 'image/png');
+    };
+    img.src = url;
   };
-  img.src = url;
+  render(4);
 }
 
 export const FrameCutListTable: React.FC<Props> = ({ config }) => {
