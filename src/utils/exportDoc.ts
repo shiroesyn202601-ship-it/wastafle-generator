@@ -260,98 +260,83 @@ export function generateDocHtml(config: KitchenConfig): string {
       page: WordSection1;
     }
     body {
-      font-family: 'Calibri', 'Segoe UI', Arial, sans-serif;
-      font-size: 11pt;
-      line-height: 1.45;
-      color: #222222;
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 12pt;
+      line-height: 1.15;
+      color: #000000;
       background-color: #ffffff;
       margin: 0;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
     }
     h1 {
-      font-size: 18pt;
-      color: #0f172a;
-      margin: 0 0 4pt 0;
+      font-size: 14pt;
       font-weight: bold;
-      border-bottom: 2pt solid #2563eb;
-      padding-bottom: 6pt;
+      text-align: center;
+      text-transform: uppercase;
+      text-decoration: underline;
+      margin: 0 0 2pt 0;
+    }
+    .doc-subtitle {
+      text-align: center;
+      margin: 0 0 12pt 0;
     }
     h2 {
-      font-size: 13pt;
-      color: #1e3a8a;
-      margin: 18pt 0 6pt 0;
-      border-bottom: 1pt solid #cbd5e1;
-      padding-bottom: 3pt;
+      font-size: 12pt;
+      font-weight: bold;
+      margin: 14pt 0 6pt 0;
     }
     h3 {
-      font-size: 11pt;
-      color: #0f172a;
-      margin: 12pt 0 4pt 0;
+      font-size: 12pt;
+      font-weight: bold;
+      margin: 10pt 0 4pt 0;
     }
     p, li {
       margin: 0 0 6pt 0;
+      text-align: justify;
     }
-    .badge {
-      display: inline-block;
-      padding: 2pt 6pt;
-      background-color: #eff6ff;
-      border: 1pt solid #93c5fd;
-      border-radius: 4pt;
-      font-size: 9pt;
-      font-weight: bold;
-      color: #1d4ed8;
-    }
-    .alert-box {
-      background-color: #f8fafc;
-      border-left: 4pt solid #2563eb;
-      padding: 8pt 12pt;
-      margin: 10pt 0;
+    .box {
+      margin: 6pt 0 10pt 0;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: 8pt 0 14pt 0;
-      font-size: 10pt;
+      margin: 4pt 0 10pt 0;
+      font-size: 11pt;
     }
     th, td {
-      border: 1pt solid #cbd5e1;
-      padding: 6pt 8pt;
+      border: 0.5pt solid #000000;
+      padding: 2pt 5pt;
       text-align: left;
       vertical-align: top;
     }
     th {
-      background-color: #f1f5f9;
-      color: #0f172a;
       font-weight: bold;
+      text-align: center;
+      vertical-align: middle;
     }
-    tr:nth-child(even) td {
-      background-color: #f8fafc;
-    }
-    .highlight {
-      background-color: #fef3c7 !important;
+    tfoot td {
       font-weight: bold;
     }
     .num {
       text-align: right;
-      font-family: 'Consolas', monospace;
+    }
+    .info-table td {
+      border: none;
+      padding: 0 4pt 0 0;
     }
     .footer-note {
-      font-size: 8.5pt;
-      color: #64748b;
-      margin-top: 24pt;
-      border-top: 1pt solid #e2e8f0;
-      padding-top: 6pt;
+      font-size: 9pt;
+      font-style: italic;
+      margin-top: 18pt;
     }
     .sign-block {
       width: 100%;
-      margin-top: 30pt;
+      margin-top: 24pt;
       page-break-inside: avoid;
     }
     .sign-block td {
       border: none;
       text-align: center;
-      padding: 10pt;
+      padding: 4pt;
       width: 33%;
     }
   </style>
@@ -359,25 +344,27 @@ export function generateDocHtml(config: KitchenConfig): string {
 <body>
 <div class="WordSection1">
 
-  <!-- KOP DOKUMEN -->
-  <div style="text-align: right; font-size: 9pt; color: #64748b; margin-bottom: 8pt;">
-    Dokumen Kontrak & Fabrikasi Teknik | Tanggal: <strong>${currentDate}</strong>
-  </div>
-
-  <h1>SURAT PERINTAH KERJA (SPK) & MANUAL PEMBUATAN MEJA WASTAFEL & KOMPOR</h1>
-  <p style="color: #475569; font-size: 10.5pt; margin-bottom: 12pt;">
-    Dokumen acuan resmi untuk Bengkel Las Rangka Besi Hollow, Bengkel Finishing Kabinet Plywood/HPL, dan Pemasangan Top Table Marmer/Granit.
+  <h1>Surat Perintah Kerja (SPK)</h1>
+  <p class="doc-subtitle">
+    Manual Pembuatan Meja Wastafel &amp; Kompor<br/>
+    Tanggal: ${currentDate}
   </p>
 
-  <div class="alert-box">
-    <strong>RINGKASAN UTAMA UKURAN MEJA DAPUR:</strong><br/>
-    • <strong>Panjang Total (Width):</strong> ${W} cm (${(W / 100).toFixed(2)} meter)<br/>
-    • <strong>Kedalaman Meja (Depth):</strong> ${D} cm (Standar ergonomis: 60 cm)<br/>
-    • <strong>Tinggi Meja (Height):</strong> ${H} cm (Tinggi kerja nyaman dari lantai)<br/>
-    • <strong>Tebal Top Table:</strong> ${topThick} cm | <strong>Tinggi Kaki / Plinth:</strong> ${plinthH > 0 ? `${plinthH} cm (${config.legType === 'frame' ? 'kaki dari rangka' : config.legType === 'feet' ? 'kaki stel terbuka' : 'plinth tertutup'})` : 'tanpa kaki'}<br/>
-    • <strong>Rangka Utama:</strong> ${describeFrame(config)}${config.frame?.customLayout ? ' (layout rangka manual)' : ''} ukuran <strong>${tubeMm}×${tubeMm} mm</strong><br/>
-    • <strong>Finishing Kabinet:</strong> ${describeCabinetFinish(config)} | <strong>Top Table:</strong> ${describeCountertop(config)}
-  </div>
+  <p>
+    Dokumen ini menjadi acuan kerja untuk bengkel las rangka besi hollow, bengkel finishing kabinet plywood/HPL, dan pemasangan top table marmer/granit.
+  </p>
+
+  <h2>RINGKASAN UKURAN MEJA</h2>
+  <table class="info-table box">
+    <tr><td style="width: 32%;">Panjang total</td><td style="width: 2%;">:</td><td>${W} cm (${(W / 100).toFixed(2)} meter)</td></tr>
+    <tr><td>Kedalaman meja</td><td>:</td><td>${D} cm</td></tr>
+    <tr><td>Tinggi meja</td><td>:</td><td>${H} cm dari lantai</td></tr>
+    <tr><td>Tebal top table</td><td>:</td><td>${topThick} cm</td></tr>
+    <tr><td>Tinggi kaki / plinth</td><td>:</td><td>${plinthH > 0 ? `${plinthH} cm (${config.legType === 'frame' ? 'kaki dari rangka' : config.legType === 'feet' ? 'kaki stel terbuka' : 'plinth tertutup'})` : 'tanpa kaki'}</td></tr>
+    <tr><td>Rangka utama</td><td>:</td><td>${describeFrame(config)}${config.frame?.customLayout ? ' (layout rangka manual)' : ''}, besi hollow ${tubeMm}×${tubeMm} mm</td></tr>
+    <tr><td>Finishing kabinet</td><td>:</td><td>${describeCabinetFinish(config)}</td></tr>
+    <tr><td>Top table</td><td>:</td><td>${describeCountertop(config)}</td></tr>
+  </table>
 
   <!-- BAGIAN 1: DAFTAR POTONGAN BESI HOLLOW (CUTTING LIST BENGKEL LAS) -->
   <h2>1. DAFTAR POTONGAN BESI HOLLOW (CUTTING LIST BENGKEL LAS)</h2>
@@ -399,11 +386,11 @@ export function generateDocHtml(config: KitchenConfig): string {
       ${cutList.hollowPieces
         .map(
           (piece, idx) => `
-        <tr ${piece.category.startsWith('penyangga') ? 'class="highlight"' : ''}>
+        <tr>
           <td style="text-align: center;">${idx + 1}</td>
-          <td><strong>${piece.label}</strong></td>
-          <td style="text-align: center; font-weight: bold;">${piece.qty} pcs</td>
-          <td class="num"><strong>${piece.lengthCm} cm</strong> (${piece.lengthCm * 10} mm)</td>
+          <td>${piece.label}</td>
+          <td style="text-align: center;">${piece.qty}</td>
+          <td class="num">${piece.lengthCm} cm (${piece.lengthCm * 10} mm)</td>
           <td>${piece.notes}</td>
         </tr>
       `
@@ -411,22 +398,22 @@ export function generateDocHtml(config: KitchenConfig): string {
         .join('')}
     </tbody>
     <tfoot>
-      <tr style="background-color: #f1f5f9; font-weight: bold;">
-        <td colspan="2" style="text-align: right;">TOTAL ESTIMASI PANJANG BESI:</td>
-        <td colspan="2" class="num" style="color: #2563eb; font-size: 11pt;">${cutList.totalSteelLengthM} meter</td>
+      <tr>
+        <td colspan="2" style="text-align: right;">Total estimasi panjang besi</td>
+        <td colspan="2" class="num">${cutList.totalSteelLengthM} meter</td>
         <td>
-          Dibutuhkan <strong>${cutList.standard6mBarsNeeded} batang</strong> standar 6 meter (faktor sisa potongan/waste ±${cutList.wastePercentage}%).
+          ${cutList.standard6mBarsNeeded} batang standar 6 meter (sisa potongan ±${cutList.wastePercentage}%)
         </td>
       </tr>
     </tfoot>
   </table>
 
-  <div class="alert-box" style="border-left-color: #d97706; background-color: #fffbeb;">
-    <strong>CATATAN KHUSUS BENGKEL LAS (PENGELASAN & LEVELING):</strong><br/>
-    1. Pastikan setiap sudut sambungan di-las penuh (full weld) dan di-gerinda rata (flush grind) di sisi atas agar tidak mengganjal marmer.<br/>
-    2. ${cutList.levelingFeetCount > 0 ? `Pada bagian bawah tiang vertikal (${cutList.levelingFeetCount} titik tiang), las pelat tutup mur tanam (M10/M12) untuk memasang <strong>${cutList.levelingFeetCount} unit Kaki Adjuster Leveler Stainless/Karet</strong>.` : 'Tidak memakai kaki adjuster: ujung bawah tiang ditutup plat/dop karet langsung menapak lantai.'}<br/>
-    3. Oleskan <strong>Epoxy Zinc-Chromate Primer 2 lapis</strong> sebagai lapisan dasar anti-karat sebelum finishing cat doff / powder coating.
-  </div>
+  <p class="box"><strong>Catatan bengkel las:</strong></p>
+  <ol style="margin-top: 0; padding-left: 18pt;">
+    <li>Setiap sudut sambungan di-las penuh (full weld) dan digerinda rata di sisi atas agar tidak mengganjal marmer.</li>
+    <li>${cutList.levelingFeetCount > 0 ? `Pada bagian bawah tiang vertikal (${cutList.levelingFeetCount} titik), las pelat tutup dengan mur tanam (M10/M12) untuk ${cutList.levelingFeetCount} unit kaki adjuster leveler stainless/karet.` : 'Tidak memakai kaki adjuster: ujung bawah tiang ditutup plat/dop karet langsung menapak lantai.'}</li>
+    <li>Oleskan epoxy zinc-chromate primer 2 lapis sebagai dasar anti-karat sebelum finishing cat doff / powder coating.</li>
+  </ol>
 
   <!-- BAGIAN 2: SPESIFIKASI COAKAN TOP TABLE (UNTUK TUKANG MARMER / GRANIT) -->
   <h2>2. GAMBAR ACUAN COAKAN MEJA (UNTUK TUKANG MARMER / TOP TABLE)</h2>
@@ -505,7 +492,7 @@ export function generateDocHtml(config: KitchenConfig): string {
 
   <p>
     <strong>Jarak Aman (Clearance Gap) Antara Lubang Wastafel & Kompor:</strong> 
-    <span class="badge">${clearanceGap} cm</span> 
+    ${clearanceGap} cm
     ${
       clearanceGap >= 40
         ? '(Lolos standar keamanan K3 dapur: cukup aman dari cipratan air ke kompor)'
@@ -529,9 +516,9 @@ export function generateDocHtml(config: KitchenConfig): string {
         .map(
           (col, i) => `
         <tr>
-          <td style="text-align: center; font-weight: bold;">#${i + 1}</td>
-          <td class="num"><strong>${col.width} cm</strong></td>
-          <td><strong>${col.type.toUpperCase()}</strong></td>
+          <td style="text-align: center;">${i + 1}</td>
+          <td class="num">${col.width} cm</td>
+          <td>${col.type}</td>
           <td>
             ${
               col.type === 'drawers' && col.drawers
@@ -539,7 +526,7 @@ export function generateDocHtml(config: KitchenConfig): string {
                   col.drawers
                     .map(
                       (d, di) =>
-                        `• ${di + 1}. ${SECTION_KIND_LABELS[d.kind || 'drawer']} (${d.name || '-'}): Tinggi <strong>${d.height} cm</strong>`
+                        `${di + 1}. ${SECTION_KIND_LABELS[d.kind || 'drawer']} (${d.name || '-'}): tinggi ${d.height} cm`
                     )
                     .join('<br/>')
                 : col.type === 'sink-cabinet'
@@ -576,8 +563,8 @@ export function generateDocHtml(config: KitchenConfig): string {
           (panel, i) => `
         <tr>
           <td style="text-align: center;">${i + 1}</td>
-          <td><strong>${panel.name}</strong></td>
-          <td style="text-align: center;">${panel.qty} pcs</td>
+          <td>${panel.name}</td>
+          <td style="text-align: center;">${panel.qty}</td>
           <td class="num">${panel.widthCm} × ${panel.heightCm} cm</td>
           <td>${panel.material}</td>
         </tr>
@@ -629,7 +616,7 @@ export function generateDocHtml(config: KitchenConfig): string {
   </table>
 
   <div class="footer-note">
-    Dokumen ini dicetak otomatis dari KitchenCraft 3D Studio Studio Desain Wastafel & Meja Kompor Kustom. Ukuran dan toleransi fabrikasi mengacu pada standar SNI mebel interior (±2mm).
+    Dokumen ini dibuat otomatis dari KitchenCraft 3D. Ukuran dan toleransi fabrikasi mengacu pada standar SNI mebel interior (±2mm).
   </div>
 
 </div>
