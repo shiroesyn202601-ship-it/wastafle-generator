@@ -1,9 +1,18 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { flushSync } from 'react-dom';
-import { KitchenConfig, FrameMember } from '../types/kitchen';
+import { KitchenConfig, FrameMember, FrameAxis, FrameMemberRole } from '../types/kitchen';
 import { calculateFabricationCutList, describeBars, HollowCutPiece, CutListReport, printHtml } from '../utils/exportDoc';
-import { getFrameMembers, getFrameDims, memberBox, memberSectionCm } from '../utils/frameLayout';
+import {
+  getFrameMembers,
+  getFrameDims,
+  memberBox,
+  memberSectionCm,
+  AXIS_INDEX,
+  VIEW_DEFS,
+  VIEW_LABELS,
+  FrameView,
+} from '../utils/frameLayout';
 import { Scissors, FileDown, ImageDown } from 'lucide-react';
 
 interface Props {
@@ -180,6 +189,136 @@ const ROWS_PER_PAGE = 5;
 // Batas kiri tiap kolom, relatif terhadap margin kiri
 const COLS = { no: 0, pos: 36, cut: 206, part: 456, len: 806, qty: 896, sub: 976, end: SHEET_W - 2 * M };
 
+const VIEWS_H = 340; // tinggi blok gambar 5 tampak di lembar export
+
+const ROLE_CATEGORY: Record<FrameMemberRole, Category> = {
+  post: 'tiang-vertikal',
+  'rail-x': 'gelagar-panjang',
+  'rail-z': 'palang-kedalaman',
+  'sink-cradle': 'penyangga-wastafel',
+  'stove-cradle': 'penyangga-kompor',
+  custom: 'kustom',
+};
+
+/**
+ * Gambar tampak Depan, Belakang (baris 1) dan Atas, Kiri, Kanan (baris 2) dengan skala sama,
+ * dimuat sepadat mungkin dalam kotak (x, y, width, height).
+ */
+const FrameViewsBlock: React.FC<{ config: KitchenConfig; members: FrameMember[]; x: number; y: number; width: number; height: number }> = ({
+  config,
+  members,
+  x,
+  y,
+  width,
+  height,
+}) => {
+  const { W, H, D } = getFrameDims(config);
+  const span = (a: FrameAxis) => (a === 'x' ? W : a === 'y' ? H : D);
+  const pad = { t: 18, b: 34, l: 26, r: 8 };
+  const gap = 18;
+  const s = Math.min(
+    (width - 2 * (pad.l + pad.r) - gap) / (2 * W),
+    (width - 3 * (pad.l + pad.r) - 2 * gap) / (W + 2 * D),
+    (height - 2 * (pad.t + pad.b) - gap) / (H + Math.max(D, H))
+  );
+  const cellW = (v: FrameView) => span(VIEW_DEFS[v].h) * s + pad.l + pad.r;
+  const rows: FrameView[][] = [
+    ['front', 'back'],
+    ['top', 'left', 'right'],
+  ];
+  const rowH = (r: FrameView[]) => Math.max(...r.map((v) => span(VIEW_DEFS[v].v))) * s + pad.t + pad.b;
+  const boxes = members.map((m) => ({ m, b: memberBox(m, memberSectionCm(m, config)) }));
+
+  const renderView = (v: FrameView, ox: number, oy: number) => {
+    const d = VIEW_DEFS[v];
+    const hs = span(d.h);
+    const vs = span(d.v);
+    const map = (a: FrameAxis, flip: boolean, val: number) => (flip ? span(a) - val : val);
+    const items = boxes
+      .map(({ m, b }) => {
+        const hi = AXIS_INDEX[d.h];
+        const vi = AXIS_INDEX[d.v];
+        const di = AXIS_INDEX[d.d];
+        const ha = map(d.h, d.hFlip, b.min[hi]);
+        const hb = map(d.h, d.hFlip, b.max[hi]);
+        const va = map(d.v, d.vFlip, b.min[vi]);
+        const vb = map(d.v, d.vFlip, b.max[vi]);
+        const dc = (b.min[di] + b.max[di]) / 2;
+        const depth = d.dFlip ? span(d.d) - dc : dc; // kecil = dekat ke penonton
+        return { m, h0: Math.min(ha, hb), h1: Math.max(ha, hb), v0: Math.min(va, vb), v1: Math.max(va, vb), depth };
+      })
+      .sort((a, b) => b.depth - a.depth);
+    const px = (h: number) => ox + pad.l + h * s;
+    const py = (val: number) => oy + pad.t + (vs - val) * s;
+    const dimY = py(0) + 12;
+    const dimX = px(0) - 12;
+    return (
+      <g key={v}>
+        <text x={px(0)} y={oy + 11} fontSize="10.5" fontWeight="bold" fill="#000">
+          TAMPAK {VIEW_LABELS[v].toUpperCase()}
+        </text>
+        {items.map(({ m, h0, h1, v0, v1, depth }) => {
+          const color = PAPER_COLORS[ROLE_CATEGORY[m.role]];
+          const near = 1 - (0.6 * depth) / Math.max(1, span(d.d));
+          return (
+            <rect
+              key={m.id}
+              x={px(h0)}
+              y={py(v1)}
+              width={Math.max(0.6, (h1 - h0) * s)}
+              height={Math.max(0.6, (v1 - v0) * s)}
+              fill={color}
+              fillOpacity={0.15 + 0.55 * near}
+              stroke={color}
+              strokeOpacity={0.35 + 0.65 * near}
+              strokeWidth="0.6"
+            />
+          );
+        })}
+        {/* Ukuran keseluruhan */}
+        <g stroke="#374151" strokeWidth="0.6">
+          <line x1={px(0)} y1={dimY} x2={px(hs)} y2={dimY} />
+          <line x1={px(0)} y1={dimY - 3} x2={px(0)} y2={dimY + 3} />
+          <line x1={px(hs)} y1={dimY - 3} x2={px(hs)} y2={dimY + 3} />
+          <line x1={dimX} y1={py(0)} x2={dimX} y2={py(vs)} />
+          <line x1={dimX - 3} y1={py(0)} x2={dimX + 3} y2={py(0)} />
+          <line x1={dimX - 3} y1={py(vs)} x2={dimX + 3} y2={py(vs)} />
+        </g>
+        <text x={(px(0) + px(hs)) / 2} y={dimY + 11} fontSize="9" textAnchor="middle" fill="#111827">
+          {hs} cm
+        </text>
+        <text x={dimX - 4} y={(py(0) + py(vs)) / 2} fontSize="9" textAnchor="middle" fill="#111827" transform={`rotate(-90 ${dimX - 4} ${(py(0) + py(vs)) / 2})`}>
+          {vs} cm
+        </text>
+        <text x={px(0)} y={dimY + 21} fontSize="7" fill="#6b7280">
+          {(d.sideB ?? d.sideL).replace(' (dinding)', '')}
+        </text>
+        <text x={px(hs)} y={dimY + 21} fontSize="7" fill="#6b7280" textAnchor="end">
+          {d.sideB ? '' : d.sideR.replace(' (dinding)', '')}
+        </text>
+      </g>
+    );
+  };
+
+  const totalH = rowH(rows[0]) + gap + rowH(rows[1]);
+  let oy = y + (height - totalH) / 2;
+  return (
+    <g>
+      {rows.map((r) => {
+        const rw = r.reduce((sum, v) => sum + cellW(v), 0) + gap * (r.length - 1);
+        let ox = x + (width - rw) / 2;
+        const out = r.map((v) => {
+          const el = renderView(v, ox, oy);
+          ox += cellW(v) + gap;
+          return el;
+        });
+        oy += rowH(r) + gap;
+        return out;
+      })}
+    </g>
+  );
+};
+
 const wrapText = (s: string, max: number) => {
   const lines: string[] = [];
   let cur = '';
@@ -202,12 +341,13 @@ export const CutListSheet: React.FC<{
   pages: number;
   height: number;
   showTotals: boolean;
-}> = ({ config, cutList, members, rows, page, pages, height, showTotals }) => {
+  showViews?: boolean; // sisipkan gambar 5 tampak di bawah kepala lembar
+}> = ({ config, cutList, members, rows, page, pages, height, showTotals, showViews }) => {
   const byId = new Map(members.map((m) => [m.id, m]));
   const tube = config.frame?.tubeSize || 40;
   const totalPcs = cutList.hollowPieces.reduce((s, p) => s + p.qty, 0);
   const date = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-  const tableTop = M + HEAD_H;
+  const tableTop = M + HEAD_H + (showViews ? VIEWS_H : 0);
   const rowTop = (i: number) => tableTop + TH_H + i * ROW_H;
   const tableBottom = rowTop(rows.length);
   const R = SHEET_W - M;
@@ -239,6 +379,8 @@ export const CutListSheet: React.FC<{
         </text>
       )}
       <line x1={M} y1={M + 50} x2={R} y2={M + 50} stroke="#000" strokeWidth="1.5" />
+
+      {showViews && <FrameViewsBlock config={config} members={members} x={M} y={M + HEAD_H - 6} width={R - M} height={VIEWS_H - 6} />}
 
       {/* Kepala tabel */}
       <rect x={M} y={tableTop} width={R - M} height={TH_H} fill="#f3f4f6" stroke="#000" strokeWidth="0.75" />
@@ -341,21 +483,24 @@ const sheetProps = (config: KitchenConfig) => {
   return { cutList, members, rows };
 };
 
-/** Cetak lewat dialog browser (Simpan sebagai PDF), A4 lanskap, 5 baris per halaman */
+/** Cetak lewat dialog browser (Simpan sebagai PDF), A4 lanskap: hal. 1 = 5 tampak + baris awal, berikutnya 5 baris/halaman */
 export function printCutListPdf(config: KitchenConfig) {
   const { cutList, members, rows } = sheetProps(config);
-  const pages = Math.max(1, Math.ceil(rows.length / ROWS_PER_PAGE));
-  const svgs = Array.from({ length: pages }, (_, i) =>
+  const firstRows = Math.floor((SHEET_H - 2 * M - HEAD_H - VIEWS_H - TH_H - TOTAL_H) / ROW_H);
+  const chunks = [rows.slice(0, firstRows)];
+  for (let i = firstRows; i < rows.length; i += ROWS_PER_PAGE) chunks.push(rows.slice(i, i + ROWS_PER_PAGE));
+  const svgs = chunks.map((chunk, i) =>
     renderSvgMarkup(
       <CutListSheet
         config={config}
         cutList={cutList}
         members={members}
-        rows={rows.slice(i * ROWS_PER_PAGE, (i + 1) * ROWS_PER_PAGE)}
+        rows={chunk}
         page={i + 1}
-        pages={pages}
+        pages={chunks.length}
         height={SHEET_H}
-        showTotals={i === pages - 1}
+        showTotals={i === chunks.length - 1}
+        showViews={i === 0}
       />
     )
   );
@@ -368,12 +513,12 @@ export function printCutListPdf(config: KitchenConfig) {
 </style></head><body>${svgs.join('')}</body></html>`);
 }
 
-/** Unduh satu gambar PNG berisi seluruh tabel potongan */
+/** Unduh satu gambar PNG berisi 5 tampak rangka + seluruh tabel potongan */
 export function downloadCutListPng(config: KitchenConfig) {
   const { cutList, members, rows } = sheetProps(config);
-  const height = M + HEAD_H + TH_H + rows.length * ROW_H + TOTAL_H + M;
+  const height = M + HEAD_H + VIEWS_H + TH_H + rows.length * ROW_H + TOTAL_H + M;
   const markup = renderSvgMarkup(
-    <CutListSheet config={config} cutList={cutList} members={members} rows={rows} page={1} pages={1} height={height} showTotals />
+    <CutListSheet config={config} cutList={cutList} members={members} rows={rows} page={1} pages={1} height={height} showTotals showViews />
   );
   const url = URL.createObjectURL(new Blob([markup], { type: 'image/svg+xml;charset=utf-8' }));
   const img = new Image();

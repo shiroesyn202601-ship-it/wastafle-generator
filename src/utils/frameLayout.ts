@@ -389,3 +389,41 @@ export function getFootMembers(config: KitchenConfig, members: FrameMember[]): F
 export function newMemberId(): string {
   return `m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 }
+
+// ---------- Tampak ortogonal (dipakai Editor Rangka 2D & lembar export) ----------
+
+export type FrameView = 'front' | 'back' | 'left' | 'right' | 'top';
+
+export const VIEW_LABELS: Record<FrameView, string> = {
+  front: 'Depan',
+  back: 'Belakang',
+  left: 'Kiri',
+  right: 'Kanan',
+  top: 'Atas',
+};
+
+/**
+ * Definisi proyeksi tiap tampak:
+ * h = sumbu 3D yang jadi horizontal layar, v = sumbu yang jadi vertikal layar (ke atas),
+ * d = sumbu kedalaman (arah pandang). *Flip = dibalik (span - nilai).
+ */
+export interface ViewDef {
+  h: FrameAxis;
+  hFlip: boolean;
+  v: FrameAxis;
+  vFlip: boolean;
+  d: FrameAxis;
+  dFlip: boolean; // true: makin besar nilai sumbu d makin dekat ke penonton
+  sideL: string;
+  sideR: string;
+  sideT?: string;
+  sideB?: string;
+}
+
+export const VIEW_DEFS: Record<FrameView, ViewDef> = {
+  front: { h: 'x', hFlip: false, v: 'y', vFlip: false, d: 'z', dFlip: true, sideL: 'KIRI', sideR: 'KANAN' },
+  back: { h: 'x', hFlip: true, v: 'y', vFlip: false, d: 'z', dFlip: false, sideL: 'KANAN', sideR: 'KIRI' },
+  left: { h: 'z', hFlip: false, v: 'y', vFlip: false, d: 'x', dFlip: false, sideL: 'BELAKANG (dinding)', sideR: 'DEPAN' },
+  right: { h: 'z', hFlip: true, v: 'y', vFlip: false, d: 'x', dFlip: true, sideL: 'DEPAN', sideR: 'BELAKANG (dinding)' },
+  top: { h: 'x', hFlip: false, v: 'z', vFlip: true, d: 'y', dFlip: true, sideL: 'KIRI', sideR: 'KANAN', sideT: 'BELAKANG (dinding)', sideB: 'DEPAN' },
+};
