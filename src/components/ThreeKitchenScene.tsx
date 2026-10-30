@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -17,6 +17,19 @@ import { getHplSwatch, getFjlSpecies, HPL_SURFACE_LABELS } from '../utils/finish
 import { getFrameMembers, getFootMembers, memberTubeCm } from '../utils/frameLayout';
 import { getSinkStoveGap } from '../utils/layoutOps';
 
+// Cached once per page: probing creates an extra WebGL context, so don't repeat it on every remount
+let softwareGlCache: boolean | null = null;
+function detectSoftwareGl(): boolean {
+  if (softwareGlCache !== null) return softwareGlCache;
+  const gl = document.createElement('canvas').getContext('webgl2');
+  if (!gl) return (softwareGlCache = true);
+  const ext = gl.getExtension('WEBGL_debug_renderer_info');
+  const param = ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER;
+  const gpu = String(gl.getParameter(param));
+  gl.getExtension('WEBGL_lose_context')?.loseContext();
+  return (softwareGlCache = /SwiftShader|llvmpipe|softpipe|Software|Basic Render/i.test(gpu));
+}
+
 interface Props {
   config: KitchenConfig;
   onSelectElement?: (type: 'counter' | 'column' | 'sink' | 'stove', index?: number) => void;
@@ -30,6 +43,7 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const kitchenGroupRef = useRef<THREE.Group | null>(null);
+  const [glError, setGlError] = useState<'unavailable' | 'lost' | null>(null);
 
   // References to studio ambient and directional lights
   const lightsRef = useRef<{
@@ -68,15 +82,21 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
     if (!container) return;
 
     // Detect software WebGL guard
-    const isSoftwareGl = (() => {
-      const gl = document.createElement('canvas').getContext('webgl2');
-      if (!gl) return true;
-      const ext = gl.getExtension('WEBGL_debug_renderer_info');
-      const param = ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER;
-      const gpu = String(gl.getParameter(param));
-      gl.getExtension('WEBGL_lose_context')?.loseContext();
-      return /SwiftShader|llvmpipe|softpipe|Software|Basic Render/i.test(gpu);
-    })();
+    const isSoftwareGl = detectSoftwareGl();
+
+    // Browser can refuse WebGL (e.g. blocked after repeated context loss): show a fallback instead of crashing the app
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        antialias: !isSoftwareGl,
+        powerPreference: 'high-performance',
+        preserveDrawingBuffer: true,
+      });
+    } catch (err) {
+      console.error(err);
+      setGlError('unavailable');
+      return;
+    }
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xf6f2ed);
@@ -93,11 +113,6 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
     camera.position.set(1.6, 1.7, 3.2);
     cameraRef.current = camera;
 
-    const renderer = new THREE.WebGLRenderer({
-      antialias: !isSoftwareGl,
-      powerPreference: 'high-performance',
-      preserveDrawingBuffer: true,
-    });
     renderer.setSize(width, height);
     renderer.setPixelRatio(isSoftwareGl ? 1 : Math.min(window.devicePixelRatio, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -108,10 +123,21 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
     rendererRef.current = renderer;
     container.appendChild(renderer.domElement);
 
+    const handleContextLost = (e: Event) => {
+      e.preventDefault();
+      setGlError('lost');
+    };
+    const handleContextRestored = () => setGlError(null);
+    renderer.domElement.addEventListener('webglcontextlost', handleContextLost);
+    renderer.domElement.addEventListener('webglcontextrestored', handleContextRestored);
+
     // Studio Room Environment for authentic metallic and marble reflections
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
-    scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+    const roomEnv = new RoomEnvironment();
+    const envMap = pmremGenerator.fromScene(roomEnv, 0.04).texture;
+    scene.environment = envMap;
     pmremGenerator.dispose();
+    roomEnv.dispose();
 
     // Controls
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -240,7 +266,18 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', handleResize);
       resizeObserver.disconnect();
+      renderer.domElement.removeEventListener('webglcontextlost', handleContextLost);
+      renderer.domElement.removeEventListener('webglcontextrestored', handleContextRestored);
+      controls.dispose();
+      disposeHierarchy(scene);
+      envMap.dispose();
+      kitchenGroupRef.current = null;
+      sceneRef.current = null;
+      rendererRef.current = null;
       renderer.dispose();
+      // Release the GPU context right away instead of waiting for GC;
+      // switching tabs remounts this scene and stale contexts pile up otherwise
+      renderer.forceContextLoss();
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
       }
@@ -1710,6 +1747,28 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
   return (
     <div className="relative w-full h-full select-none bg-neutral-900 overflow-hidden">
       <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+
+      {glError && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center p-6 bg-neutral-900/95 text-center">
+          <div className="max-w-sm space-y-3 text-sm text-neutral-300">
+            <p className="text-base font-semibold text-white">
+              {glError === 'lost' ? 'Tampilan 3D terputus' : 'Tampilan 3D tidak dapat dimuat'}
+            </p>
+            <p>
+              Browser menghentikan akses grafis (WebGL), biasanya karena memori GPU penuh. Tutup tab lain yang berat,
+              lalu muat ulang halaman. Jika tetap gagal, aktifkan &quot;Use graphics acceleration&quot; di pengaturan browser
+              atau tutup lalu buka kembali browser.
+            </p>
+            <p className="text-neutral-400">Mode Rangka, Blueprint, dan export dokumen tetap bisa dipakai.</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors"
+            >
+              Muat Ulang Halaman
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Camera angle buttons */}
       <div className="absolute top-2 left-2 right-2 sm:top-3 sm:left-3 sm:right-auto z-10 flex flex-wrap gap-1 sm:gap-1.5 p-1 sm:p-1.5 bg-neutral-900/85 backdrop-blur-md rounded-xl border border-neutral-700/60 shadow-lg text-xs text-neutral-300">
