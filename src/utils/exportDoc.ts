@@ -1,5 +1,5 @@
 import { KitchenConfig, FrameMember, FrameMemberRole, SECTION_KIND_LABELS } from '../types/kitchen';
-import { getFrameMembers, getFootMembers, getMemberEndCuts, describeEndCut, endCutShapeKey, EndCut, FRAME_ROLE_LABELS, AXIS_LABELS } from './frameLayout';
+import { getFrameMembers, getFootMembers, memberProfileLabel, FRAME_ROLE_LABELS, AXIS_LABELS } from './frameLayout';
 import { describeCountertop, describeCabinetFinish, describeFrame } from './finishes';
 
 export interface HollowCutPiece {
@@ -8,11 +8,10 @@ export interface HollowCutPiece {
   label: string;
   qty: number;
   lengthCm: number;
-  tubeSizeMm: number;
+  profile: string; // profil pipa dalam mm, mis. "40×40" atau "20×40"
   notes: string;
   weldPosition?: string;
   memberIds?: string[]; // id batang rangka dalam kelompok ini (untuk gambar posisi)
-  endCuts?: [EndCut, EndCut]; // bentuk potongan ujung awal & akhir
 }
 
 export interface PanelCutPiece {
@@ -29,11 +28,15 @@ export interface PanelCutPiece {
 export interface CutListReport {
   totalSteelLengthM: number;
   standard6mBarsNeeded: number;
+  barsByProfile: { profile: string; lengthM: number; bars: number }[]; // kebutuhan batang 6 m per profil pipa
   wastePercentage: number;
   levelingFeetCount: number;
   hollowPieces: HollowCutPiece[];
   panelPieces: PanelCutPiece[];
 }
+
+/** Ringkasan kebutuhan batang 6 m per profil, mis. "6 batang 40×40 + 1 batang 20×40" */
+export const describeBars = (c: CutListReport) => c.barsByProfile.map((b) => `${b.bars} batang ${b.profile} mm`).join(' + ');
 
 /**
  * Calculates exact cutting list of hollow steel tubes and cabinetry panels
@@ -52,11 +55,9 @@ export function calculateFabricationCutList(config: KitchenConfig): CutListRepor
 
   // Kelompokkan batang rangka (otomatis / hasil Editor Rangka 2D) berdasarkan fungsi, sumbu, panjang & ukuran pipa
   const members = getFrameMembers(config);
-  const endCuts = getMemberEndCuts(config, members);
   const groups = new Map<string, FrameMember[]>();
   members.forEach((m) => {
-    const cutKey = endCutShapeKey(endCuts.get(m.id)!);
-    const key = `${m.role}|${m.axis}|${m.length.toFixed(1)}|${m.tubeSize || tubeMm}|${cutKey}`;
+    const key = `${m.role}|${m.axis}|${m.length.toFixed(1)}|${memberProfileLabel(m, config)}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(m);
   });
@@ -82,19 +83,16 @@ export function calculateFabricationCutList(config: KitchenConfig): CutListRepor
       const first = list[0];
       const names = [...new Set(list.map((m) => m.label).filter(Boolean))];
       const positions = list.slice(0, 6).map(fmtPos).join('; ') + (list.length > 6 ? ` … (+${list.length - 6})` : '');
-      const cuts = endCuts.get(first.id)!;
-      const cutText = `Ujung: ${describeEndCut(cuts[0], first.axis)} / ${describeEndCut(cuts[1], first.axis)}.`;
       hollowPieces.push({
         id: `grp-${idx}-${key}`,
         category: categoryOf[first.role],
         label: `${FRAME_ROLE_LABELS[first.role]} – ${AXIS_LABELS[first.axis]}`,
         qty: list.length,
         lengthCm: Number(first.length.toFixed(1)),
-        tubeSizeMm: first.tubeSize || tubeMm,
-        notes: `${names.length > 0 ? names.slice(0, 4).join(', ') + (names.length > 4 ? ', …' : '') + '. ' : ''}Pipa ${first.tubeSize || tubeMm}×${first.tubeSize || tubeMm} mm. ${cutText}`,
+        profile: memberProfileLabel(first, config),
+        notes: `${names.length > 0 ? names.slice(0, 4).join(', ') + (names.length > 4 ? ', …' : '') + '. ' : ''}Pipa ${memberProfileLabel(first, config)} mm. Ujung potong lurus 90°.`,
         weldPosition: `Titik awal as (cm, X dari kiri, Y dari lantai, Z dari belakang): ${positions}`,
         memberIds: list.map((m) => m.id),
-        endCuts: cuts,
       });
     });
 
@@ -102,7 +100,15 @@ export function calculateFabricationCutList(config: KitchenConfig): CutListRepor
   const totalLengthCm = hollowPieces.reduce((sum, item) => sum + item.qty * item.lengthCm, 0);
   const totalSteelLengthM = Number((totalLengthCm / 100).toFixed(2));
   const wastePercentage = 12; // 12% kerugian pemotongan
-  const standard6mBarsNeeded = Math.ceil((totalSteelLengthM * (1 + wastePercentage / 100)) / 6);
+  // Kebutuhan batang 6 m dihitung per profil pipa (40×40 dan 20×40 dibeli terpisah)
+  const lengthByProfile = new Map<string, number>();
+  hollowPieces.forEach((p) => lengthByProfile.set(p.profile, (lengthByProfile.get(p.profile) || 0) + (p.qty * p.lengthCm) / 100));
+  const barsByProfile = [...lengthByProfile.entries()].map(([profile, lengthM]) => ({
+    profile,
+    lengthM: Number(lengthM.toFixed(2)),
+    bars: Math.ceil((lengthM * (1 + wastePercentage / 100)) / 6),
+  }));
+  const standard6mBarsNeeded = barsByProfile.reduce((s, b) => s + b.bars, 0);
   const levelingFeetCount = getFootMembers(config, members).length;
 
 
@@ -201,6 +207,7 @@ export function calculateFabricationCutList(config: KitchenConfig): CutListRepor
   return {
     totalSteelLengthM,
     standard6mBarsNeeded,
+    barsByProfile,
     wastePercentage,
     levelingFeetCount,
     hollowPieces,
@@ -402,7 +409,7 @@ export function generateDocHtml(config: KitchenConfig): string {
         <td colspan="2" style="text-align: right;">Total estimasi panjang besi</td>
         <td colspan="2" class="num">${cutList.totalSteelLengthM} meter</td>
         <td>
-          ${cutList.standard6mBarsNeeded} batang standar 6 meter (sisa potongan ±${cutList.wastePercentage}%)
+          ${describeBars(cutList)}, panjang standar 6 meter (sisa potongan ±${cutList.wastePercentage}%)
         </td>
       </tr>
     </tfoot>
@@ -629,6 +636,11 @@ export function generateDocHtml(config: KitchenConfig): string {
  * so the PDF/print output is a clean paged document instead of the on-screen modal.
  */
 export function printDocFile(config: KitchenConfig): void {
+  printHtml(generateDocHtml(config));
+}
+
+/** Prints a standalone HTML document through a hidden iframe (browser print dialog → Save as PDF) */
+export function printHtml(html: string): void {
   const iframe = document.createElement('iframe');
   iframe.style.position = 'fixed';
   iframe.style.right = '0';
@@ -646,7 +658,7 @@ export function printDocFile(config: KitchenConfig): void {
   }
 
   doc.open();
-  doc.write(generateDocHtml(config));
+  doc.write(html);
   doc.close();
 
   const cleanup = () => {

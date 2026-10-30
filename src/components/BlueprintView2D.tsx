@@ -711,7 +711,7 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
         </div>
 
         {/* 4. DAFTAR POTONGAN BESI RANGKA */}
-        <FrameCutListTable config={config} onChange={onChange} />
+        <FrameCutListTable config={config} />
       </div>
     </div>
   );

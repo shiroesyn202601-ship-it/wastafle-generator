@@ -350,6 +350,9 @@ export interface FrameMember {
   role: FrameMemberRole;
   label?: string;
   tubeSize?: number; // mm, default frame.tubeSize
+  // mm, sisi kedua pipa persegi panjang (mis. 20×40): tinggi penampang untuk batang mendatar,
+  // tebal ke arah depan-belakang untuk tiang. Kosong = kotak (sama dengan tubeSize)
+  tubeH?: number;
 }
 
 export interface FrameConfig {
@@ -362,7 +365,6 @@ export interface FrameConfig {
   paintColor?: string | null; // warna cat / powder coating rangka (null = warna bawaan material)
   customLayout?: boolean; // true = rangka diedit manual lewat Editor Rangka 2D
   members?: FrameMember[]; // dipakai saat customLayout = true
-  cornerJoint?: 'butt' | 'miter'; // sambungan sudut atas rangka otomatis: potong lurus 90° (default) / miter 45°
 }
 
 export type HandleStyle = 

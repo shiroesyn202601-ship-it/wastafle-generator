@@ -67,7 +67,6 @@ export const BillOfMaterials: React.FC<Props> = ({ config, onOpenDocModal }) => 
   // Dihitung dari batang rangka sebenarnya (otomatis / hasil Editor Rangka 2D)
   const frameCut = calculateFabricationCutList(config);
   const postCount = frameCut.levelingFeetCount;
-  const hollowBars = Math.max(1, frameCut.standard6mBarsNeeded);
 
   // Default Unit Prices in IDR (Rp)
   const [prices, setPrices] = useState<Record<string, number>>({
@@ -94,17 +93,22 @@ export const BillOfMaterials: React.FC<Props> = ({ config, onOpenDocModal }) => 
 
   const costItems: CostItem[] = [
     ...(isHollow
-      ? [
-          {
-            id: 'hollow-bar',
+      ? frameCut.barsByProfile.map((b) => {
+          const main = b.profile === `${tubeSize}×${tubeSize}`;
+          const id = main ? 'hollow-bar' : `hollow-bar-${b.profile}`;
+          // Harga awal profil lain diperkirakan dari keliling penampang relatif terhadap 40×40
+          const [pw, ph] = b.profile.split('×').map(Number);
+          const fallback = Math.round((185000 * (pw + ph)) / 80 / 1000) * 1000;
+          return {
+            id,
             category: 'Kayu & Panel' as const,
-            name: `Besi Hollow Kotak ${tubeSize}×${tubeSize} mm (Batang 6m)`,
-            specs: `${frameCut.totalSteelLengthM} m total potongan, ${describeFrame(config)}`,
-            qty: hollowBars,
+            name: `Besi Hollow ${b.profile} mm (Batang 6m)`,
+            specs: `${b.lengthM} m total potongan, ${describeFrame(config)}`,
+            qty: Math.max(1, b.bars),
             unit: 'batang (6m)',
-            unitPrice: prices['hollow-bar'],
-          },
-        ]
+            unitPrice: prices[id] ?? fallback,
+          };
+        })
       : []),
     ...(isHollow && postCount > 0
       ? [

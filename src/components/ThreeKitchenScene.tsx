@@ -14,7 +14,7 @@ import {
   createFjlTexture,
 } from '../utils/proceduralTextures';
 import { getHplSwatch, getFjlSpecies, HPL_SURFACE_LABELS } from '../utils/finishes';
-import { getFrameMembers, getFootMembers, memberTubeCm } from '../utils/frameLayout';
+import { getFrameMembers, getFootMembers, memberTubeCm, memberSectionCm } from '../utils/frameLayout';
 import { getSinkStoveGap } from '../utils/layoutOps';
 
 // Cached once per page: probing creates an extra WebGL context, so don't repeat it on every remount
@@ -1429,9 +1429,9 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
     const members = getFrameMembers(cfg);
 
     members.forEach((m) => {
-      const t = memberTubeCm(m, cfg) / 100;
+      const [sx, sy, sz] = memberSectionCm(m, cfg).map((v) => v / 100);
       const len = Math.max(0.005, m.length / 100);
-      const geo = new THREE.BoxGeometry(m.axis === 'x' ? len : t, m.axis === 'y' ? len : t, m.axis === 'z' ? len : t);
+      const geo = new THREE.BoxGeometry(m.axis === 'x' ? len : sx, m.axis === 'y' ? len : sy, m.axis === 'z' ? len : sz);
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(
         leftX + m.x / 100 + (m.axis === 'x' ? len / 2 : 0),

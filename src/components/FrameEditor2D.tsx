@@ -4,7 +4,7 @@ import {
   getFrameDims,
   getFrameMembers,
   memberBox,
-  memberTubeCm,
+  memberSectionCm,
   getApplianceBoxes,
   getFrameWarnings,
   getSnapTargets,
@@ -180,7 +180,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
     };
   };
 
-  const projected = (v: View) => members.map((m) => ({ m, p: projBox(v, memberBox(m, memberTubeCm(m, config))) }));
+  const projected = (v: View) => members.map((m) => ({ m, p: projBox(v, memberBox(m, memberSectionCm(m, config))) }));
 
   const spans = (v: View) => ({ hs: axisSpan(VIEW_DEFS[v].h), vs: axisSpan(VIEW_DEFS[v].v) });
   const { hs: mainH, vs: mainV } = spans(view);
@@ -210,7 +210,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
   const applyMove = (orig: FrameMember, dh: number, dv: number, useMagnet: boolean): { m: FrameMember; g: Guide[] } => {
     const n = { ...orig };
     const g: Guide[] = [];
-    const box = memberBox(orig, memberTubeCm(orig, config));
+    const box = memberBox(orig, memberSectionCm(orig, config));
     const targets = useMagnet ? getSnapTargets(config, baseMembers, orig.id) : null;
     (
       [
@@ -353,12 +353,12 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
     if (!selected || selected.axis !== 'y') return null;
     const i = AXIS_INDEX[axis];
     const other = axis === 'x' ? 2 : 0;
-    const sb = memberBox(selected, memberTubeCm(selected, config));
+    const sb = memberBox(selected, memberSectionCm(selected, config));
     const ray = selected[axis === 'x' ? 'z' : 'x'];
     let best: { m: FrameMember; start: number; length: number } | null = null;
     members.forEach((m) => {
       if (m.id === selected.id || m.axis === axis) return;
-      const b = memberBox(m, memberTubeCm(m, config));
+      const b = memberBox(m, memberSectionCm(m, config));
       if (ray < b.min[other] - 0.05 || ray > b.max[other] + 0.05) return;
       if (y < b.min[1] - 0.05 || y > b.max[1] + 0.05) return;
       const gap = dir < 0 ? sb.min[i] - b.max[i] : b.min[i] - sb.max[i];
@@ -550,7 +550,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
 
     // Ukuran batang terpilih
     if (selected) {
-      const p = projBox(view, memberBox(selected, memberTubeCm(selected, config)));
+      const p = projBox(view, memberBox(selected, memberSectionCm(selected, config)));
       const amber = '#fbbf24';
       const ch = r1((p.h0 + p.h1) / 2);
       const cv = r1((p.v0 + p.v1) / 2);
@@ -681,11 +681,11 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
   const neighborAlong = (axis: FrameAxis, dir: -1 | 1) => {
     if (!selected) return null;
     const i = AXIS_INDEX[axis];
-    const sb = memberBox(selected, memberTubeCm(selected, config));
+    const sb = memberBox(selected, memberSectionCm(selected, config));
     let best: { m: FrameMember; gap: number; face: number } | null = null;
     members.forEach((m) => {
       if (m.id === selected.id) return;
-      const b = memberBox(m, memberTubeCm(m, config));
+      const b = memberBox(m, memberSectionCm(m, config));
       const overlaps = [0, 1, 2].every((k) => k === i || (b.max[k] > sb.min[k] + 0.05 && b.min[k] < sb.max[k] - 0.05));
       if (!overlaps) return;
       const gap = dir < 0 ? sb.min[i] - b.max[i] : b.min[i] - sb.max[i];
@@ -698,8 +698,8 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
   const totalLength = members.reduce((s, m) => s + m.length, 0);
   const connectedCount = selected
     ? (() => {
-        const sb = memberBox(selected, memberTubeCm(selected, config));
-        return members.filter((m) => m.id !== selected.id && boxesTouch(sb, memberBox(m, memberTubeCm(m, config)))).length;
+        const sb = memberBox(selected, memberSectionCm(selected, config));
+        return members.filter((m) => m.id !== selected.id && boxesTouch(sb, memberBox(m, memberSectionCm(m, config)))).length;
       })()
     : 0;
 
@@ -902,7 +902,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
               {(['y', 'z', 'x'] as FrameAxis[]).map((axis) => {
                 const info = AXIS_POS[axis];
                 const i = AXIS_INDEX[axis];
-                const sb = memberBox(selected, memberTubeCm(selected, config));
+                const sb = memberBox(selected, memberSectionCm(selected, config));
                 const toMin = r1(sb.min[i]);
                 const toMax = r1(info.span - sb.max[i]);
                 const nbs = axis === selected.axis ? [] : ([-1, 1] as const).map((dir) => ({ dir, nb: neighborAlong(axis, dir) }));
@@ -949,19 +949,45 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
                 Jarak diukur dari sisi luar pipa (bukan as). Kedalaman juga bisa diseret di Tampak Kiri/Kanan/Atas.
               </p>
 
-              <label className="flex items-center justify-between text-[11px] text-neutral-400">
+              <label className="flex items-center justify-between gap-2 text-[11px] text-neutral-400">
                 Ukuran pipa
                 <select
-                  value={selected.tubeSize || 0}
-                  onChange={(e) => updateMember(selected.id, { tubeSize: parseInt(e.target.value) || undefined })}
-                  className="px-1.5 py-1 bg-black/40 border border-white/10 rounded text-xs text-neutral-200 cursor-pointer"
+                  value={`${selected.tubeSize || 0}x${selected.tubeH || 0}`}
+                  onChange={(e) => {
+                    const [w, h] = e.target.value.split('x').map((v) => parseInt(v) || undefined);
+                    updateMember(selected.id, { tubeSize: w, tubeH: h });
+                  }}
+                  className="min-w-0 px-1.5 py-1 bg-black/40 border border-white/10 rounded text-xs text-neutral-200 cursor-pointer"
                 >
-                  <option value={0}>Ikut rangka ({config.frame?.tubeSize || 40} mm)</option>
-                  {[20, 30, 40, 50, 60].map((s) => (
-                    <option key={s} value={s}>
-                      {s}×{s} mm
-                    </option>
-                  ))}
+                  <option value="0x0">Ikut rangka ({config.frame?.tubeSize || 40}×{config.frame?.tubeSize || 40} mm)</option>
+                  <optgroup label="Kotak">
+                    {[20, 30, 40, 50, 60].map((s) => (
+                      <option key={s} value={`${s}x0`}>
+                        {s}×{s} mm
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Persegi panjang">
+                    {[
+                      [20, 40],
+                      [40, 20],
+                      [30, 60],
+                      [60, 30],
+                      [40, 60],
+                      [60, 40],
+                    ].map(([w, h]) => (
+                      <option key={`${w}x${h}`} value={`${w}x${h}`}>
+                        {w}×{h} mm ·{' '}
+                        {selected.axis === 'y'
+                          ? h > w
+                            ? `sisi ${h / 10} cm ke depan`
+                            : `sisi ${w / 10} cm ke samping`
+                          : h > w
+                          ? `berdiri (tinggi ${h / 10} cm)`
+                          : `tidur (tinggi ${h / 10} cm)`}
+                      </option>
+                    ))}
+                  </optgroup>
                 </select>
               </label>
 
