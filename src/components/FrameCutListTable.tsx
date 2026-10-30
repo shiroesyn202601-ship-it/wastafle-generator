@@ -189,7 +189,7 @@ const ROWS_PER_PAGE = 5;
 // Batas kiri tiap kolom, relatif terhadap margin kiri
 const COLS = { no: 0, pos: 36, cut: 206, part: 456, len: 806, qty: 896, sub: 976, end: SHEET_W - 2 * M };
 
-const VIEWS_H = 340; // tinggi blok gambar 5 tampak di lembar export
+const VIEWS_H = SHEET_H - 2 * M - HEAD_H; // blok gambar 3D + 5 tampak memenuhi halaman pertama
 
 const ROLE_CATEGORY: Record<FrameMemberRole, Category> = {
   post: 'tiang-vertikal',
@@ -201,7 +201,7 @@ const ROLE_CATEGORY: Record<FrameMemberRole, Category> = {
 };
 
 /**
- * Gambar tampak Depan, Belakang (baris 1) dan Atas, Kiri, Kanan (baris 2) dengan skala sama,
+ * Gambar 3D + tampak Depan, Belakang (kanan atas) dan Atas, Kiri, Kanan (bawah) dengan skala sama,
  * dimuat sepadat mungkin dalam kotak (x, y, width, height).
  */
 const FrameViewsBlock: React.FC<{ config: KitchenConfig; members: FrameMember[]; x: number; y: number; width: number; height: number }> = ({
@@ -216,10 +216,11 @@ const FrameViewsBlock: React.FC<{ config: KitchenConfig; members: FrameMember[];
   const span = (a: FrameAxis) => (a === 'x' ? W : a === 'y' ? H : D);
   const pad = { t: 18, b: 34, l: 26, r: 8 };
   const gap = 18;
+  // Kolom kanan (Depan & Belakang) maks. 55% lebar, sisanya untuk gambar 3D
   const s = Math.min(
-    (width - 2 * (pad.l + pad.r) - gap) / (2 * W),
+    (0.55 * width - (pad.l + pad.r)) / W,
     (width - 3 * (pad.l + pad.r) - 2 * gap) / (W + 2 * D),
-    (height - 2 * (pad.t + pad.b) - gap) / (H + Math.max(D, H))
+    (height - 3 * (pad.t + pad.b) - 2 * gap) / (2 * H + Math.max(D, H))
   );
   const cellW = (v: FrameView) => span(VIEW_DEFS[v].h) * s + pad.l + pad.r;
   const rows: FrameView[][] = [
@@ -300,21 +301,125 @@ const FrameViewsBlock: React.FC<{ config: KitchenConfig; members: FrameMember[];
     );
   };
 
-  const totalH = rowH(rows[0]) + gap + rowH(rows[1]);
-  let oy = y + (height - totalH) / 2;
+  // Kanan atas: Depan & Belakang bertumpuk; kiri atas: 3D; bawah: Atas, Kiri, Kanan
+  const colW = cellW('front');
+  const colX = x + width - colW;
+  const frontH = rowH(['front']);
+  const row2Y = y + 2 * (frontH + gap);
+  const row2W = rows[1].reduce((sum, v) => sum + cellW(v), 0) + gap * (rows[1].length - 1);
+  let ox = x + (width - row2W) / 2;
   return (
     <g>
-      {rows.map((r) => {
-        const rw = r.reduce((sum, v) => sum + cellW(v), 0) + gap * (r.length - 1);
-        let ox = x + (width - rw) / 2;
-        const out = r.map((v) => {
-          const el = renderView(v, ox, oy);
-          ox += cellW(v) + gap;
-          return el;
-        });
-        oy += rowH(r) + gap;
-        return out;
+      <Frame3DView config={config} members={members} x={x} y={y} width={colX - gap - x} height={row2Y - gap - y} />
+      {renderView('front', colX, y)}
+      {renderView('back', colX, y + frontH + gap)}
+      {rows[1].map((v) => {
+        const el = renderView(v, ox, row2Y);
+        ox += cellW(v) + gap;
+        return el;
       })}
+    </g>
+  );
+};
+
+/**
+ * Gambar 3D (proyeksi dimetri dari depan-kiri-atas) rangka besi + top table dengan lubang wastafel & kompor.
+ * Batang digambar dari yang terjauh ke terdekat (painter's algorithm).
+ */
+const Frame3DView: React.FC<{ config: KitchenConfig; members: FrameMember[]; x: number; y: number; width: number; height: number }> = ({
+  config,
+  members,
+  x,
+  y,
+  width,
+  height,
+}) => {
+  const { W, D, H, frameH } = getFrameDims(config);
+  // Sumbu X naik sedikit ke kanan, kedalaman (ke belakang) naik ke kiri dan diperpendek
+  const ax = (12 * Math.PI) / 180;
+  const az = (38 * Math.PI) / 180;
+  const kz = 0.6;
+  const proj = (px: number, py: number, pz: number): [number, number] => {
+    const back = D - pz; // z diukur dari belakang
+    return [px * Math.cos(ax) - back * kz * Math.cos(az), -px * Math.sin(ax) - back * kz * Math.sin(az) - py];
+  };
+
+  type B = { min: number[]; max: number[] };
+  const steel: B[] = members.map((m) => memberBox(m, memberSectionCm(m, config)));
+  const slab: B = { min: [0, frameH, 0], max: [W, H, D] };
+
+  // Urutan gambar: A sebelum B bila A jelas di belakang/kanan/bawah B
+  const e = 0.05;
+  const behind = (a: B, b: B) => a.min[0] >= b.max[0] - e || a.max[2] <= b.min[2] + e || a.max[1] <= b.min[1] + e;
+  const key = (b: B) => b.min[0] + (D - b.max[2]) - b.max[1];
+  const rest = [...steel];
+  const ordered: B[] = [];
+  while (rest.length) {
+    let i = rest.findIndex((a) => !rest.some((c) => c !== a && behind(c, a) && !behind(a, c)));
+    if (i < 0) i = rest.reduce((bi, b, j) => (key(b) > key(rest[bi]) ? j : bi), 0);
+    ordered.push(rest.splice(i, 1)[0]);
+  }
+
+  // Skala & posisi agar muat di kotak
+  const corners = [slab, ...steel].flatMap((b) =>
+    [0, 1].flatMap((i) => [0, 1].flatMap((j) => [0, 1].map((k) => proj(i ? b.max[0] : b.min[0], j ? b.max[1] : b.min[1], k ? b.max[2] : b.min[2]))))
+  );
+  const minX = Math.min(...corners.map((c) => c[0]));
+  const maxX = Math.max(...corners.map((c) => c[0]));
+  const minY = Math.min(...corners.map((c) => c[1]));
+  const maxY = Math.max(...corners.map((c) => c[1]));
+  const titleH = 16;
+  const capH = 14;
+  const s = Math.min(width / (maxX - minX), (height - titleH - capH) / (maxY - minY));
+  const offX = x + (width - (maxX - minX) * s) / 2 - minX * s;
+  const offY = y + titleH + (height - titleH - capH - (maxY - minY) * s) / 2 - minY * s;
+  const pt = (px: number, py: number, pz: number) => {
+    const [a, b] = proj(px, py, pz);
+    return `${(offX + a * s).toFixed(1)},${(offY + b * s).toFixed(1)}`;
+  };
+  const poly = (pts: [number, number, number][]) => pts.map((p) => pt(...p)).join(' ');
+
+  const faces = (b: B, c: { top: string; front: string; left: string; stroke: string }, sw: number, k: string) => {
+    const [x0, y0, z0] = b.min;
+    const [x1, y1, z1] = b.max;
+    return (
+      <g key={k} stroke={c.stroke} strokeWidth={sw} strokeLinejoin="round">
+        <polygon points={poly([[x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]])} fill={c.left} />
+        <polygon points={poly([[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]])} fill={c.front} />
+        <polygon points={poly([[x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]])} fill={c.top} />
+      </g>
+    );
+  };
+
+  // Lubang di permukaan top table (posX dari kiri, posY dari belakang, sesuai model 3D)
+  const cutout = (cxm: number, czm: number, w: number, l: number, fill: string, k: string) => (
+    <polygon
+      key={k}
+      points={poly([
+        [cxm - w / 2, H, czm - l / 2],
+        [cxm + w / 2, H, czm - l / 2],
+        [cxm + w / 2, H, czm + l / 2],
+        [cxm - w / 2, H, czm + l / 2],
+      ])}
+      fill={fill}
+      stroke="#374151"
+      strokeWidth="0.6"
+    />
+  );
+
+  return (
+    <g>
+      <text x={x} y={y + 11} fontSize="10.5" fontWeight="bold" fill="#000">
+        GAMBAR 3D · RANGKA + TOP TABLE
+      </text>
+      {ordered.map((b, i) => faces(b, { top: '#6b7280', front: '#2b2f36', left: '#15181d', stroke: '#000' }, 0.3, `m${i}`))}
+      {faces(slab, { top: '#eadfcb', front: '#d4c2a2', left: '#bfa982', stroke: '#8b7355' }, 0.6, 'slab')}
+      {config.sink.enabled && cutout(config.sink.posX, config.sink.posY, config.sink.width, config.sink.length, '#9ca3af', 'sink')}
+      {config.stove.enabled && cutout(config.stove.posX, config.stove.posY, config.stove.width, config.stove.length, '#1f2937', 'stove')}
+      <text x={x + width / 2} y={y + height - 2} fontSize="9" textAnchor="middle" fill="#374151">
+        {W} × {D} × {H} cm · top table {config.countertopThickness ?? 4} cm{config.sink.enabled ? ' · lubang wastafel (abu-abu)' : ''}
+        {config.stove.enabled ? ' · lubang kompor (hitam)' : ''}
+      </text>
     </g>
   );
 };
@@ -382,6 +487,8 @@ export const CutListSheet: React.FC<{
 
       {showViews && <FrameViewsBlock config={config} members={members} x={M} y={M + HEAD_H - 6} width={R - M} height={VIEWS_H - 6} />}
 
+      {(rows.length > 0 || showTotals) && (
+      <>
       {/* Kepala tabel */}
       <rect x={M} y={tableTop} width={R - M} height={TH_H} fill="#f3f4f6" stroke="#000" strokeWidth="0.75" />
       {(
@@ -443,6 +550,8 @@ export const CutListSheet: React.FC<{
       {(['pos', 'cut', 'part', 'len', 'qty', 'sub'] as (keyof typeof COLS)[]).map((c) => (
         <line key={c} x1={cx(c)} y1={tableTop} x2={cx(c)} y2={tableBottom} stroke="#000" strokeWidth="0.5" />
       ))}
+      </>
+      )}
 
       {showTotals && (
         <g>
@@ -483,10 +592,10 @@ const sheetProps = (config: KitchenConfig) => {
   return { cutList, members, rows };
 };
 
-/** Cetak lewat dialog browser (Simpan sebagai PDF), A4 lanskap: hal. 1 = 5 tampak + baris awal, berikutnya 5 baris/halaman */
+/** Cetak lewat dialog browser (Simpan sebagai PDF), A4 lanskap: hal. 1 = gambar 3D + 5 tampak, berikutnya tabel 5 baris/halaman */
 export function printCutListPdf(config: KitchenConfig) {
   const { cutList, members, rows } = sheetProps(config);
-  const firstRows = Math.floor((SHEET_H - 2 * M - HEAD_H - VIEWS_H - TH_H - TOTAL_H) / ROW_H);
+  const firstRows = Math.max(0, Math.floor((SHEET_H - 2 * M - HEAD_H - VIEWS_H - TH_H - TOTAL_H) / ROW_H));
   const chunks = [rows.slice(0, firstRows)];
   for (let i = firstRows; i < rows.length; i += ROWS_PER_PAGE) chunks.push(rows.slice(i, i + ROWS_PER_PAGE));
   const svgs = chunks.map((chunk, i) =>
@@ -513,7 +622,7 @@ export function printCutListPdf(config: KitchenConfig) {
 </style></head><body>${svgs.join('')}</body></html>`);
 }
 
-/** Unduh satu gambar PNG berisi 5 tampak rangka + seluruh tabel potongan */
+/** Unduh satu gambar PNG berisi gambar 3D + 5 tampak rangka + seluruh tabel potongan */
 export function downloadCutListPng(config: KitchenConfig) {
   const { cutList, members, rows } = sheetProps(config);
   const height = M + HEAD_H + VIEWS_H + TH_H + rows.length * ROW_H + TOTAL_H + M;
