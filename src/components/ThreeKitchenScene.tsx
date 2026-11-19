@@ -726,7 +726,7 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
     topMesh.position.set(0, H, 0);
     topMesh.castShadow = true;
     topMesh.receiveShadow = true;
-    kitchenGroup.add(topMesh);
+    if (!config.hideTopTable) kitchenGroup.add(topMesh);
 
     // 3. BACKSPLASH
     if (config.backsplashEnabled && config.backsplashHeight > 0) {

@@ -28,6 +28,7 @@ export const BottomSimulationDock: React.FC<Props> = ({ config, onChange }) => {
     showDimensions3D,
     showSafetyClearance,
     showFrameOnly,
+    hideTopTable,
   } = config;
 
   const isAnyOpen = drawersOpenPercent > 0 || doorsOpenPercent > 0;
@@ -199,6 +200,24 @@ export const BottomSimulationDock: React.FC<Props> = ({ config, onChange }) => {
                 </span>
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/5">
                   {showXRayWireframe ? 'AKTIF' : 'OFF'}
+                </span>
+              </button>
+
+              <button
+                onClick={() => onChange({ hideTopTable: !hideTopTable })}
+                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                  hideTopTable
+                    ? 'bg-rose-500/20 border border-rose-500/60 text-rose-300 shadow-sm shadow-rose-500/10'
+                    : 'bg-neutral-950/70 border border-white/5 text-neutral-300 hover:border-white/20 hover:text-white'
+                }`}
+                title="Tampilkan / sembunyikan top table (countertop) di tampilan 3D"
+              >
+                <span className="flex items-center gap-2 text-[11px]">
+                  <Layers className="w-3.5 h-3.5 text-rose-400" />
+                  Top Table
+                </span>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/5">
+                  {hideTopTable ? 'HIDE' : 'SHOW'}
                 </span>
               </button>
 

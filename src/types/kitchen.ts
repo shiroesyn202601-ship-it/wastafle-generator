@@ -424,6 +424,7 @@ export interface KitchenConfig {
   drawersOpenPercent: number; // 0 (closed) to 100 (fully pulled out)
   doorsOpenPercent: number; // 0 (closed) to 100 (fully rotated open)
   showXRayWireframe: boolean;
+  hideTopTable?: boolean; // Sembunyikan top table (countertop) di tampilan 3D
   showDimensions3D: boolean;
   showSafetyClearance: boolean;
 }
@@ -626,6 +627,7 @@ export const DEFAULT_KITCHEN_CONFIG: KitchenConfig = {
   "drawersOpenPercent": 0,
   "doorsOpenPercent": 0,
   "showXRayWireframe": false,
+  "hideTopTable": false,
   "showDimensions3D": true,
   "showSafetyClearance": true
 };
