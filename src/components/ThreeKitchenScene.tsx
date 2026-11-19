@@ -16,8 +16,8 @@ import {
 import { getHplSwatch, getFjlSpecies, HPL_SURFACE_LABELS } from '../utils/finishes';
 import { getFrameMembers, getFootMembers, memberTubeCm, memberSectionCm } from '../utils/frameLayout';
 import { getSinkStoveGap } from '../utils/layoutOps';
-import { getValidHinges, computeHingeLimit, HINGE_TYPES } from '../utils/frameHinges';
-import { Box3 as FrameBox } from '../utils/frameLayout';
+import { getValidHinges, computeHingeLimit, HINGE_TYPES, HingeLimit } from '../utils/frameHinges';
+import { Box3 as FrameBox, memberBox } from '../utils/frameLayout';
 
 // Cached once per page: probing creates an extra WebGL context, so don't repeat it on every remount
 let softwareGlCache: boolean | null = null;
@@ -1499,9 +1499,24 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
       return mesh;
     };
 
+    // Sudut batas tiap engsel + batang daun lipat yang ikut berputar (pemilik = batang berengsel)
+    const limByMember = new Map<string, HingeLimit>();
+    hingeByMember.forEach((h, mid) => {
+      const l = computeHingeLimit(cfg, members, h);
+      if (l) limByMember.set(mid, l);
+    });
+    const leafOwner = new Map<string, string>();
+    limByMember.forEach((l, mid) =>
+      l.leafIds.forEach((id) => {
+        if (!hingeByMember.has(id) && !leafOwner.has(id)) leafOwner.set(id, mid);
+      })
+    );
+    const pivots = new Map<string, { pivot: THREE.Group; pivotW: THREE.Vector3 }>();
+
     members.forEach((m) => {
+      if (leafOwner.has(m.id)) return; // digambar sebagai anak pivot engselnya (di bawah)
       const hinge = hingeByMember.get(m.id);
-      const lim = hinge ? computeHingeLimit(cfg, members, hinge) : null;
+      const lim = hinge ? limByMember.get(m.id) || null : null;
       if (hinge && lim && lim.geometry.movingLen >= 0.1) {
         const g = lim.geometry;
         if (g.fixedBox) frameGroup.add(boxMesh(g.fixedBox));
@@ -1513,6 +1528,7 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
         pivot.userData.hingeId = hinge.id;
         pivot.add(boxMesh(g.movingBox, pivotW));
         frameGroup.add(pivot);
+        pivots.set(m.id, { pivot, pivotW });
 
         const axis = new THREE.Vector3(g.a[0], g.a[1], g.a[2]).normalize();
         const u = new THREE.Vector3(g.u[0], g.u[1], g.u[2]);
@@ -1613,7 +1629,17 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
       frameGroup.add(mesh);
     });
 
-    const feet = getFootMembers(cfg, members);
+    // Daun lipat: batang yang ikut berputar bersama potongan berengsel
+    leafOwner.forEach((owner, id) => {
+      const mm = members.find((x) => x.id === id);
+      if (!mm) return;
+      const box = memberBox(mm, memberSectionCm(mm, cfg));
+      const pv = pivots.get(owner);
+      if (pv) pv.pivot.add(boxMesh(box, pv.pivotW));
+      else frameGroup.add(boxMesh(box));
+    });
+
+    const feet = getFootMembers(cfg, members).filter((m) => !leafOwner.has(m.id));
     if (feet.length > 0 && plinthH > 0.005) {
       const footMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.9, roughness: 0.2 });
       feet.forEach((m) => {

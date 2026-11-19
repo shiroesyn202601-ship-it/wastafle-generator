@@ -371,6 +371,9 @@ export interface FrameHinge {
   //         berputar di garis tepi itu (seperti daun lipat dengan engsel piano). pos & side diabaikan.
   mode?: 'point' | 'edge';
   partnerId?: string;
+  // true: batang lain yang tersambung ke potongan bergerak (di sisi yang sama dari garis engsel) ikut
+  //       berputar sebagai satu daun lipat
+  carry?: boolean;
   label?: string;
 }
 

@@ -9,14 +9,18 @@ import {
   FOLD_LABELS,
   foldOptions,
   getValidHinges,
-  movingObb,
   obbCorners,
+  boxObb,
+  movingBoxes,
+  hingePlane,
+  splitBridgesAtPlane,
   rotate,
   newHingeId,
   HingeLimit,
   V3,
 } from '../utils/frameHinges';
 import { HingeIcon } from './HingeIcon';
+import { Scissors } from 'lucide-react';
 import {
   getFrameDims,
   getFrameMembers,
@@ -591,7 +595,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
           const col = HINGE_TYPES[hg.type].color;
           const deg = isSel && previewDeg !== null ? Math.min(previewDeg, lim.limitDeg) : lim.limitDeg;
           const pt = (p: V3) => ({ x: mapAxis(d.h, d.hFlip, p[AXIS_INDEX[d.h]]), y: vs - mapAxis(d.v, d.vFlip, p[AXIS_INDEX[d.v]]) });
-          const ghost = convexHull(obbCorners(movingObb(g, deg)).map(pt));
+          const ghosts = movingBoxes(config, members, lim).map((b) => convexHull(obbCorners(boxObb(g, b, deg)).map(pt)));
           const arc: string[] = [];
           const tipRel: V3 = [g.u[0] * g.movingLen, g.u[1] * g.movingLen, g.u[2] * g.movingLen];
           for (let a = 0; a <= deg + 0.001; a += Math.max(1, deg / 40)) {
@@ -605,14 +609,17 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
             <g key={hg.id} opacity={isSel || !selectedId ? 1 : 0.55}>
               {g.movingLen > 0.1 && deg > 0.01 && (
                 <>
-                  <polygon
-                    points={ghost.map((q) => `${q.x},${q.y}`).join(' ')}
-                    fill={col}
-                    fillOpacity={0.12}
-                    stroke={col}
-                    strokeWidth={sw * 1.2}
-                    strokeDasharray={`${fsz * 0.45} ${fsz * 0.3}`}
-                  />
+                  {ghosts.map((ghost, gi) => (
+                    <polygon
+                      key={gi}
+                      points={ghost.map((q) => `${q.x},${q.y}`).join(' ')}
+                      fill={col}
+                      fillOpacity={0.12}
+                      stroke={col}
+                      strokeWidth={sw * 1.2}
+                      strokeDasharray={`${fsz * 0.45} ${fsz * 0.3}`}
+                    />
+                  ))}
                   {arc.length > 1 && <polyline points={arc.join(' ')} fill="none" stroke={col} strokeWidth={sw} strokeDasharray={`${fsz * 0.2} ${fsz * 0.25}`} />}
                 </>
               )}
@@ -1292,6 +1299,59 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
                           </div>
                         </div>
 
+                        <div className="p-2 rounded-md bg-black/20 border border-white/10 space-y-1.5 text-[10px]">
+                          <label className="flex items-start gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={!!hg.carry}
+                              onChange={(e) => updateHinge(hg.id, { carry: e.target.checked })}
+                              className="mt-0.5 accent-amber-500"
+                            />
+                            <span className="text-neutral-300 leading-snug">
+                              Bawa batang yang tersambung (daun lipat)
+                              <span className="block text-neutral-500">
+                                Batang di sisi yang ditekuk yang tersambung ke batang ini ikut berputar sebagai satu bagian.
+                              </span>
+                            </span>
+                          </label>
+                          {hg.carry && lim && (
+                            <div className="text-neutral-400">
+                              Ikut berputar: <span className="text-amber-200 font-semibold">{lim.leafIds.length} batang</span>
+                            </div>
+                          )}
+                          {hg.carry && lim && lim.bridges.length > 0 && (
+                            <div className="space-y-1">
+                              <div className="text-rose-300 leading-snug">
+                                {lim.bridges.length} batang melintasi garis engsel dan masih menyambung kedua sisi:{' '}
+                                {lim.bridges.map((b) => b.name).join(', ')}
+                              </div>
+                              {lim.bridges.some((b) => b.splittable) && (
+                                <button
+                                  onClick={() =>
+                                    commit(
+                                      splitBridgesAtPlane(
+                                        baseMembers,
+                                        lim.bridges.filter((b) => b.splittable).map((b) => b.id),
+                                        hingePlane(lim.geometry),
+                                        newMemberId
+                                      )
+                                    )
+                                  }
+                                  className="w-full flex items-center justify-center gap-1 py-1.5 rounded-md bg-rose-600/25 hover:bg-rose-600/40 border border-rose-500/40 font-semibold text-rose-100 cursor-pointer"
+                                >
+                                  <Scissors className="w-3 h-3" /> Potong {lim.bridges.filter((b) => b.splittable).length} batang di garis engsel
+                                </button>
+                              )}
+                              {lim.bridges.some((b) => !b.splittable) && (
+                                <div className="text-neutral-500 leading-snug">
+                                  Tidak bisa dipotong otomatis (sejajar garis engsel), geser atau hapus manual:{' '}
+                                  {lim.bridges.filter((b) => !b.splittable).map((b) => b.name).join(', ')}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
                         {lim && (
                           <div className="p-2 rounded-md bg-black/30 border border-white/10 space-y-1 text-[10px]">
                             <div className="flex justify-between">
@@ -1301,10 +1361,12 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
                             <div className="text-neutral-400 leading-snug">
                               {lim.geometry.movingLen < 0.1
                                 ? 'Tidak ada potongan yang bisa ditekuk: pindahkan engsel atau ganti sisi.'
+                                : lim.bridges.length > 0
+                                ? 'Daun lipat masih terkunci oleh batang yang melintasi garis engsel. Potong dulu batang itu (tombol di atas).'
                                 : lim.blockedBy && lim.limitDeg < 0.5
                                 ? `Terjepit ${lim.blockedBy.name}: potongan langsung menabrak besi itu. Pendekkan batang, pindahkan engsel, ganti sisi, atau ganti arah tekuk.`
                                 : lim.blockedBy
-                                ? `Berhenti tepat saat menyentuh ${lim.blockedBy.name}.`
+                                ? `Berhenti tepat saat menyentuh ${lim.blockedBy.name}. Supaya bisa lebih jauh: geser garis engsel, pendekkan bagian yang ditekuk, atau beri jarak ke batang itu.`
                                 : `Bebas sampai batas engsel (${lim.typeMax}°).`}
                             </div>
                             {lim.attached.length > 0 && (

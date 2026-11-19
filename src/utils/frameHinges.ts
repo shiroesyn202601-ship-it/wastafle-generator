@@ -1,5 +1,5 @@
 import { KitchenConfig, FrameMember, FrameHinge, FrameAxis, HingeType } from '../types/kitchen';
-import { memberBox, memberSectionCm, FRAME_ROLE_LABELS, AXIS_INDEX, Box3 } from './frameLayout';
+import { memberBox, memberSectionCm, boxesTouch, FRAME_ROLE_LABELS, AXIS_INDEX, Box3 } from './frameLayout';
 
 /**
  * Engsel lipat pada batang rangka.
@@ -311,9 +311,83 @@ export interface HingeLimit {
   typeMax: number;
   blockedBy: HingeObstacle | null; // besi / lantai yang menahan tekukan (null = batas engsel)
   attached: string[]; // batang yang menempel di potongan bergerak (tidak ikut diperhitungkan)
+  leafIds: string[]; // batang lain yang ikut berputar (daun lipat, bila carry aktif)
+  bridges: { id: string; name: string; splittable: boolean }[]; // batang yang melintasi garis engsel
 }
 
 const memberName = (m: FrameMember) => m.label || FRAME_ROLE_LABELS[m.role];
+
+/**
+ * Bidang engsel: bidang datar yang memisahkan sisi tetap & sisi bergerak.
+ * Engsel titik: tegak lurus batang di titik engsel. Engsel sejajar: muka yang menempel antara kedua batang.
+ */
+export function hingePlane(g: HingeGeometry): { axis: FrameAxis; coord: number; movingSign: 1 | -1 } {
+  const ui = g.u.findIndex((v) => Math.abs(v) > 0.5);
+  const axis = AXES[ui];
+  return { axis, coord: g.P[ui], movingSign: g.u[ui] > 0 ? 1 : -1 };
+}
+
+const SIDE_TOL = 0.3;
+
+/**
+ * Daun lipat: batang di sisi bergerak bidang engsel yang tersambung (bersentuhan, toleransi 0,3 cm)
+ * ke potongan bergerak, dicari dengan penelusuran graf (BFS). Batang yang melintasi bidang engsel
+ * dan menyentuh daun = batang penghubung: selama belum dipotong, ia menahan lipatan.
+ */
+export function computeLeaf(config: KitchenConfig, members: FrameMember[], g: HingeGeometry) {
+  const plane = hingePlane(g);
+  const pi = AXIS_INDEX[plane.axis];
+  const excluded = new Set([g.member.id, g.hinge.partnerId || '']);
+  const boxes = new Map(members.map((m) => [m.id, memberBox(m, memberSectionCm(m, config))]));
+  const sideOf = (b: Box3): 'moving' | 'fixed' | 'cross' => {
+    const lo = (b.min[pi] - plane.coord) * plane.movingSign;
+    const hi = (b.max[pi] - plane.coord) * plane.movingSign;
+    const near = Math.min(lo, hi);
+    const far = Math.max(lo, hi);
+    if (near >= -SIDE_TOL) return 'moving';
+    if (far <= SIDE_TOL) return 'fixed';
+    return 'cross';
+  };
+  const leaf: FrameMember[] = [];
+  const bridges: FrameMember[] = [];
+  const seen = new Set<string>();
+  const queue: Box3[] = [g.movingBox];
+  while (queue.length) {
+    const cur = queue.shift()!;
+    members.forEach((m) => {
+      if (seen.has(m.id) || excluded.has(m.id)) return;
+      const b = boxes.get(m.id)!;
+      if (!boxesTouch(cur, b, SIDE_TOL)) return;
+      const side = sideOf(b);
+      if (side === 'moving') {
+        seen.add(m.id);
+        leaf.push(m);
+        queue.push(b);
+      } else if (side === 'cross') {
+        seen.add(m.id);
+        bridges.push(m);
+      }
+    });
+  }
+  return { plane, leaf, bridges };
+}
+
+/** Kotak sejajar sumbu (cm) yang ikut berputar θ derajat di sekitar as engsel → OBB */
+export function boxObb(g: HingeGeometry, b: Box3, deg: number): Obb {
+  const t = (deg * Math.PI) / 180;
+  const c: V3 = [(b.min[0] + b.max[0]) / 2, (b.min[1] + b.max[1]) / 2, (b.min[2] + b.max[2]) / 2];
+  return {
+    c: add(g.pivot, rotate(sub(c, g.pivot), g.a, t)),
+    axes: [rotate(WORLD[0], g.a, t), rotate(WORLD[1], g.a, t), rotate(WORLD[2], g.a, t)],
+    half: [(b.max[0] - b.min[0]) / 2, (b.max[1] - b.min[1]) / 2, (b.max[2] - b.min[2]) / 2],
+  };
+}
+
+/** Semua kotak yang ikut berputar pada engsel ini (potongan bergerak + daun lipat) */
+export function movingBoxes(config: KitchenConfig, members: FrameMember[], lim: HingeLimit): Box3[] {
+  const ids = new Set(lim.leafIds);
+  return [lim.geometry.movingBox, ...members.filter((m) => ids.has(m.id)).map((m) => memberBox(m, memberSectionCm(m, config)))];
+}
 
 /** Hitung sudut tekuk maksimum sebuah engsel sebelum menabrak besi lain / lantai */
 export function computeHingeLimit(config: KitchenConfig, members: FrameMember[], hinge: FrameHinge): HingeLimit | null {
@@ -323,25 +397,40 @@ export function computeHingeLimit(config: KitchenConfig, members: FrameMember[],
   if (hinge.mode === 'edge' && (!partner || !edgePartnerInfo(config, member, partner))) return null;
   const g = hingeGeometry(config, member, hinge, partner);
   const typeMax = HINGE_TYPES[hinge.type]?.maxAngle ?? 180;
-  if (g.movingLen < 0.1) return { geometry: g, limitDeg: 0, typeMax, blockedBy: null, attached: [] };
+  const base = { geometry: g, typeMax, attached: [] as string[], leafIds: [] as string[], bridges: [] as HingeLimit['bridges'] };
+  if (g.movingLen < 0.1) return { ...base, limitDeg: 0, blockedBy: null };
+
+  const plane = hingePlane(g);
+  const leafInfo = hinge.carry ? computeLeaf(config, members, g) : null;
+  const leafIds = new Set((leafInfo?.leaf || []).map((m) => m.id));
+  const bridges = (leafInfo?.bridges || []).map((m) => ({ id: m.id, name: memberName(m), splittable: m.axis === plane.axis }));
 
   const all: HingeObstacle[] = members
-    .filter((m) => m.id !== member.id)
+    .filter((m) => m.id !== member.id && !leafIds.has(m.id))
     .map((m) => ({ id: m.id, name: memberName(m), box: memberBox(m, memberSectionCm(m, config)) }));
   if (g.fixedBox) all.push({ id: member.id, name: `${memberName(member)} (potongan tetap)`, box: g.fixedBox });
   all.push({ id: 'floor', name: 'Lantai', box: { min: [-1e4, -1e4, -1e4], max: [1e4, 0, 1e4] } });
 
-  // Batang yang sudah bertumpuk dengan potongan bergerak sejak awal (dilas di potongan itu) diabaikan
-  const rest = movingObb(g, 0);
-  const attached = all.filter((o) => obbHitsBox(rest, o.box));
-  const obstacles = all.filter((o) => !attached.includes(o));
-  const hitAt = (deg: number) => {
-    const o = movingObb(g, deg);
-    return obstacles.find((ob) => obbHitsBox(o, ob.box, CONTACT_EPS)) || null;
-  };
-
+  const bodies: Box3[] = [g.movingBox, ...members.filter((m) => leafIds.has(m.id)).map((m) => memberBox(m, memberSectionCm(m, config)))];
   const STEP = 0.5;
   const CONTACT_EPS = 0.0005; // 0,005 mm: tekukan berhenti tepat saat menyentuh
+
+  // Batang yang sudah bertumpuk dengan bagian bergerak sejak awal (dilas di situ) diabaikan
+  const rest = bodies.map((b) => boxObb(g, b, 0));
+  const attached = all.filter((o) => rest.some((r) => obbHitsBox(r, o.box)));
+  const obstacles = all.filter((o) => !attached.includes(o));
+  const hitAt = (deg: number) => {
+    const obbs = bodies.map((b) => boxObb(g, b, deg));
+    return obstacles.find((ob) => obbs.some((o) => obbHitsBox(o, ob.box, CONTACT_EPS))) || null;
+  };
+  const out = { ...base, attached: attached.map((o) => o.name), leafIds: [...leafIds], bridges };
+  // Batang penghubung dilas ke kedua sisi garis engsel: daun terkunci sampai batang itu dipotong
+  if (bridges.length > 0) {
+    const b = bridges[0];
+    const bm = members.find((m) => m.id === b.id)!;
+    return { ...out, limitDeg: 0, blockedBy: { id: b.id, name: `${b.name} (melintasi garis engsel)`, box: memberBox(bm, memberSectionCm(bm, config)) } };
+  }
+
   let prev = 0;
   for (let step = STEP; ; step += STEP) {
     const deg = Math.min(step, typeMax);
@@ -359,12 +448,37 @@ export function computeHingeLimit(config: KitchenConfig, members: FrameMember[],
           blocker = h;
         } else lo = mid;
       }
-      return { geometry: g, limitDeg: Math.floor(lo * 100) / 100, typeMax, blockedBy: blocker, attached: attached.map((o) => o.name) };
+      return { ...out, limitDeg: Math.floor(lo * 100) / 100, blockedBy: blocker };
     }
     prev = deg;
     if (deg >= typeMax) break;
   }
-  return { geometry: g, limitDeg: typeMax, typeMax, blockedBy: null, attached: attached.map((o) => o.name) };
+  return { ...out, limitDeg: typeMax, blockedBy: null };
+}
+
+/**
+ * Potong batang penghubung tepat di bidang engsel (hanya batang yang searah sumbu bidang),
+ * menjadi dua batang terpisah: satu di sisi tetap, satu di sisi daun lipat.
+ */
+export function splitBridgesAtPlane(
+  members: FrameMember[],
+  bridgeIds: string[],
+  plane: { axis: FrameAxis; coord: number },
+  newId: () => string
+): FrameMember[] {
+  const ids = new Set(bridgeIds);
+  const r1 = (v: number) => Math.round(v * 10) / 10;
+  return members.flatMap((m) => {
+    if (!ids.has(m.id) || m.axis !== plane.axis) return [m];
+    const start = m[m.axis];
+    const cut = r1(plane.coord - start);
+    if (cut <= 0.1 || cut >= m.length - 0.1) return [m];
+    const name = memberName(m);
+    return [
+      { ...m, length: cut, label: `${name} A` },
+      { ...m, id: newId(), [m.axis]: r1(plane.coord), length: r1(m.length - cut), label: `${name} B` },
+    ];
+  });
 }
 
 /** Batang setelah dibelah di titik engsel (untuk daftar potongan): potongan tetap + potongan lipat */
