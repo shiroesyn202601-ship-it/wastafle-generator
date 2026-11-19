@@ -1,5 +1,19 @@
-import React, { useMemo, useRef, useState } from 'react';
-import { KitchenConfig, FrameMember, FrameAxis, FrameMemberRole } from '../types/kitchen';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { KitchenConfig, FrameMember, FrameAxis, FrameMemberRole, FrameHinge, HingeType } from '../types/kitchen';
+import {
+  HINGE_TYPES,
+  computeHingeLimit,
+  defaultHinge,
+  foldOptions,
+  getValidHinges,
+  movingObb,
+  obbCorners,
+  rotate,
+  newHingeId,
+  HingeLimit,
+  V3,
+} from '../utils/frameHinges';
+import { HingeIcon } from './HingeIcon';
 import {
   getFrameDims,
   getFrameMembers,
@@ -32,6 +46,7 @@ import {
   Ruler,
   Magnet,
   Link2,
+  Unlink,
 } from 'lucide-react';
 
 type View = FrameView;
@@ -67,6 +82,31 @@ interface Guide {
 
 const r1 = (v: number) => Math.round(v * 10) / 10;
 
+/** Kulit cembung titik 2D (monotone chain), untuk menggambar bayangan potongan yang ditekuk */
+function convexHull(pts: { x: number; y: number }[]) {
+  const p = [...pts].sort((a, b) => a.x - b.x || a.y - b.y);
+  if (p.length < 3) return p;
+  const cr = (o: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const lower: typeof p = [];
+  for (const q of p) {
+    while (lower.length >= 2 && cr(lower[lower.length - 2], lower[lower.length - 1], q) <= 1e-9) lower.pop();
+    lower.push(q);
+  }
+  const upper: typeof p = [];
+  for (let i = p.length - 1; i >= 0; i--) {
+    const q = p[i];
+    while (upper.length >= 2 && cr(upper[upper.length - 2], upper[upper.length - 1], q) <= 1e-9) upper.pop();
+    upper.push(q);
+  }
+  return [...lower.slice(0, -1), ...upper.slice(0, -1)];
+}
+
+const END_NAMES: Record<FrameAxis, [string, string]> = {
+  x: ['kiri', 'kanan'],
+  y: ['bawah', 'atas'],
+  z: ['belakang', 'depan'],
+};
+
 export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
   const { W, D, H, topT, plinthH, carcaseD, frameH, postBottom, tube } = getFrameDims(config);
   const baseMembers = useMemo(() => getFrameMembers(config), [config]);
@@ -90,6 +130,37 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
   const warnIds = new Set(warnings.map((w) => w.memberId));
   const appliances = getApplianceBoxes(config);
   const def = VIEW_DEFS[view];
+
+  // ---------- Engsel ----------
+  const hinges = useMemo(() => getValidHinges(config, members), [config, members]);
+  const hingeLimits = useMemo(() => {
+    const map = new Map<string, HingeLimit>();
+    hinges.forEach((h) => {
+      const r = computeHingeLimit(config, members, h);
+      if (r) map.set(h.id, r);
+    });
+    return map;
+  }, [config, members, hinges]);
+  // Sudut pratinjau tekuk di gambar 2D (null = tampilkan posisi tekuk maksimum)
+  const [previewDeg, setPreviewDeg] = useState<number | null>(null);
+  const selectedHinge = selectedId ? hinges.find((h) => h.memberId === selectedId) || null : null;
+  useEffect(() => setPreviewDeg(null), [selectedId]);
+
+  const commitHinges = (next: FrameHinge[]) => {
+    onChange({ frame: { ...config.frame, hinges: next } });
+  };
+  const updateHinge = (id: string, updates: Partial<FrameHinge>) => {
+    commitHinges((config.frame?.hinges || []).map((h) => (h.id === id ? { ...h, ...updates } : h)));
+    setPreviewDeg(null);
+  };
+  const addHinge = (m: FrameMember) => {
+    commitHinges([...(config.frame?.hinges || []).filter((h) => h.memberId !== m.id), defaultHinge(m, newHingeId())]);
+    setPreviewDeg(null);
+  };
+  const removeHinge = (id: string) => {
+    commitHinges((config.frame?.hinges || []).filter((h) => h.id !== id));
+    setPreviewDeg(null);
+  };
 
   // ---------- Simpan perubahan ----------
   const commit = (next: FrameMember[]) => {
@@ -490,6 +561,69 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
                   <line x1={x} y1={y} x2={x + w} y2={y + h} />
                   <line x1={x + w} y1={y} x2={x} y2={y + h} />
                 </g>
+              )}
+            </g>
+          );
+        })}
+
+        {/* Engsel: penanda, bayangan posisi tekuk & busur sapuan */}
+        {hinges.map((hg) => {
+          const lim = hingeLimits.get(hg.id);
+          if (!lim) return null;
+          const g = lim.geometry;
+          const isSel = hg.memberId === selectedId;
+          const col = HINGE_TYPES[hg.type].color;
+          const deg = isSel && previewDeg !== null ? Math.min(previewDeg, lim.limitDeg) : lim.limitDeg;
+          const pt = (p: V3) => ({ x: mapAxis(d.h, d.hFlip, p[AXIS_INDEX[d.h]]), y: vs - mapAxis(d.v, d.vFlip, p[AXIS_INDEX[d.v]]) });
+          const ghost = convexHull(obbCorners(movingObb(g, deg)).map(pt));
+          const arc: string[] = [];
+          const tipRel: V3 = [g.u[0] * g.movingLen, g.u[1] * g.movingLen, g.u[2] * g.movingLen];
+          for (let a = 0; a <= deg + 0.001; a += Math.max(1, deg / 40)) {
+            const r = rotate(tipRel, g.a, (Math.min(a, deg) * Math.PI) / 180);
+            const q = pt([g.pivot[0] + r[0], g.pivot[1] + r[1], g.pivot[2] + r[2]]);
+            arc.push(`${q.x},${q.y}`);
+          }
+          const pv = pt(g.pivot);
+          const rad = fsz * (interactive ? 0.75 : 1.1);
+          return (
+            <g key={hg.id} opacity={isSel || !selectedId ? 1 : 0.55}>
+              {g.movingLen > 0.1 && deg > 0.01 && (
+                <>
+                  <polygon
+                    points={ghost.map((q) => `${q.x},${q.y}`).join(' ')}
+                    fill={col}
+                    fillOpacity={0.12}
+                    stroke={col}
+                    strokeWidth={sw * 1.2}
+                    strokeDasharray={`${fsz * 0.45} ${fsz * 0.3}`}
+                  />
+                  {arc.length > 1 && <polyline points={arc.join(' ')} fill="none" stroke={col} strokeWidth={sw} strokeDasharray={`${fsz * 0.2} ${fsz * 0.25}`} />}
+                </>
+              )}
+              <circle
+                cx={pv.x}
+                cy={pv.y}
+                r={rad}
+                fill={col}
+                stroke={isSel ? '#fff' : '#0f172a'}
+                strokeWidth={sw * (isSel ? 2 : 1.2)}
+                style={interactive ? { cursor: 'pointer' } : undefined}
+                onPointerDown={
+                  interactive
+                    ? (e) => {
+                        e.stopPropagation();
+                        setSelectedId(hg.memberId);
+                      }
+                    : undefined
+                }
+              >
+                <title>{`${HINGE_TYPES[hg.type].name} · tekuk maks ${lim.limitDeg}°${lim.blockedBy ? ` (tertahan ${lim.blockedBy.name})` : ''}`}</title>
+              </circle>
+              <circle cx={pv.x} cy={pv.y} r={rad * 0.35} fill="#0f172a" pointerEvents="none" />
+              {interactive && isSel && (
+                <text x={pv.x + rad * 1.4} y={pv.y - rad * 1.2} fontSize={fsz * 0.75} fill={col} fontWeight="bold" pointerEvents="none">
+                  {`${r1(deg)}°`}
+                </text>
               )}
             </g>
           );
@@ -960,6 +1094,165 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
                 </select>
               </label>
 
+              {/* Engsel lipat */}
+              <div className="p-2 rounded-lg bg-amber-500/[0.05] border border-amber-500/25 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-semibold text-amber-300">Engsel Lipat</span>
+                  {selectedHinge && (
+                    <button
+                      onClick={() => removeHinge(selectedHinge.id)}
+                      className="flex items-center gap-1 text-[10px] text-rose-300 hover:text-rose-200 cursor-pointer"
+                    >
+                      <Unlink className="w-3 h-3" /> Lepas
+                    </button>
+                  )}
+                </div>
+                {!selectedHinge ? (
+                  <>
+                    <button
+                      onClick={() => addHinge(selected)}
+                      className="w-full flex items-center justify-center gap-1 py-1.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-[11px] font-semibold text-amber-200 cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3" /> Pasang Engsel di Batang Ini
+                    </button>
+                    <p className="text-[10px] text-neutral-500 leading-snug">
+                      Batang dibelah di titik engsel dan potongannya bisa ditekuk. Taruh engsel di ujung batang untuk engsel besi-ke-besi
+                      (seluruh batang berputar di sambungannya).
+                    </p>
+                  </>
+                ) : (
+                  (() => {
+                    const hg = selectedHinge;
+                    const lim = hingeLimits.get(hg.id);
+                    const [nameA, nameB] = END_NAMES[selected.axis];
+                    const L = selected.length;
+                    const pos = Math.min(Math.max(hg.pos, 0), L);
+                    return (
+                      <>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {(Object.keys(HINGE_TYPES) as HingeType[]).map((t) => (
+                            <button
+                              key={t}
+                              onClick={() => updateHinge(hg.id, { type: t })}
+                              title={HINGE_TYPES[t].desc}
+                              className={`flex flex-col items-center gap-0.5 p-1.5 rounded-md border text-[10px] cursor-pointer ${
+                                hg.type === t ? 'bg-amber-500/20 border-amber-400 text-amber-100' : 'bg-black/30 border-white/10 text-neutral-400 hover:text-white'
+                              }`}
+                            >
+                              <HingeIcon type={t} className="w-full h-10" />
+                              <span className="font-semibold leading-tight text-center">{HINGE_TYPES[t].name}</span>
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-[10px] text-neutral-500 leading-snug">{HINGE_TYPES[hg.type].desc}</p>
+
+                        <NumField
+                          label={`Posisi engsel dari ujung ${nameA} (cm)`}
+                          hint={`batang ${L} cm`}
+                          value={r1(pos)}
+                          onCommit={(v) => updateHinge(hg.id, { pos: Math.min(Math.max(v, 0), L) })}
+                        />
+                        <div className="grid grid-cols-3 gap-1">
+                          {[
+                            { label: `Ujung ${nameA}`, v: 0, side: 'end' as const },
+                            { label: 'Tengah', v: r1(L / 2), side: hg.side },
+                            { label: `Ujung ${nameB}`, v: L, side: 'start' as const },
+                          ].map((b) => (
+                            <button
+                              key={b.label}
+                              onClick={() => updateHinge(hg.id, { pos: b.v, side: b.side })}
+                              className={`py-1 rounded text-[10px] cursor-pointer border ${
+                                Math.abs(pos - b.v) < 0.05 ? 'bg-amber-500/20 border-amber-400/60 text-amber-100' : 'bg-white/5 border-white/10 text-neutral-300 hover:bg-white/10'
+                              }`}
+                            >
+                              {b.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="text-[10px] text-neutral-400">Potongan yang ditekuk</div>
+                          <div className="grid grid-cols-2 gap-1">
+                            {(['start', 'end'] as const).map((sd) => (
+                              <button
+                                key={sd}
+                                onClick={() => updateHinge(hg.id, { side: sd })}
+                                className={`py-1 rounded text-[10px] cursor-pointer border ${
+                                  hg.side === sd ? 'bg-amber-500/20 border-amber-400/60 text-amber-100' : 'bg-white/5 border-white/10 text-neutral-300 hover:bg-white/10'
+                                }`}
+                              >
+                                Sisi {sd === 'start' ? nameA : nameB} · {r1(sd === 'start' ? pos : L - pos)} cm
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="text-[10px] text-neutral-400">Arah tekuk</div>
+                          <div className="grid grid-cols-2 gap-1">
+                            {foldOptions(selected).map((o) => (
+                              <button
+                                key={o.label}
+                                onClick={() => updateHinge(hg.id, { foldAxis: o.axis, foldSign: o.sign })}
+                                className={`py-1 rounded text-[10px] cursor-pointer border ${
+                                  hg.foldAxis === o.axis && hg.foldSign === o.sign
+                                    ? 'bg-amber-500/20 border-amber-400/60 text-amber-100'
+                                    : 'bg-white/5 border-white/10 text-neutral-300 hover:bg-white/10'
+                                }`}
+                              >
+                                {o.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {lim && (
+                          <div className="p-2 rounded-md bg-black/30 border border-white/10 space-y-1 text-[10px]">
+                            <div className="flex justify-between">
+                              <span className="text-neutral-400">Tekuk maksimum</span>
+                              <span className="font-mono font-bold text-amber-300">{lim.limitDeg}°</span>
+                            </div>
+                            <div className="text-neutral-400 leading-snug">
+                              {lim.geometry.movingLen < 0.1
+                                ? 'Tidak ada potongan yang bisa ditekuk: pindahkan engsel atau ganti sisi.'
+                                : lim.blockedBy && lim.limitDeg < 0.5
+                                ? `Terjepit ${lim.blockedBy.name}: potongan langsung menabrak besi itu. Pendekkan batang, pindahkan engsel, ganti sisi, atau ganti arah tekuk.`
+                                : lim.blockedBy
+                                ? `Berhenti tepat saat menyentuh ${lim.blockedBy.name}.`
+                                : `Bebas sampai batas engsel (${lim.typeMax}°).`}
+                            </div>
+                            {lim.attached.length > 0 && (
+                              <div className="text-rose-300/90 leading-snug">
+                                Menempel di potongan yang ditekuk (diabaikan): {lim.attached.slice(0, 3).join(', ')}
+                                {lim.attached.length > 3 ? ', …' : ''}
+                              </div>
+                            )}
+                            {lim.limitDeg > 0 && (
+                              <label className="block pt-1 space-y-0.5">
+                                <span className="flex justify-between text-neutral-500">
+                                  <span>Pratinjau tekuk di gambar</span>
+                                  <span className="font-mono">{r1(Math.min(previewDeg ?? lim.limitDeg, lim.limitDeg))}°</span>
+                                </span>
+                                <input
+                                  type="range"
+                                  min={0}
+                                  max={lim.limitDeg}
+                                  step={0.5}
+                                  value={Math.min(previewDeg ?? lim.limitDeg, lim.limitDeg)}
+                                  onChange={(e) => setPreviewDeg(parseFloat(e.target.value))}
+                                  className="w-full accent-amber-500"
+                                />
+                              </label>
+                            )}
+                            <p className="text-neutral-500 leading-snug">Di tampilan 3D, klik engselnya untuk menekuk / meluruskan.</p>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-1.5 pt-1">
                 <button onClick={() => duplicateSelected()} className="flex items-center justify-center gap-1 py-1.5 rounded-md bg-white/5 hover:bg-white/10 text-[11px] text-neutral-200 cursor-pointer">
                   <Copy className="w-3 h-3" /> Duplikat
@@ -993,6 +1286,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
             </div>
             <div className="flex justify-between text-neutral-400"><span>Jumlah batang</span><span className="text-white">{members.length}</span></div>
             <div className="flex justify-between text-neutral-400"><span>Total panjang</span><span className="text-white">{r1(totalLength / 100)} m</span></div>
+            <div className="flex justify-between text-neutral-400"><span>Engsel lipat</span><span className="text-white">{hinges.length}</span></div>
             <div className="flex justify-between text-neutral-400">
               <span>Kaki / plinth</span>
               <span className="text-white">

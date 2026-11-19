@@ -568,7 +568,8 @@ export const CutListSheet: React.FC<{
           </text>
           <text x={M} y={tableBottom + TH_H + 20} fontSize="11" fill="#111827">
             Kebutuhan bahan: {describeBars(cutList)} @ 6 m (sudah termasuk sisa potong {cutList.wastePercentage}%)
-            {cutList.levelingFeetCount > 0 ? ` · Kaki stel: ${cutList.levelingFeetCount} buah` : ''}. Panjang L diukur ujung ke ujung; sketsa tidak
+            {cutList.levelingFeetCount > 0 ? ` · Kaki stel: ${cutList.levelingFeetCount} buah` : ''}
+            {cutList.hingeSummary ? ` · Engsel lipat: ${cutList.hingeSummary}` : ''}. Panjang L diukur ujung ke ujung; sketsa tidak
             berskala.
           </text>
         </g>
@@ -758,6 +759,7 @@ export const FrameCutListTable: React.FC<Props> = ({ config }) => {
                 Kebutuhan bahan: <span className="text-emerald-400 font-semibold">{describeBars(cutList)} @ 6 m</span> (sudah termasuk sisa
                 potong {cutList.wastePercentage}%)
                 {cutList.levelingFeetCount > 0 && <> • Kaki stel: {cutList.levelingFeetCount} buah</>}
+                {cutList.hingeSummary && <> • Engsel lipat: {cutList.hingeSummary}</>}
               </td>
             </tr>
           </tfoot>

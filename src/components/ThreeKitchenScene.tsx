@@ -16,6 +16,8 @@ import {
 import { getHplSwatch, getFjlSpecies, HPL_SURFACE_LABELS } from '../utils/finishes';
 import { getFrameMembers, getFootMembers, memberTubeCm, memberSectionCm } from '../utils/frameLayout';
 import { getSinkStoveGap } from '../utils/layoutOps';
+import { getValidHinges, computeHingeLimit, HINGE_TYPES } from '../utils/frameHinges';
+import { Box3 as FrameBox } from '../utils/frameLayout';
 
 // Cached once per page: probing creates an extra WebGL context, so don't repeat it on every remount
 let softwareGlCache: boolean | null = null;
@@ -58,6 +60,10 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
     drawers: { mesh: THREE.Group; maxOffset: number; baseZ: number }[];
     doors: { mesh: THREE.Group; maxAngle: number; isLeftHinge: boolean }[];
   }>({ drawers: [], doors: [] });
+
+  // Engsel lipat: pivot tiap potongan yang bisa ditekuk + status sudut (bertahan walau scene dibangun ulang)
+  const hingePartsRef = useRef<{ id: string; pivot: THREE.Group; axis: THREE.Vector3; limit: number }[]>([]);
+  const hingeAnimRef = useRef(new Map<string, { angle: number; target: number }>());
 
   // Camera preset animation target
   const cameraAnimRef = useRef<{
@@ -242,10 +248,61 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
         door.mesh.rotation.y = THREE.MathUtils.damp(door.mesh.rotation.y, targetAngle, 8, delta);
       });
 
+      // Engsel lipat: putar dengan kecepatan sudut tetap menuju target, tidak pernah melewati batas tabrakan
+      const HINGE_SPEED = 2.2; // rad/detik
+      hingePartsRef.current.forEach((part) => {
+        const st = hingeAnimRef.current.get(part.id);
+        if (!st) return;
+        st.target = Math.min(Math.max(st.target, 0), part.limit);
+        const diff = st.target - st.angle;
+        const stepA = HINGE_SPEED * delta;
+        st.angle = Math.abs(diff) <= stepA ? st.target : st.angle + Math.sign(diff) * stepA;
+        st.angle = Math.min(Math.max(st.angle, 0), part.limit);
+        part.pivot.quaternion.setFromAxisAngle(part.axis, st.angle);
+      });
+
       renderer.render(scene, camera);
     };
 
     animate();
+
+    // Klik engsel (atau potongan yang bisa ditekuk) untuk menekuk / meluruskan
+    const raycaster = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+    let downAt: { x: number; y: number } | null = null;
+    const hingeAt = (e: PointerEvent): string | null => {
+      const group = kitchenGroupRef.current;
+      if (!group || hingePartsRef.current.length === 0) return null;
+      const rect = renderer.domElement.getBoundingClientRect();
+      ndc.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+      raycaster.setFromCamera(ndc, camera);
+      const hit = raycaster.intersectObject(group, true)[0];
+      let o: THREE.Object3D | null = hit ? hit.object : null;
+      while (o && !o.userData.hingeId) o = o.parent;
+      return o ? (o.userData.hingeId as string) : null;
+    };
+    const onCanvasDown = (e: PointerEvent) => {
+      downAt = { x: e.clientX, y: e.clientY };
+    };
+    const onCanvasUp = (e: PointerEvent) => {
+      if (!downAt) return;
+      const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
+      downAt = null;
+      if (moved > 6) return; // geser kamera, bukan klik
+      const id = hingeAt(e);
+      if (!id) return;
+      const part = hingePartsRef.current.find((p) => p.id === id);
+      const st = hingeAnimRef.current.get(id);
+      if (!part || !st) return;
+      st.target = st.target > 0.0001 ? 0 : part.limit;
+    };
+    const onCanvasMove = (e: PointerEvent) => {
+      if (e.buttons !== 0) return;
+      renderer.domElement.style.cursor = hingeAt(e) ? 'pointer' : '';
+    };
+    renderer.domElement.addEventListener('pointerdown', onCanvasDown);
+    renderer.domElement.addEventListener('pointerup', onCanvasUp);
+    renderer.domElement.addEventListener('pointermove', onCanvasMove);
 
     // Resize Observer
     const handleResize = () => {
@@ -266,6 +323,9 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', handleResize);
       resizeObserver.disconnect();
+      renderer.domElement.removeEventListener('pointerdown', onCanvasDown);
+      renderer.domElement.removeEventListener('pointerup', onCanvasUp);
+      renderer.domElement.removeEventListener('pointermove', onCanvasMove);
       renderer.domElement.removeEventListener('webglcontextlost', handleContextLost);
       renderer.domElement.removeEventListener('webglcontextrestored', handleContextRestored);
       controls.dispose();
@@ -297,6 +357,7 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
       disposeHierarchy(child);
     }
     animatedPartsRef.current = { drawers: [], doors: [] };
+    hingePartsRef.current = [];
 
     // Update ambient temperature & intensity in 3D scene
     const lighting = config.lighting || {
@@ -1427,8 +1488,110 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
   ) {
     const frameGroup = new THREE.Group();
     const members = getFrameMembers(cfg);
+    const hingeByMember = new Map(getValidHinges(cfg, members).map((h) => [h.memberId, h]));
+    const toWorld = (p: number[]) => new THREE.Vector3(leftX + p[0] / 100, p[1] / 100, backZ + p[2] / 100);
+    const boxMesh = (b: FrameBox, origin?: THREE.Vector3) => {
+      const size = [0, 1, 2].map((i) => Math.max(0.002, (b.max[i] - b.min[i]) / 100));
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(size[0], size[1], size[2]), mat);
+      const c = toWorld([0, 1, 2].map((i) => (b.min[i] + b.max[i]) / 2));
+      mesh.position.copy(origin ? c.sub(origin) : c);
+      mesh.castShadow = true;
+      return mesh;
+    };
 
     members.forEach((m) => {
+      const hinge = hingeByMember.get(m.id);
+      const lim = hinge ? computeHingeLimit(cfg, members, hinge) : null;
+      if (hinge && lim && lim.geometry.movingLen >= 0.1) {
+        const g = lim.geometry;
+        if (g.fixedBox) frameGroup.add(boxMesh(g.fixedBox));
+
+        // Pivot di as engsel: potongan bergerak jadi anak pivot, lalu diputar di sekitar sumbu a
+        const pivotW = toWorld(g.pivot);
+        const pivot = new THREE.Group();
+        pivot.position.copy(pivotW);
+        pivot.userData.hingeId = hinge.id;
+        pivot.add(boxMesh(g.movingBox, pivotW));
+        frameGroup.add(pivot);
+
+        const axis = new THREE.Vector3(g.a[0], g.a[1], g.a[2]).normalize();
+        const u = new THREE.Vector3(g.u[0], g.u[1], g.u[2]);
+        const n = new THREE.Vector3(g.n[0], g.n[1], g.n[2]);
+        const widthA = (g.half[2] * 2) / 100;
+        const type = hinge.type;
+        const info = HINGE_TYPES[type];
+        const hingeMat = new THREE.MeshStandardMaterial({ color: type === 'folding-lock' ? 0x9ca3af : 0xc7ccd4, metalness: 0.9, roughness: 0.25 });
+        const accentMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(info.color), metalness: 0.4, roughness: 0.4, emissive: new THREE.Color(info.color), emissiveIntensity: 0.25 });
+        const knR = type === 'barrel-weld' ? 0.009 : type === 'piano' ? 0.0045 : 0.0065;
+        const knL = widthA * (type === 'piano' ? 1.0 : type === 'barrel-weld' ? 0.7 : 0.85);
+        const leafLen = Math.min(type === 'piano' ? 0.03 : 0.045, (g.movingLen / 100) * 0.9);
+        const alignToAxis = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), axis);
+
+        const knuckle = new THREE.Mesh(new THREE.CylinderGeometry(knR, knR, knL, 20), hingeMat);
+        knuckle.quaternion.copy(alignToAxis);
+        knuckle.position.copy(pivotW).addScaledVector(n, knR * 0.6);
+        knuckle.userData.hingeId = hinge.id;
+        frameGroup.add(knuckle);
+        // Cincin warna jenis engsel supaya mudah dicari & diklik
+        const ring = new THREE.Mesh(new THREE.CylinderGeometry(knR * 1.25, knR * 1.25, Math.min(0.008, knL * 0.25), 20), accentMat);
+        ring.quaternion.copy(alignToAxis);
+        ring.position.copy(knuckle.position);
+        ring.userData.hingeId = hinge.id;
+        frameGroup.add(ring);
+
+        if (type !== 'barrel-weld') {
+          // Daun engsel: satu di potongan tetap, satu ikut berputar bersama potongan lipat
+          const leafGeo = (len: number) => {
+            const dims = [0, 0, 0];
+            const ui = Math.abs(u.x) > 0.5 ? 0 : Math.abs(u.y) > 0.5 ? 1 : 2;
+            const ni = Math.abs(n.x) > 0.5 ? 0 : Math.abs(n.y) > 0.5 ? 1 : 2;
+            const ai = 3 - ui - ni;
+            dims[ui] = len;
+            dims[ni] = 0.002;
+            dims[ai] = knL;
+            return new THREE.BoxGeometry(dims[0], dims[1], dims[2]);
+          };
+          if (g.fixedLen > 0.5) {
+            const fixedLeaf = new THREE.Mesh(leafGeo(leafLen), hingeMat);
+            fixedLeaf.position.copy(pivotW).addScaledVector(u, -leafLen / 2).addScaledVector(n, 0.001);
+            fixedLeaf.userData.hingeId = hinge.id;
+            frameGroup.add(fixedLeaf);
+          }
+          const movingLeaf = new THREE.Mesh(leafGeo(leafLen), hingeMat);
+          movingLeaf.position.copy(u).multiplyScalar(leafLen / 2).addScaledVector(n, 0.001);
+          pivot.add(movingLeaf);
+        } else {
+          // Engsel pipa las: dua tabung pendek di kiri-kanan knuckle
+          [-1, 1].forEach((sgn) => {
+            const stub = new THREE.Mesh(new THREE.CylinderGeometry(knR * 0.55, knR * 0.55, knL * 0.18, 12), hingeMat);
+            stub.quaternion.copy(alignToAxis);
+            stub.position.copy(knuckle.position).addScaledVector(axis, (sgn * (knL + knL * 0.18)) / 2);
+            frameGroup.add(stub);
+          });
+        }
+        if (type === 'folding-lock') {
+          // Lengan pengunci (ikut potongan lipat)
+          const arm = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.004, 0.004), accentMat);
+          arm.position.copy(u).multiplyScalar(leafLen * 0.8).addScaledVector(n, 0.004);
+          pivot.add(arm);
+        }
+
+        // Target klik yang lebih besar (tidak terlihat)
+        const hitTarget = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), new THREE.MeshBasicMaterial({ visible: false }));
+        hitTarget.position.copy(pivotW);
+        hitTarget.userData.hingeId = hinge.id;
+        frameGroup.add(hitTarget);
+
+        const limit = (lim.limitDeg * Math.PI) / 180;
+        const st = hingeAnimRef.current.get(hinge.id) || { angle: 0, target: 0 };
+        st.angle = Math.min(st.angle, limit);
+        st.target = Math.min(st.target, limit);
+        hingeAnimRef.current.set(hinge.id, st);
+        pivot.quaternion.setFromAxisAngle(axis, st.angle);
+        hingePartsRef.current.push({ id: hinge.id, pivot, axis, limit });
+        return;
+      }
+
       const [sx, sy, sz] = memberSectionCm(m, cfg).map((v) => v / 100);
       const len = Math.max(0.005, m.length / 100);
       const geo = new THREE.BoxGeometry(m.axis === 'x' ? len : sx, m.axis === 'y' ? len : sy, m.axis === 'z' ? len : sz);
@@ -1806,6 +1969,14 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
           Detail Alat
         </button>
       </div>
+
+      {/* Petunjuk engsel lipat */}
+      {getValidHinges(config, getFrameMembers(config)).length > 0 && (
+        <div className="absolute top-36 sm:top-24 left-2 sm:left-3 z-10 flex items-center gap-2 px-3 py-1.5 bg-amber-950/85 border border-amber-500/60 rounded-xl text-[11px] font-semibold text-amber-200 shadow-xl backdrop-blur-md pointer-events-none">
+          <div className="w-2 h-2 rounded-full bg-amber-400" />
+          <span>Klik engsel untuk menekuk / meluruskan</span>
+        </div>
+      )}
 
       {/* Frame Only Active Badge */}
       {config.showFrameOnly && (

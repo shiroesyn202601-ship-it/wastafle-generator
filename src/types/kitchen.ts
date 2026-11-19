@@ -355,6 +355,20 @@ export interface FrameMember {
   tubeH?: number;
 }
 
+// Engsel pada batang rangka: batang dibelah di titik `pos`, potongan di sisi `side` bisa ditekuk
+export type HingeType = 'butt' | 'barrel-weld' | 'piano' | 'folding-lock';
+
+export interface FrameHinge {
+  id: string;
+  memberId: string; // batang tempat engsel dipasang
+  type: HingeType;
+  pos: number; // cm dari titik awal batang (0 = ujung awal: seluruh batang berputar di sambungannya)
+  side: 'start' | 'end'; // potongan yang bergerak: sebelum (start) atau sesudah (end) titik engsel
+  foldAxis: FrameAxis; // arah tekuk: potongan berputar menuju sumbu ini (tegak lurus batang)
+  foldSign: 1 | -1; // + / - arah sumbu tekuk
+  label?: string;
+}
+
 export interface FrameConfig {
   material: FrameMaterial;
   tubeSize: number; // 30, 40, or 50 mm
@@ -365,6 +379,7 @@ export interface FrameConfig {
   paintColor?: string | null; // warna cat / powder coating rangka (null = warna bawaan material)
   customLayout?: boolean; // true = rangka diedit manual lewat Editor Rangka 2D
   members?: FrameMember[]; // dipakai saat customLayout = true
+  hinges?: FrameHinge[]; // engsel lipat pada batang rangka
 }
 
 export type HandleStyle = 

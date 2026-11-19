@@ -1,5 +1,6 @@
 import { KitchenConfig, FrameMember, FrameMemberRole, SECTION_KIND_LABELS } from '../types/kitchen';
 import { getFrameMembers, getFootMembers, memberProfileLabel, FRAME_ROLE_LABELS, AXIS_LABELS } from './frameLayout';
+import { splitMembersAtHinges, getValidHinges, HINGE_TYPES } from './frameHinges';
 import { describeCountertop, describeCabinetFinish, describeFrame } from './finishes';
 
 export interface HollowCutPiece {
@@ -31,6 +32,7 @@ export interface CutListReport {
   barsByProfile: { profile: string; lengthM: number; bars: number }[]; // kebutuhan batang 6 m per profil pipa
   wastePercentage: number;
   levelingFeetCount: number;
+  hingeSummary: string; // mis. "2 Engsel Kupu-kupu, 1 Engsel Piano" (kosong bila tidak ada engsel lipat)
   hollowPieces: HollowCutPiece[];
   panelPieces: PanelCutPiece[];
 }
@@ -55,8 +57,10 @@ export function calculateFabricationCutList(config: KitchenConfig): CutListRepor
 
   // Kelompokkan batang rangka (otomatis / hasil Editor Rangka 2D) berdasarkan fungsi, sumbu, panjang & ukuran pipa
   const members = getFrameMembers(config);
+  // Batang berengsel dibelah jadi 2 potongan (tetap + lipat)
+  const pieces = splitMembersAtHinges(config, members);
   const groups = new Map<string, FrameMember[]>();
-  members.forEach((m) => {
+  pieces.forEach((m) => {
     const key = `${m.role}|${m.axis}|${m.length.toFixed(1)}|${memberProfileLabel(m, config)}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(m);
@@ -110,6 +114,9 @@ export function calculateFabricationCutList(config: KitchenConfig): CutListRepor
   }));
   const standard6mBarsNeeded = barsByProfile.reduce((s, b) => s + b.bars, 0);
   const levelingFeetCount = getFootMembers(config, members).length;
+  const hingeCounts = new Map<string, number>();
+  getValidHinges(config, members).forEach((h) => hingeCounts.set(HINGE_TYPES[h.type].name, (hingeCounts.get(HINGE_TYPES[h.type].name) || 0) + 1));
+  const hingeSummary = [...hingeCounts.entries()].map(([name, n]) => `${n} ${name}`).join(', ');
 
 
   // Panel Cutting List (Multiplex 18mm & 9mm)
@@ -210,6 +217,7 @@ export function calculateFabricationCutList(config: KitchenConfig): CutListRepor
     barsByProfile,
     wastePercentage,
     levelingFeetCount,
+    hingeSummary,
     hollowPieces,
     panelPieces,
   };
