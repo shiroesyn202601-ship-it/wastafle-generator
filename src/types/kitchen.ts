@@ -369,7 +369,9 @@ export interface FrameHinge {
   // 'point' (default): engsel di satu titik batang, sumbu putar tegak lurus batang.
   // 'edge': engsel memanjang di sisi yang menempel ke batang sejajar `partnerId`; seluruh batang
   //         berputar di garis tepi itu (seperti daun lipat dengan engsel piano). pos & side diabaikan.
-  mode?: 'point' | 'edge';
+  // 'axle': engsel poros di batang ini (mis. pucuk kaki). Batang ini & `partnerId` (kaki seberang, opsional)
+  //         tetap diam; semua batang yang tersambung di titik poros berputar di sumbu foldAxis (arah foldSign).
+  mode?: 'point' | 'edge' | 'axle';
   partnerId?: string;
   // true: batang lain yang tersambung ke potongan bergerak (di sisi yang sama dari garis engsel) ikut
   //       berputar sebagai satu daun lipat

@@ -114,6 +114,7 @@ export function getValidHinges(config: KitchenConfig, members: FrameMember[]): F
   return (config.frame?.hinges || []).filter((h) => {
     if (!ids.has(h.memberId) || used.has(h.memberId)) return false;
     if (h.mode === 'edge' && (!h.partnerId || !ids.has(h.partnerId))) return false;
+    if (h.mode === 'axle' && h.partnerId && !ids.has(h.partnerId)) return false;
     used.add(h.memberId);
     return true;
   });
@@ -133,6 +134,8 @@ export interface HingeGeometry {
   half: V3; // setengah ukuran potongan bergerak terhadap [u, n, a]
   fixedBox: Box3 | null;
   movingBox: Box3; // posisi diam (θ = 0)
+  axle?: boolean; // engsel poros: batang ini diam, hanya daun (batang tersambung) yang berputar
+  partnerPivot?: V3; // titik poros di batang pasangan (kaki seberang), satu garis dengan pivot
 }
 
 export interface EdgePartner {
@@ -170,8 +173,58 @@ export function getEdgePartners(config: KitchenConfig, members: FrameMember[], m
   return members.map((m) => edgePartnerInfo(config, member, m)).filter((x): x is EdgePartner => !!x);
 }
 
+/** Pilihan sumbu & arah putar engsel poros, dengan nama yang mudah dipahami */
+export function axleOptions(m: FrameMember): { axis: FrameAxis; sign: 1 | -1; label: string }[] {
+  // Rumus tangan kanan: putar +x membawa +z (depan) ke −y (bawah); putar +z membawa +x (kanan) ke +y
+  const names: Record<FrameAxis, [string, string]> = {
+    x: ['Depan turun, belakang naik', 'Depan naik, belakang turun'],
+    z: ['Kanan naik, kiri turun', 'Kanan turun, kiri naik'],
+    y: ['Putar searah jarum jam (dari atas)', 'Putar berlawanan jarum jam (dari atas)'],
+  };
+  return AXES.filter((a) => a !== m.axis).flatMap((axis) =>
+    ([1, -1] as const).map((sign) => ({ axis, sign, label: names[axis][sign === 1 ? 0 : 1] }))
+  );
+}
+
+/** Batang sejajar yang segaris dengan sumbu poros (mis. kaki kiri ↔ kaki kanan untuk poros sumbu X) */
+export function axlePartners(config: KitchenConfig, members: FrameMember[], member: FrameMember, rotAxis: FrameAxis): FrameMember[] {
+  const other = AXES.find((a) => a !== member.axis && a !== rotAxis)!;
+  return members.filter((m) => m.id !== member.id && m.axis === member.axis && Math.abs(m[other] - member[other]) <= 0.5);
+}
+
 export function hingeGeometry(config: KitchenConfig, member: FrameMember, hinge: FrameHinge, partner?: FrameMember): HingeGeometry {
   const sec = memberSectionCm(member, config);
+  if (hinge.mode === 'axle') {
+    // Engsel poros: titik putar di as batang (mis. pucuk kaki), sumbu putar = foldAxis, arah = foldSign
+    const pos = Math.min(Math.max(hinge.pos, 0), member.length);
+    const e = unitAxis(member.axis);
+    const P = add([member.x, member.y, member.z], mul(e, pos));
+    const rotAxis = hinge.foldAxis === member.axis ? AXES.find((a) => a !== member.axis)! : hinge.foldAxis;
+    const a = unitAxis(rotAxis, hinge.foldSign);
+    const ai = AXIS_INDEX[member.axis];
+    let partnerPivot: V3 | undefined;
+    if (partner) {
+      partnerPivot = [partner.x, partner.y, partner.z];
+      partnerPivot[ai] = P[ai];
+    }
+    return {
+      hinge,
+      member,
+      pos,
+      P,
+      pivot: P,
+      u: e,
+      n: cross(a, e),
+      a,
+      movingLen: 1,
+      fixedLen: member.length,
+      half: [0.5, 0, sec[AXIS_INDEX[rotAxis]] / 2],
+      fixedBox: memberBox(member, sec),
+      movingBox: { min: [...P] as V3, max: [...P] as V3 },
+      axle: true,
+      partnerPivot,
+    };
+  }
   const edge = hinge.mode === 'edge' && partner ? edgePartnerInfo(config, member, partner) : null;
   if (edge) {
     // Engsel memanjang: as putar = garis tepi bersama kedua batang (sejajar batang), di sisi arah tekuk
@@ -351,6 +404,25 @@ export function computeLeaf(config: KitchenConfig, members: FrameMember[], g: Hi
   const leaf: FrameMember[] = [];
   const bridges: FrameMember[] = [];
   const seen = new Set<string>();
+  if (g.axle) {
+    // Engsel poros: semua batang yang tersambung ke batang ini di sekitar titik poros (dan ke
+    // kaki pasangan) beserta sambungannya ikut berputar; batang poros & pasangannya tetap diam
+    const r = Math.max(...memberSectionCm(g.member, config)) / 2 + SIDE_TOL;
+    const around = (p: V3): Box3 => ({ min: [p[0] - r, p[1] - r, p[2] - r], max: [p[0] + r, p[1] + r, p[2] + r] });
+    const q: Box3[] = [around(g.pivot), ...(g.partnerPivot ? [around(g.partnerPivot)] : [])];
+    while (q.length) {
+      const cur = q.shift()!;
+      members.forEach((m) => {
+        if (seen.has(m.id) || excluded.has(m.id)) return;
+        const b = boxes.get(m.id)!;
+        if (!boxesTouch(cur, b, SIDE_TOL)) return;
+        seen.add(m.id);
+        leaf.push(m);
+        q.push(b);
+      });
+    }
+    return { plane, leaf, bridges };
+  }
   const queue: Box3[] = [g.movingBox];
   while (queue.length) {
     const cur = queue.shift()!;
@@ -386,14 +458,15 @@ export function boxObb(g: HingeGeometry, b: Box3, deg: number): Obb {
 /** Semua kotak yang ikut berputar pada engsel ini (potongan bergerak + daun lipat) */
 export function movingBoxes(config: KitchenConfig, members: FrameMember[], lim: HingeLimit): Box3[] {
   const ids = new Set(lim.leafIds);
-  return [lim.geometry.movingBox, ...members.filter((m) => ids.has(m.id)).map((m) => memberBox(m, memberSectionCm(m, config)))];
+  const leafBoxes = members.filter((m) => ids.has(m.id)).map((m) => memberBox(m, memberSectionCm(m, config)));
+  return lim.geometry.axle ? leafBoxes : [lim.geometry.movingBox, ...leafBoxes];
 }
 
 /** Hitung sudut tekuk maksimum sebuah engsel sebelum menabrak besi lain / lantai */
 export function computeHingeLimit(config: KitchenConfig, members: FrameMember[], hinge: FrameHinge): HingeLimit | null {
   const member = members.find((m) => m.id === hinge.memberId);
   if (!member) return null;
-  const partner = hinge.mode === 'edge' ? members.find((m) => m.id === hinge.partnerId) : undefined;
+  const partner = hinge.mode === 'edge' || hinge.mode === 'axle' ? members.find((m) => m.id === hinge.partnerId) : undefined;
   if (hinge.mode === 'edge' && (!partner || !edgePartnerInfo(config, member, partner))) return null;
   const g = hingeGeometry(config, member, hinge, partner);
   const typeMax = HINGE_TYPES[hinge.type]?.maxAngle ?? 180;
@@ -401,17 +474,19 @@ export function computeHingeLimit(config: KitchenConfig, members: FrameMember[],
   if (g.movingLen < 0.1) return { ...base, limitDeg: 0, blockedBy: null };
 
   const plane = hingePlane(g);
-  const leafInfo = hinge.carry ? computeLeaf(config, members, g) : null;
+  const leafInfo = hinge.carry || g.axle ? computeLeaf(config, members, g) : null;
   const leafIds = new Set((leafInfo?.leaf || []).map((m) => m.id));
   const bridges = (leafInfo?.bridges || []).map((m) => ({ id: m.id, name: memberName(m), splittable: m.axis === plane.axis }));
 
   const all: HingeObstacle[] = members
     .filter((m) => m.id !== member.id && !leafIds.has(m.id))
     .map((m) => ({ id: m.id, name: memberName(m), box: memberBox(m, memberSectionCm(m, config)) }));
-  if (g.fixedBox) all.push({ id: member.id, name: `${memberName(member)} (potongan tetap)`, box: g.fixedBox });
+  if (g.fixedBox) all.push({ id: member.id, name: g.axle ? memberName(member) : `${memberName(member)} (potongan tetap)`, box: g.fixedBox });
   all.push({ id: 'floor', name: 'Lantai', box: { min: [-1e4, -1e4, -1e4], max: [1e4, 0, 1e4] } });
 
-  const bodies: Box3[] = [g.movingBox, ...members.filter((m) => leafIds.has(m.id)).map((m) => memberBox(m, memberSectionCm(m, config)))];
+  const leafBoxes = members.filter((m) => leafIds.has(m.id)).map((m) => memberBox(m, memberSectionCm(m, config)));
+  const bodies: Box3[] = g.axle ? leafBoxes : [g.movingBox, ...leafBoxes];
+  if (bodies.length === 0) return { ...base, limitDeg: 0, blockedBy: null };
   const STEP = 0.5;
   const CONTACT_EPS = 0.0005; // 0,005 mm: tekukan berhenti tepat saat menyentuh
 
@@ -486,7 +561,7 @@ export function splitMembersAtHinges(config: KitchenConfig, members: FrameMember
   const hinges = new Map(getValidHinges(config, members).map((h) => [h.memberId, h]));
   return members.flatMap((m) => {
     const h = hinges.get(m.id);
-    if (!h || h.mode === 'edge') return [m];
+    if (!h || h.mode === 'edge' || h.mode === 'axle') return [m];
     const g = hingeGeometry(config, m, h);
     if (g.fixedLen < 0.1 || g.movingLen < 0.1) return [m];
     const r1 = (v: number) => Math.round(v * 10) / 10;

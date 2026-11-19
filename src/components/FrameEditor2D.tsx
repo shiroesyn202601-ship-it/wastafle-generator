@@ -6,6 +6,8 @@ import {
   defaultHinge,
   getEdgePartners,
   EdgePartner,
+  axleOptions,
+  axlePartners,
   FOLD_LABELS,
   foldOptions,
   getValidHinges,
@@ -167,8 +169,23 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
     foldAxis: ep.fold,
     foldSign: base.mode === 'edge' && base.foldAxis === ep.fold ? base.foldSign : 1,
   });
-  const addHinge = (m: FrameMember, mode: 'point' | 'edge' = 'point') => {
+  /** Engsel poros: batang ini diam (mis. kaki), titik poros dekat ujung atas, pasangan = batang segaris */
+  const axleHinge = (base: FrameHinge, m: FrameMember): FrameHinge => {
+    const rot: FrameAxis = m.axis === 'y' ? 'x' : 'y';
+    const partner = axlePartners(config, members, m, rot)[0];
+    return {
+      ...base,
+      mode: 'axle',
+      foldAxis: rot,
+      foldSign: 1,
+      pos: r1(Math.max(0, m.length - tube / 2)),
+      partnerId: partner?.id,
+      carry: true,
+    };
+  };
+  const addHinge = (m: FrameMember, mode: 'point' | 'edge' | 'axle' = 'point') => {
     let h = defaultHinge(m, newHingeId());
+    if (mode === 'axle') h = axleHinge({ ...h, type: 'folding-lock' }, m);
     if (mode === 'edge') {
       const ep = getEdgePartners(config, members, m)[0];
       if (!ep) return;
@@ -620,7 +637,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
                       strokeDasharray={`${fsz * 0.45} ${fsz * 0.3}`}
                     />
                   ))}
-                  {arc.length > 1 && <polyline points={arc.join(' ')} fill="none" stroke={col} strokeWidth={sw} strokeDasharray={`${fsz * 0.2} ${fsz * 0.25}`} />}
+                  {!g.axle && arc.length > 1 && <polyline points={arc.join(' ')} fill="none" stroke={col} strokeWidth={sw} strokeDasharray={`${fsz * 0.2} ${fsz * 0.25}`} />}
                 </>
               )}
               <circle
@@ -1149,10 +1166,18 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
                         >
                           <Plus className="w-3 h-3" /> Engsel Sejajar ke Batang Sebelah
                         </button>
+                        <button
+                          onClick={() => addHinge(selected, 'axle')}
+                          className="w-full flex items-center justify-center gap-1 py-1.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-[11px] font-semibold text-amber-200 cursor-pointer"
+                        >
+                          <Plus className="w-3 h-3" /> Engsel Poros (batang ini diam)
+                        </button>
                         <p className="text-[10px] text-neutral-500 leading-snug">
                           <strong className="text-neutral-400">Titik batang:</strong> batang dibelah di titik engsel, potongannya ditekuk. Taruh di
                           ujung untuk engsel besi-ke-besi. <strong className="text-neutral-400">Sejajar:</strong> untuk 2 batang yang bersebelahan
-                          rapat; seluruh batang ini berputar di garis tepi yang menempel ke batang sebelah (seperti daun lipat).
+                          rapat; seluruh batang ini berputar di garis tepi yang menempel ke batang sebelah (seperti daun lipat).{' '}
+                          <strong className="text-neutral-400">Poros:</strong> pasang di kaki; kaki tetap berdiri dan seluruh rangka yang
+                          tersambung di atasnya berputar (meja flip-top, daun meja bisa jadi vertikal).
                         </p>
                       </>
                     );
@@ -1166,9 +1191,12 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
                     const pos = Math.min(Math.max(hg.pos, 0), L);
                     const partners = getEdgePartners(config, members, selected);
                     const isEdge = hg.mode === 'edge';
+                    const isAxle = hg.mode === 'axle';
+                    const axleCands = isAxle ? axlePartners(config, members, selected, hg.foldAxis) : [];
                     const edgeInfo = isEdge ? partners.find((p) => p.partner.id === hg.partnerId) : undefined;
-                    const folds =
-                      isEdge && edgeInfo
+                    const folds = isAxle
+                      ? axleOptions(selected)
+                      : isEdge && edgeInfo
                         ? ([1, -1] as const).map((sign) => ({
                             axis: edgeInfo.fold,
                             sign,
@@ -1194,23 +1222,25 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
                         </div>
                         <p className="text-[10px] text-neutral-500 leading-snug">{HINGE_TYPES[hg.type].desc}</p>
 
-                        <div className="grid grid-cols-2 gap-1">
-                          {(['point', 'edge'] as const).map((md) => (
+                        <div className="grid grid-cols-3 gap-1">
+                          {(['point', 'edge', 'axle'] as const).map((md) => (
                             <button
                               key={md}
                               disabled={md === 'edge' && partners.length === 0}
                               onClick={() =>
                                 md === 'edge'
                                   ? partners[0] && updateHinge(hg.id, edgeHinge(hg, partners[0]))
+                                  : md === 'axle'
+                                  ? updateHinge(hg.id, axleHinge(hg, selected))
                                   : updateHinge(hg.id, { ...defaultHinge(selected, hg.id), type: hg.type, mode: 'point', partnerId: undefined })
                               }
-                              className={`py-1 rounded text-[10px] cursor-pointer border disabled:opacity-30 disabled:cursor-not-allowed ${
-                                (md === 'edge') === isEdge
+                              className={`py-1 rounded text-[10px] leading-tight cursor-pointer border disabled:opacity-30 disabled:cursor-not-allowed ${
+                                md === (hg.mode || 'point')
                                   ? 'bg-amber-500/20 border-amber-400/60 text-amber-100'
                                   : 'bg-white/5 border-white/10 text-neutral-300 hover:bg-white/10'
                               }`}
                             >
-                              {md === 'point' ? 'Di titik batang' : 'Sejajar batang sebelah'}
+                              {md === 'point' ? 'Di titik batang' : md === 'edge' ? 'Sejajar batang sebelah' : 'Poros (batang diam)'}
                             </button>
                           ))}
                         </div>
@@ -1235,7 +1265,34 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
                           </div>
                         )}
 
-                        {!isEdge && (
+                        {isAxle && (
+                          <div className="space-y-1.5">
+                            <NumField
+                              label={`Titik poros dari ujung ${nameA} (cm)`}
+                              hint={`batang ${L} cm`}
+                              value={r1(pos)}
+                              onCommit={(v) => updateHinge(hg.id, { pos: Math.min(Math.max(v, 0), L) })}
+                            />
+                            <div className="text-[10px] text-neutral-400">Poros kedua (segaris)</div>
+                            <div className="space-y-1">
+                              {[undefined, ...axleCands].map((c) => (
+                                <button
+                                  key={c?.id || 'none'}
+                                  onClick={() => updateHinge(hg.id, { partnerId: c?.id })}
+                                  className={`w-full text-left px-2 py-1 rounded text-[10px] cursor-pointer border truncate ${
+                                    (hg.partnerId || undefined) === c?.id
+                                      ? 'bg-amber-500/20 border-amber-400/60 text-amber-100'
+                                      : 'bg-white/5 border-white/10 text-neutral-300 hover:bg-white/10'
+                                  }`}
+                                >
+                                  {c ? c.label || FRAME_ROLE_LABELS[c.role] : 'Tanpa poros kedua'}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {!isEdge && !isAxle && (
                         <>
                         <NumField
                           label={`Posisi engsel dari ujung ${nameA} (cm)`}
@@ -1281,7 +1338,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
                         )}
 
                         <div className="space-y-1">
-                          <div className="text-[10px] text-neutral-400">Arah tekuk</div>
+                          <div className="text-[10px] text-neutral-400">{isAxle ? 'Arah putar daun' : 'Arah tekuk'}</div>
                           <div className="grid grid-cols-2 gap-1">
                             {folds.map((o) => (
                               <button
@@ -1300,6 +1357,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
                         </div>
 
                         <div className="p-2 rounded-md bg-black/20 border border-white/10 space-y-1.5 text-[10px]">
+                          {!isAxle && (
                           <label className="flex items-start gap-2 cursor-pointer">
                             <input
                               type="checkbox"
@@ -1314,7 +1372,8 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
                               </span>
                             </span>
                           </label>
-                          {hg.carry && lim && (
+                          )}
+                          {(hg.carry || isAxle) && lim && (
                             <div className="text-neutral-400">
                               Ikut berputar: <span className="text-amber-200 font-semibold">{lim.leafIds.length} batang</span>
                             </div>
