@@ -4,6 +4,9 @@ import {
   HINGE_TYPES,
   computeHingeLimit,
   defaultHinge,
+  getEdgePartners,
+  EdgePartner,
+  FOLD_LABELS,
   foldOptions,
   getValidHinges,
   movingObb,
@@ -153,8 +156,21 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
     commitHinges((config.frame?.hinges || []).map((h) => (h.id === id ? { ...h, ...updates } : h)));
     setPreviewDeg(null);
   };
-  const addHinge = (m: FrameMember) => {
-    commitHinges([...(config.frame?.hinges || []).filter((h) => h.memberId !== m.id), defaultHinge(m, newHingeId())]);
+  const edgeHinge = (base: FrameHinge, ep: EdgePartner): FrameHinge => ({
+    ...base,
+    mode: 'edge',
+    partnerId: ep.partner.id,
+    foldAxis: ep.fold,
+    foldSign: base.mode === 'edge' && base.foldAxis === ep.fold ? base.foldSign : 1,
+  });
+  const addHinge = (m: FrameMember, mode: 'point' | 'edge' = 'point') => {
+    let h = defaultHinge(m, newHingeId());
+    if (mode === 'edge') {
+      const ep = getEdgePartners(config, members, m)[0];
+      if (!ep) return;
+      h = edgeHinge(h, ep);
+    }
+    commitHinges([...(config.frame?.hinges || []).filter((x) => x.memberId !== m.id), h]);
     setPreviewDeg(null);
   };
   const removeHinge = (id: string) => {
@@ -1108,18 +1124,32 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
                   )}
                 </div>
                 {!selectedHinge ? (
-                  <>
-                    <button
-                      onClick={() => addHinge(selected)}
-                      className="w-full flex items-center justify-center gap-1 py-1.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-[11px] font-semibold text-amber-200 cursor-pointer"
-                    >
-                      <Plus className="w-3 h-3" /> Pasang Engsel di Batang Ini
-                    </button>
-                    <p className="text-[10px] text-neutral-500 leading-snug">
-                      Batang dibelah di titik engsel dan potongannya bisa ditekuk. Taruh engsel di ujung batang untuk engsel besi-ke-besi
-                      (seluruh batang berputar di sambungannya).
-                    </p>
-                  </>
+                  (() => {
+                    const partners = getEdgePartners(config, members, selected);
+                    return (
+                      <>
+                        <button
+                          onClick={() => addHinge(selected)}
+                          className="w-full flex items-center justify-center gap-1 py-1.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-[11px] font-semibold text-amber-200 cursor-pointer"
+                        >
+                          <Plus className="w-3 h-3" /> Engsel di Titik Batang
+                        </button>
+                        <button
+                          onClick={() => addHinge(selected, 'edge')}
+                          disabled={partners.length === 0}
+                          title={partners.length === 0 ? 'Tidak ada batang sejajar yang menempel di sisi panjang batang ini' : undefined}
+                          className="w-full flex items-center justify-center gap-1 py-1.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-[11px] font-semibold text-amber-200 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <Plus className="w-3 h-3" /> Engsel Sejajar ke Batang Sebelah
+                        </button>
+                        <p className="text-[10px] text-neutral-500 leading-snug">
+                          <strong className="text-neutral-400">Titik batang:</strong> batang dibelah di titik engsel, potongannya ditekuk. Taruh di
+                          ujung untuk engsel besi-ke-besi. <strong className="text-neutral-400">Sejajar:</strong> untuk 2 batang yang bersebelahan
+                          rapat; seluruh batang ini berputar di garis tepi yang menempel ke batang sebelah (seperti daun lipat).
+                        </p>
+                      </>
+                    );
+                  })()
                 ) : (
                   (() => {
                     const hg = selectedHinge;
@@ -1127,6 +1157,17 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
                     const [nameA, nameB] = END_NAMES[selected.axis];
                     const L = selected.length;
                     const pos = Math.min(Math.max(hg.pos, 0), L);
+                    const partners = getEdgePartners(config, members, selected);
+                    const isEdge = hg.mode === 'edge';
+                    const edgeInfo = isEdge ? partners.find((p) => p.partner.id === hg.partnerId) : undefined;
+                    const folds =
+                      isEdge && edgeInfo
+                        ? ([1, -1] as const).map((sign) => ({
+                            axis: edgeInfo.fold,
+                            sign,
+                            label: FOLD_LABELS[edgeInfo.fold][sign === 1 ? '1' : '-1'],
+                          }))
+                        : foldOptions(selected);
                     return (
                       <>
                         <div className="grid grid-cols-2 gap-1.5">
@@ -1146,6 +1187,49 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
                         </div>
                         <p className="text-[10px] text-neutral-500 leading-snug">{HINGE_TYPES[hg.type].desc}</p>
 
+                        <div className="grid grid-cols-2 gap-1">
+                          {(['point', 'edge'] as const).map((md) => (
+                            <button
+                              key={md}
+                              disabled={md === 'edge' && partners.length === 0}
+                              onClick={() =>
+                                md === 'edge'
+                                  ? partners[0] && updateHinge(hg.id, edgeHinge(hg, partners[0]))
+                                  : updateHinge(hg.id, { ...defaultHinge(selected, hg.id), type: hg.type, mode: 'point', partnerId: undefined })
+                              }
+                              className={`py-1 rounded text-[10px] cursor-pointer border disabled:opacity-30 disabled:cursor-not-allowed ${
+                                (md === 'edge') === isEdge
+                                  ? 'bg-amber-500/20 border-amber-400/60 text-amber-100'
+                                  : 'bg-white/5 border-white/10 text-neutral-300 hover:bg-white/10'
+                              }`}
+                            >
+                              {md === 'point' ? 'Di titik batang' : 'Sejajar batang sebelah'}
+                            </button>
+                          ))}
+                        </div>
+
+                        {isEdge && (
+                          <div className="space-y-1">
+                            <div className="text-[10px] text-neutral-400">Dipasang ke batang</div>
+                            {partners.map((p) => (
+                              <button
+                                key={p.partner.id}
+                                onClick={() => updateHinge(hg.id, edgeHinge(hg, p))}
+                                className={`w-full flex justify-between px-2 py-1 rounded text-[10px] cursor-pointer border ${
+                                  p.partner.id === hg.partnerId
+                                    ? 'bg-amber-500/20 border-amber-400/60 text-amber-100'
+                                    : 'bg-white/5 border-white/10 text-neutral-300 hover:bg-white/10'
+                                }`}
+                              >
+                                <span className="truncate">{p.partner.label || FRAME_ROLE_LABELS[p.partner.role]}</span>
+                                <span className="text-neutral-500 shrink-0 pl-1">di {FOLD_LABELS[p.k][p.sign === 1 ? '1' : '-1'].replace('Ke ', '').toLowerCase()}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {!isEdge && (
+                        <>
                         <NumField
                           label={`Posisi engsel dari ujung ${nameA} (cm)`}
                           hint={`batang ${L} cm`}
@@ -1186,11 +1270,13 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
                             ))}
                           </div>
                         </div>
+                        </>
+                        )}
 
                         <div className="space-y-1">
                           <div className="text-[10px] text-neutral-400">Arah tekuk</div>
                           <div className="grid grid-cols-2 gap-1">
-                            {foldOptions(selected).map((o) => (
+                            {folds.map((o) => (
                               <button
                                 key={o.label}
                                 onClick={() => updateHinge(hg.id, { foldAxis: o.axis, foldSign: o.sign })}

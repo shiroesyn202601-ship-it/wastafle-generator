@@ -1520,61 +1520,69 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
         const widthA = (g.half[2] * 2) / 100;
         const type = hinge.type;
         const info = HINGE_TYPES[type];
+        const isEdge = hinge.mode === 'edge';
         const hingeMat = new THREE.MeshStandardMaterial({ color: type === 'folding-lock' ? 0x9ca3af : 0xc7ccd4, metalness: 0.9, roughness: 0.25 });
         const accentMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(info.color), metalness: 0.4, roughness: 0.4, emissive: new THREE.Color(info.color), emissiveIntensity: 0.25 });
         const knR = type === 'barrel-weld' ? 0.009 : type === 'piano' ? 0.0045 : 0.0065;
-        const knL = widthA * (type === 'piano' ? 1.0 : type === 'barrel-weld' ? 0.7 : 0.85);
+        // Engsel memanjang: piano selebar batang, jenis lain dipasang sepasang dekat kedua ujung
+        const spots = isEdge && type !== 'piano' ? [-0.35 * widthA, 0.35 * widthA] : [0];
+        const knL =
+          isEdge && type !== 'piano'
+            ? Math.min(0.08, widthA * 0.18)
+            : widthA * (type === 'piano' ? 1.0 : type === 'barrel-weld' ? 0.7 : 0.85);
         const leafLen = Math.min(type === 'piano' ? 0.03 : 0.045, (g.movingLen / 100) * 0.9);
         const alignToAxis = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), axis);
+        const ui = Math.abs(u.x) > 0.5 ? 0 : Math.abs(u.y) > 0.5 ? 1 : 2;
+        const ni = Math.abs(n.x) > 0.5 ? 0 : Math.abs(n.y) > 0.5 ? 1 : 2;
+        const leafGeo = (len: number) => {
+          const dims = [0, 0, 0];
+          dims[ui] = len;
+          dims[ni] = 0.002;
+          dims[3 - ui - ni] = knL;
+          return new THREE.BoxGeometry(dims[0], dims[1], dims[2]);
+        };
 
-        const knuckle = new THREE.Mesh(new THREE.CylinderGeometry(knR, knR, knL, 20), hingeMat);
-        knuckle.quaternion.copy(alignToAxis);
-        knuckle.position.copy(pivotW).addScaledVector(n, knR * 0.6);
-        knuckle.userData.hingeId = hinge.id;
-        frameGroup.add(knuckle);
-        // Cincin warna jenis engsel supaya mudah dicari & diklik
-        const ring = new THREE.Mesh(new THREE.CylinderGeometry(knR * 1.25, knR * 1.25, Math.min(0.008, knL * 0.25), 20), accentMat);
-        ring.quaternion.copy(alignToAxis);
-        ring.position.copy(knuckle.position);
-        ring.userData.hingeId = hinge.id;
-        frameGroup.add(ring);
+        spots.forEach((off) => {
+          const at = pivotW.clone().addScaledVector(axis, off);
+          const knuckle = new THREE.Mesh(new THREE.CylinderGeometry(knR, knR, knL, 20), hingeMat);
+          knuckle.quaternion.copy(alignToAxis);
+          knuckle.position.copy(at).addScaledVector(n, knR * 0.6);
+          knuckle.userData.hingeId = hinge.id;
+          frameGroup.add(knuckle);
+          // Cincin warna jenis engsel supaya mudah dicari & diklik
+          const ring = new THREE.Mesh(new THREE.CylinderGeometry(knR * 1.25, knR * 1.25, Math.min(0.008, knL * 0.25), 20), accentMat);
+          ring.quaternion.copy(alignToAxis);
+          ring.position.copy(knuckle.position);
+          ring.userData.hingeId = hinge.id;
+          frameGroup.add(ring);
 
-        if (type !== 'barrel-weld') {
-          // Daun engsel: satu di potongan tetap, satu ikut berputar bersama potongan lipat
-          const leafGeo = (len: number) => {
-            const dims = [0, 0, 0];
-            const ui = Math.abs(u.x) > 0.5 ? 0 : Math.abs(u.y) > 0.5 ? 1 : 2;
-            const ni = Math.abs(n.x) > 0.5 ? 0 : Math.abs(n.y) > 0.5 ? 1 : 2;
-            const ai = 3 - ui - ni;
-            dims[ui] = len;
-            dims[ni] = 0.002;
-            dims[ai] = knL;
-            return new THREE.BoxGeometry(dims[0], dims[1], dims[2]);
-          };
-          if (g.fixedLen > 0.5) {
-            const fixedLeaf = new THREE.Mesh(leafGeo(leafLen), hingeMat);
-            fixedLeaf.position.copy(pivotW).addScaledVector(u, -leafLen / 2).addScaledVector(n, 0.001);
-            fixedLeaf.userData.hingeId = hinge.id;
-            frameGroup.add(fixedLeaf);
+          if (type !== 'barrel-weld') {
+            // Daun engsel: satu di batang tetap, satu ikut berputar bersama potongan lipat
+            if (g.fixedLen > 0.5 || isEdge) {
+              const fixedLeaf = new THREE.Mesh(leafGeo(leafLen), hingeMat);
+              fixedLeaf.position.copy(at).addScaledVector(u, -leafLen / 2).addScaledVector(n, 0.001);
+              fixedLeaf.userData.hingeId = hinge.id;
+              frameGroup.add(fixedLeaf);
+            }
+            const movingLeaf = new THREE.Mesh(leafGeo(leafLen), hingeMat);
+            movingLeaf.position.copy(axis).multiplyScalar(off).addScaledVector(u, leafLen / 2).addScaledVector(n, 0.001);
+            pivot.add(movingLeaf);
+          } else {
+            // Engsel pipa las: dua tabung pendek di kiri-kanan knuckle
+            [-1, 1].forEach((sgn) => {
+              const stub = new THREE.Mesh(new THREE.CylinderGeometry(knR * 0.55, knR * 0.55, knL * 0.18, 12), hingeMat);
+              stub.quaternion.copy(alignToAxis);
+              stub.position.copy(knuckle.position).addScaledVector(axis, (sgn * (knL + knL * 0.18)) / 2);
+              frameGroup.add(stub);
+            });
           }
-          const movingLeaf = new THREE.Mesh(leafGeo(leafLen), hingeMat);
-          movingLeaf.position.copy(u).multiplyScalar(leafLen / 2).addScaledVector(n, 0.001);
-          pivot.add(movingLeaf);
-        } else {
-          // Engsel pipa las: dua tabung pendek di kiri-kanan knuckle
-          [-1, 1].forEach((sgn) => {
-            const stub = new THREE.Mesh(new THREE.CylinderGeometry(knR * 0.55, knR * 0.55, knL * 0.18, 12), hingeMat);
-            stub.quaternion.copy(alignToAxis);
-            stub.position.copy(knuckle.position).addScaledVector(axis, (sgn * (knL + knL * 0.18)) / 2);
-            frameGroup.add(stub);
-          });
-        }
-        if (type === 'folding-lock') {
-          // Lengan pengunci (ikut potongan lipat)
-          const arm = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.004, 0.004), accentMat);
-          arm.position.copy(u).multiplyScalar(leafLen * 0.8).addScaledVector(n, 0.004);
-          pivot.add(arm);
-        }
+          if (type === 'folding-lock') {
+            // Lengan pengunci (ikut potongan lipat)
+            const arm = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.004, 0.004), accentMat);
+            arm.position.copy(axis).multiplyScalar(off).addScaledVector(u, leafLen * 0.8).addScaledVector(n, 0.004);
+            pivot.add(arm);
+          }
+        });
 
         // Target klik yang lebih besar (tidak terlihat)
         const hitTarget = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), new THREE.MeshBasicMaterial({ visible: false }));

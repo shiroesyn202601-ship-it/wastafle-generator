@@ -366,6 +366,11 @@ export interface FrameHinge {
   side: 'start' | 'end'; // potongan yang bergerak: sebelum (start) atau sesudah (end) titik engsel
   foldAxis: FrameAxis; // arah tekuk: potongan berputar menuju sumbu ini (tegak lurus batang)
   foldSign: 1 | -1; // + / - arah sumbu tekuk
+  // 'point' (default): engsel di satu titik batang, sumbu putar tegak lurus batang.
+  // 'edge': engsel memanjang di sisi yang menempel ke batang sejajar `partnerId`; seluruh batang
+  //         berputar di garis tepi itu (seperti daun lipat dengan engsel piano). pos & side diabaikan.
+  mode?: 'point' | 'edge';
+  partnerId?: string;
   label?: string;
 }
 

@@ -113,6 +113,7 @@ export function getValidHinges(config: KitchenConfig, members: FrameMember[]): F
   const used = new Set<string>();
   return (config.frame?.hinges || []).filter((h) => {
     if (!ids.has(h.memberId) || used.has(h.memberId)) return false;
+    if (h.mode === 'edge' && (!h.partnerId || !ids.has(h.partnerId))) return false;
     used.add(h.memberId);
     return true;
   });
@@ -134,8 +135,70 @@ export interface HingeGeometry {
   movingBox: Box3; // posisi diam (θ = 0)
 }
 
-export function hingeGeometry(config: KitchenConfig, member: FrameMember, hinge: FrameHinge): HingeGeometry {
+export interface EdgePartner {
+  partner: FrameMember;
+  k: FrameAxis; // sumbu tempat kedua batang bersebelahan
+  sign: 1 | -1; // arah dari batang ini ke batang sebelah
+  fold: FrameAxis; // satu-satunya sumbu tekuk yang mungkin
+}
+
+/**
+ * Batang sejajar yang menempel di salah satu sisi panjang batang ini (kandidat engsel memanjang).
+ * Syarat: sumbu sama, bertumpang-tindih sepanjang batang, menempel (celah ≤ 0,3 cm) di satu sumbu
+ * tegak lurus dan saling menutupi di sumbu tegak lurus lainnya.
+ */
+export function edgePartnerInfo(config: KitchenConfig, member: FrameMember, partner: FrameMember): EdgePartner | null {
+  if (partner.id === member.id || partner.axis !== member.axis) return null;
+  const A = memberBox(member, memberSectionCm(member, config));
+  const B = memberBox(partner, memberSectionCm(partner, config));
+  const overlap = (i: number) => Math.min(A.max[i], B.max[i]) - Math.max(A.min[i], B.min[i]);
+  if (overlap(AXIS_INDEX[member.axis]) < 1) return null;
+  const perp = AXES.filter((x) => x !== member.axis);
+  for (const k of perp) {
+    const f = perp.find((x) => x !== k)!;
+    const ok = overlap(AXIS_INDEX[k]);
+    if (ok <= 0.05 && ok >= -0.3 && overlap(AXIS_INDEX[f]) > 0.5) {
+      const ki = AXIS_INDEX[k];
+      const sign = (B.min[ki] + B.max[ki]) / 2 > (A.min[ki] + A.max[ki]) / 2 ? 1 : -1;
+      return { partner, k, sign, fold: f };
+    }
+  }
+  return null;
+}
+
+export function getEdgePartners(config: KitchenConfig, members: FrameMember[], member: FrameMember): EdgePartner[] {
+  return members.map((m) => edgePartnerInfo(config, member, m)).filter((x): x is EdgePartner => !!x);
+}
+
+export function hingeGeometry(config: KitchenConfig, member: FrameMember, hinge: FrameHinge, partner?: FrameMember): HingeGeometry {
   const sec = memberSectionCm(member, config);
+  const edge = hinge.mode === 'edge' && partner ? edgePartnerInfo(config, member, partner) : null;
+  if (edge) {
+    // Engsel memanjang: as putar = garis tepi bersama kedua batang (sejajar batang), di sisi arah tekuk
+    const full = memberBox(member, sec);
+    const c: V3 = [0, 1, 2].map((i) => (full.min[i] + full.max[i]) / 2) as V3;
+    const s = unitAxis(edge.k, edge.sign);
+    const n = unitAxis(edge.fold, hinge.foldAxis === edge.fold ? hinge.foldSign : 1);
+    const u = mul(s, -1);
+    const hs = sec[AXIS_INDEX[edge.k]] / 2;
+    const hn = sec[AXIS_INDEX[edge.fold]] / 2;
+    const P = add(c, mul(s, hs));
+    return {
+      hinge,
+      member,
+      pos: member.length / 2,
+      P,
+      pivot: add(P, mul(n, hn)),
+      u,
+      n,
+      a: cross(u, n),
+      movingLen: hs * 2,
+      fixedLen: 0,
+      half: [hs, hn, member.length / 2],
+      fixedBox: null,
+      movingBox: full,
+    };
+  }
   const ai = AXIS_INDEX[member.axis];
   const pos = Math.min(Math.max(hinge.pos, 0), member.length);
   const start: V3 = [member.x, member.y, member.z];
@@ -256,7 +319,9 @@ const memberName = (m: FrameMember) => m.label || FRAME_ROLE_LABELS[m.role];
 export function computeHingeLimit(config: KitchenConfig, members: FrameMember[], hinge: FrameHinge): HingeLimit | null {
   const member = members.find((m) => m.id === hinge.memberId);
   if (!member) return null;
-  const g = hingeGeometry(config, member, hinge);
+  const partner = hinge.mode === 'edge' ? members.find((m) => m.id === hinge.partnerId) : undefined;
+  if (hinge.mode === 'edge' && (!partner || !edgePartnerInfo(config, member, partner))) return null;
+  const g = hingeGeometry(config, member, hinge, partner);
   const typeMax = HINGE_TYPES[hinge.type]?.maxAngle ?? 180;
   if (g.movingLen < 0.1) return { geometry: g, limitDeg: 0, typeMax, blockedBy: null, attached: [] };
 
@@ -307,7 +372,7 @@ export function splitMembersAtHinges(config: KitchenConfig, members: FrameMember
   const hinges = new Map(getValidHinges(config, members).map((h) => [h.memberId, h]));
   return members.flatMap((m) => {
     const h = hinges.get(m.id);
-    if (!h) return [m];
+    if (!h || h.mode === 'edge') return [m];
     const g = hingeGeometry(config, m, h);
     if (g.fixedLen < 0.1 || g.movingLen < 0.1) return [m];
     const r1 = (v: number) => Math.round(v * 10) / 10;
