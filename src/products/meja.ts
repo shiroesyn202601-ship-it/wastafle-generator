@@ -31,7 +31,7 @@ export const MEJA: ProductDef = {
     },
     { key: 'panjang', label: 'Panjang / diameter', type: 'number', unit: 'cm', min: 40, max: 240, step: 1, help: 'Sisi paling panjang daun meja (atau diameter untuk meja bundar).', marks: [{ value: 80, label: 'kopi' }, { value: 120, label: 'makan 4 org' }, { value: 180, label: 'makan 6 org' }] },
     { key: 'lebar', label: 'Lebar', type: 'number', unit: 'cm', min: 30, max: 120, step: 1, help: 'Jarak depan ke belakang.', marks: [{ value: 50, label: 'kopi' }, { value: 75, label: 'makan' }, { value: 90, label: 'makan 6 org' }], showIf: (p) => p.bentukDaun !== 'bulat' },
-    { key: 'tinggi', label: 'Tinggi', type: 'number', unit: 'cm', min: 35, max: 110, step: 1, help: 'Dari lantai sampai permukaan meja.', marks: [{ value: 45, label: 'kopi' }, { value: 75, label: 'makan' }, { value: 85, label: 'kerja' }, { value: 105, label: 'bar' }] },
+    { key: 'tinggi', label: 'Tinggi', type: 'number', unit: 'cm', min: 30, max: 110, step: 1, help: 'Dari lantai sampai permukaan meja.', marks: [{ value: 45, label: 'kopi' }, { value: 75, label: 'makan' }, { value: 85, label: 'kerja' }, { value: 105, label: 'bar' }] },
     {
       key: 'modelKaki',
       label: 'Model kaki',

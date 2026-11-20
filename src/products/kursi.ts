@@ -16,7 +16,7 @@ export const KURSI: ProductDef = {
     { id: 'ukuran', title: 'Ukuran', keys: ['jenis', 'lebar', 'dalam', 'tinggiDudukan'] },
     { id: 'bentuk', title: 'Bentuk', keys: ['dudukan', 'bentukDudukan', 'sandaran', 'tinggiSandaran', 'miringSandaran', 'sandaranTangan', 'sudutKaki', 'palangKaki', 'pijakan', 'tinggiPijakan', 'kakiTengah', 'rakBawah'] },
     { id: 'bahan', title: 'Bahan', keys: ['pipa', 'papan', 'warna'] },
-    { id: 'tambahan', title: 'Tambahan', keys: ['mejaSamping', 'diameterMeja', 'tinggiMeja'] },
+    { id: 'tambahan', title: 'Tambahan', keys: ['mejaSamping', 'diameterMeja', 'tinggiMeja', 'mejaDepan', 'lebarMejaDepan', 'tinggiMejaDepan'] },
   ],
   params: [
     {
@@ -31,7 +31,7 @@ export const KURSI: ProductDef = {
     },
     { key: 'lebar', label: 'Lebar dudukan', type: 'number', unit: 'cm', min: 28, max: 200, step: 1, marks: [{ value: 35, label: 'stool' }, { value: 45, label: 'kursi' }, { value: 120, label: 'bangku 2–3 org' }] },
     { key: 'dalam', label: 'Kedalaman dudukan', type: 'number', unit: 'cm', min: 25, max: 60, step: 1, marks: [{ value: 35, label: 'stool / bangku' }, { value: 42, label: 'kursi' }] },
-    { key: 'tinggiDudukan', label: 'Tinggi dudukan', type: 'number', unit: 'cm', min: 35, max: 85, step: 1, help: 'Dari lantai sampai permukaan dudukan.', marks: [{ value: 45, label: 'meja makan' }, { value: 65, label: 'meja dapur' }, { value: 75, label: 'meja bar' }] },
+    { key: 'tinggiDudukan', label: 'Tinggi dudukan', type: 'number', unit: 'cm', min: 25, max: 85, step: 1, help: 'Dari lantai sampai permukaan dudukan.', marks: [{ value: 45, label: 'meja makan' }, { value: 65, label: 'meja dapur' }, { value: 75, label: 'meja bar' }] },
     {
       key: 'dudukan',
       label: 'Dudukan',
@@ -65,11 +65,14 @@ export const KURSI: ProductDef = {
     { key: 'mejaSamping', label: 'Meja samping bundar', type: 'toggle', help: 'Meja kecil di ujung kanan bangku untuk menaruh minuman.', showIf: (p) => p.jenis === 'bangku' },
     { key: 'diameterMeja', label: 'Diameter meja samping', type: 'number', unit: 'cm', min: 30, max: 60, step: 1, showIf: (p) => p.jenis === 'bangku' && p.mejaSamping === true },
     { key: 'tinggiMeja', label: 'Tinggi meja samping', type: 'number', unit: 'cm', min: 50, max: 80, step: 1, showIf: (p) => p.jenis === 'bangku' && p.mejaSamping === true },
+    { key: 'mejaDepan', label: 'Meja kecil di atas dudukan', type: 'number', min: 0, max: 3, step: 1, help: 'Daun meja kecil bertiang dua yang naik dari depan dudukan, gaya bangku cafe trotoar. 0 = tanpa.', showIf: (p) => p.jenis === 'bangku' && p.mejaSamping !== true },
+    { key: 'lebarMejaDepan', label: 'Lebar meja kecil', type: 'number', unit: 'cm', min: 30, max: 60, step: 1, showIf: (p) => p.jenis === 'bangku' && p.mejaSamping !== true && Number(p.mejaDepan) > 0 },
+    { key: 'tinggiMejaDepan', label: 'Tinggi meja kecil', type: 'number', unit: 'cm', min: 62, max: 85, step: 1, showIf: (p) => p.jenis === 'bangku' && p.mejaSamping !== true && Number(p.mejaDepan) > 0 },
   ],
   defaults: {
     jenis: 'kursi', lebar: 45, dalam: 42, tinggiDudukan: 45, dudukan: 'papan', sandaran: true, tinggiSandaran: 85, miringSandaran: 10,
     sudutKaki: 0, palangKaki: true, bentukDudukan: 'kotak', sandaranTangan: false, rakBawah: false, pijakan: true, tinggiPijakan: 28, kakiTengah: false,
-    mejaSamping: false, diameterMeja: 40, tinggiMeja: 60, pipa: '20', papan: 'kayu', warna: '#1f2226',
+    mejaSamping: false, diameterMeja: 40, tinggiMeja: 60, mejaDepan: 0, lebarMejaDepan: 45, tinggiMejaDepan: 72, pipa: '20', papan: 'kayu', warna: '#1f2226',
   },
   presets: [
     { id: 'makan', name: 'Kursi makan', desc: 'sandaran miring 10°', params: { jenis: 'kursi', lebar: 45, dalam: 42, tinggiDudukan: 45, sandaran: true, tinggiSandaran: 85, miringSandaran: 10, palangKaki: true, pipa: '20' } },
@@ -272,6 +275,24 @@ export const KURSI: ProductDef = {
       }
     }
 
+    // Meja kecil bertiang dua di atas dudukan (bangku cafe trotoar)
+    const nFront = jenis === 'bangku' && !side ? Math.round(num(p, 'mejaDepan', 0)) : 0;
+    if (nFront > 0) {
+      const tw = num(p, 'lebarMejaDepan', 45);
+      const Htf = Math.max(Hs + 15, num(p, 'tinggiMejaDepan', 72));
+      const tb = Math.max(papanB, 2.5);
+      const yT = Htf - tb - 1;
+      const td = 34;
+      for (let t = 0; t < nFront; t++) {
+        const xc = (W * (t + 0.5)) / nFront;
+        const tag = nFront > 1 ? ` ${t + 1}` : '';
+        const px = [xc - tw / 2 + 5, xc + tw / 2 - 5];
+        px.forEach((x, k) => add(`meja-depan-tiang-${t}-${k}`, 'y', x, yS, zf, yT - yS - 1, 'post', `Tiang meja kecil${tag} ${k ? 'kanan' : 'kiri'}`, leg));
+        add(`meja-depan-palang-${t}`, 'x', px[0] + L / 2, yT, zf, px[1] - px[0] - L, 'rail-x', `Palang bawah meja kecil${tag}`, rail);
+        if (papanB > 0) boards.push(board(`meja-depan-${t}`, `Daun meja kecil${tag}`, xc - tw / 2, xc + tw / 2, Htf - tb, Htf, zf - td * 0.45, zf + td * 0.55));
+      }
+    }
+
     // Sandaran: palang atas & bawah mengikuti kemiringan + papan sandaran (diputar)
     if (back) {
       const yTopRail = Hb - 1;
@@ -308,6 +329,9 @@ export const KURSI: ProductDef = {
     const out: ProductCheck[] = [];
     const jenis = str(p, 'jenis');
     const W = num(p, 'lebar');
+    const nFront = jenis === 'bangku' && !bool(p, 'mejaSamping') ? num(p, 'mejaDepan') : 0;
+    if (nFront > 0 && W / nFront < num(p, 'lebarMejaDepan') + 20)
+      out.push({ level: 'warn', message: 'Meja kecil terlalu rapat: hampir tidak ada tempat duduk di antaranya.', fix: { label: 'Kurangi 1 meja', params: { mejaDepan: nFront - 1 } } });
     const Hs = num(p, 'tinggiDudukan');
     if (jenis === 'kursi' && W > 60) out.push({ level: 'warn', message: `Dudukan ${W} cm terlalu lebar untuk kursi 1 orang. Mau dijadikan bangku?`, fix: { label: 'Jadikan bangku', params: { jenis: 'bangku' } } });
     if (jenis === 'bangku' && W > 120 && !bool(p, 'kakiTengah'))

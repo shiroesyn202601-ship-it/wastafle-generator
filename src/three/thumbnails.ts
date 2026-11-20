@@ -15,6 +15,7 @@ type Ctx = { renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.Pe
 let ctx: Ctx | null | false = null; // false = WebGL tidak tersedia
 const cache = new Map<string, string>();
 const pending = new Map<string, Promise<string | null>>();
+const wanters = new Map<string, Set<() => boolean>>(); // siapa saja yang masih menunggu gambar ini
 let queue: Promise<unknown> = Promise.resolve();
 
 function init(): Ctx | false {
@@ -92,16 +93,29 @@ function render(product: ProductId, preset: string | undefined, size: number): s
   return url;
 }
 
-/** Gambar kecil sebuah template (dan ukuran umum ke-`size`); null bila WebGL tidak tersedia */
-export function productThumbnail(product: ProductId, preset?: string, size = 0): Promise<string | null> {
+/**
+ * Gambar kecil sebuah template (dan ukuran umum ke-`size`); null bila WebGL tidak tersedia.
+ * `wanted`: dicek saat giliran tiba; bila tidak ada lagi yang menunggu (kartu sudah lewat dari layar)
+ * gambar dilewati supaya antrean tidak macet oleh kartu yang tidak terlihat.
+ */
+export function productThumbnail(product: ProductId, preset?: string, size = 0, wanted?: () => boolean): Promise<string | null> {
   const key = keyOf(product, preset, size);
   const hit = cache.get(key);
   if (hit) return Promise.resolve(hit);
+  let set = wanters.get(key);
+  if (!set) wanters.set(key, (set = new Set()));
+  set.add(wanted || (() => true));
   const wait = pending.get(key);
   if (wait) return wait;
   const job = queue
     .then(() => new Promise((r) => setTimeout(r, 0))) // beri jeda supaya halaman tetap responsif
     .then(() => {
+      const who = wanters.get(key);
+      wanters.delete(key);
+      if (who && ![...who].some((w) => w())) {
+        pending.delete(key);
+        return null;
+      }
       try {
         const url = render(product, preset, size);
         if (url) cache.set(key, url);

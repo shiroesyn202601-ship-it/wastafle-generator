@@ -13,6 +13,8 @@ const JOK_OPTIONS = [
 /**
  * Rangka booth / sofa cafe: dudukan berbusa, sandaran tinggi miring.
  * Tunggal (menempel tembok) atau ganda punggung-ke-punggung (sandaran saling menempel di atas).
+ * Bisa diberi meja bundar kecil yang menyatu dengan rangka: bertiang tegak berkaki rel lantai, atau
+ * bertiang lengan L yang keluar dari rangka bawah dudukan (meja melayang, lantai tetap bebas).
  */
 export const BOOTH: ProductDef = {
   id: 'booth',
@@ -23,7 +25,7 @@ export const BOOTH: ProductDef = {
     { id: 'ukuran', title: 'Ukuran', keys: ['sisi', 'panjang', 'tinggiDudukan', 'dalamDudukan'] },
     { id: 'bentuk', title: 'Sandaran', keys: ['tinggiSandaran', 'miringSandaran', 'busa', 'warnaJok'] },
     { id: 'bahan', title: 'Bahan', keys: ['pipa', 'papan', 'warna'] },
-    { id: 'tambahan', title: 'Selesai', keys: [] },
+    { id: 'tambahan', title: 'Meja', keys: ['mejaBooth', 'jumlahMejaBooth', 'diameterMejaBooth', 'tinggiMejaBooth'] },
   ],
   params: [
     {
@@ -43,8 +45,21 @@ export const BOOTH: ProductDef = {
     { key: 'busa', label: 'Busa & jok', type: 'toggle', help: 'Gambar busa dudukan & sandaran (dibuat tukang jok).' },
     { key: 'warnaJok', label: 'Warna jok', type: 'choice', options: JOK_OPTIONS, showIf: (p) => p.busa === true },
     ...materialParams(true),
+    {
+      key: 'mejaBooth',
+      label: 'Meja bundar menyatu',
+      type: 'choice',
+      options: [
+        { value: 'none', label: 'Tanpa meja' },
+        { value: 'tiang', label: 'Tiang tegak', desc: 'Tiang ke lantai, dirangkai rel ke booth' },
+        { value: 'lengan', label: 'Tiang lengan L', desc: 'Keluar dari rangka bawah dudukan, meja melayang' },
+      ],
+    },
+    { key: 'jumlahMejaBooth', label: 'Jumlah meja', type: 'number', min: 1, max: 4, step: 1, showIf: (p) => p.mejaBooth === 'tiang' || p.mejaBooth === 'lengan' },
+    { key: 'diameterMejaBooth', label: 'Diameter meja', type: 'number', unit: 'cm', min: 35, max: 70, step: 1, marks: [{ value: 50, label: 'umum' }], showIf: (p) => p.mejaBooth === 'tiang' || p.mejaBooth === 'lengan' },
+    { key: 'tinggiMejaBooth', label: 'Tinggi meja', type: 'number', unit: 'cm', min: 55, max: 80, step: 1, marks: [{ value: 65, label: 'santai' }, { value: 75, label: 'makan' }], showIf: (p) => p.mejaBooth === 'tiang' || p.mejaBooth === 'lengan' },
   ],
-  defaults: { sisi: 'tunggal', panjang: 120, tinggiDudukan: 46, dalamDudukan: 48, tinggiSandaran: 100, miringSandaran: 10, busa: true, warnaJok: '#3f4a3c', pipa: '30', papan: 'kayu', warna: '#1f2226' },
+  defaults: { mejaBooth: 'none', jumlahMejaBooth: 2, diameterMejaBooth: 50, tinggiMejaBooth: 65, sisi: 'tunggal', panjang: 120, tinggiDudukan: 46, dalamDudukan: 48, tinggiSandaran: 100, miringSandaran: 10, busa: true, warnaJok: '#3f4a3c', pipa: '30', papan: 'kayu', warna: '#1f2226' },
   presets: [
     {
       id: 'tunggal',
@@ -68,7 +83,10 @@ export const BOOTH: ProductDef = {
       ],
     },
   ],
-  summary: (p) => `${str(p, 'sisi') === 'ganda' ? 'Ganda' : 'Tunggal'} · ${num(p, 'panjang')} cm, sandaran ${num(p, 'tinggiSandaran')} cm`,
+  summary: (p) =>
+    `${str(p, 'sisi') === 'ganda' ? 'Ganda' : 'Tunggal'} · ${num(p, 'panjang')} cm, sandaran ${num(p, 'tinggiSandaran')} cm${
+      str(p, 'mejaBooth', 'none') !== 'none' ? ` · ${num(p, 'jumlahMejaBooth')} meja ø${num(p, 'diameterMejaBooth')}` : ''
+    }`,
 
   build: (p) => {
     const W = num(p, 'panjang', 120);
@@ -86,6 +104,11 @@ export const BOOTH: ProductDef = {
     const zs = tanT * (Hb - yS); // geser ke depan supaya sandaran miring tidak keluar ke belakang
     const rail: [number, number] = [20, 20];
     const post: [number, number] = [L * 10, L * 10];
+    const tableMode = str(p, 'mejaBooth', 'none');
+    const nT = tableMode === 'none' ? 0 : Math.max(1, Math.round(num(p, 'jumlahMejaBooth', 2)));
+    const dT = num(p, 'diameterMejaBooth', 50);
+    const hT = Math.max(Hs + 10, num(p, 'tinggiMejaBooth', 65));
+    const ext = nT ? dT * 0.75 : 0; // meja menjorok ke depan dudukan
 
     /** Satu sisi booth menghadap +z, sandaran di z kecil */
     const side = (prefix: string) => {
@@ -120,6 +143,30 @@ export const BOOTH: ProductDef = {
       const ym = (Hb + yS + 4) / 2;
       const zc = zBack(ym) + 1 + 0.9;
       if (b > 0) boards.push({ ...board(`${prefix}papan-sandaran`, 'Papan sandaran', 0, W, ym - hgt / 2, ym + hgt / 2, zc - 0.9, zc + 0.9), rotX: -tilt });
+      // Meja bundar menyatu di depan dudukan
+      if (nT) {
+        const zc = zs + D + dT * 0.25; // tepi belakang meja sedikit menutupi dudukan
+        const tb = Math.max(b, 2.5);
+        const yTrail = hT - tb - 1;
+        for (let t = 0; t < nT; t++) {
+          const xc = (W * (t + 0.5)) / nT;
+          const tag = nT > 1 ? ` ${t + 1}` : '';
+          if (tableMode === 'tiang') {
+            add(`${prefix}meja-tiang-${t}`, 'y', xc, L, zc, yTrail - L, 'post', `Tiang meja${tag}`, post);
+            add(`${prefix}meja-rel-${t}`, 'z', xc, L / 2, zf - L / 2, zc - zf + dT * 0.3, 'rail-z', `Rel lantai meja${tag}`, post);
+            add(`${prefix}meja-kaki-${t}`, 'x', xc - dT * 0.3, L / 2, zc, dT * 0.6, 'rail-x', `Kaki silang meja${tag}`, post);
+          } else {
+            // lengan L: dari gelagar bawah depan mendatar ke depan, lalu naik ke bawah meja
+            const yArm = 8;
+            add(`${prefix}meja-lengan-${t}`, 'z', xc, yArm, zf + L / 2, zc - zf, 'rail-z', `Lengan meja${tag}`, post);
+            add(`${prefix}meja-tiang-${t}`, 'y', xc, yArm + L / 2, zc, yTrail - yArm - L / 2, 'post', `Tiang meja${tag}`, post);
+          }
+          add(`${prefix}meja-dudukan-${t}`, 'x', xc - dT * 0.3, yTrail, zc, dT * 0.6, 'rail-x', `Palang bawah meja${tag}`, rail);
+          const tbd = board(`${prefix}meja-${t}`, `Daun meja bundar${tag}`, xc - dT / 2, xc + dT / 2, hT - tb, hT, zc - dT / 2, zc + dT / 2);
+          tbd.shape = 'round';
+          boards.push(tbd);
+        }
+      }
       if (foam) {
         boards.push({ ...board(`${prefix}busa-dudukan`, 'Busa dudukan', 1, W - 1, deckTop, Hs, zs + 6, zs + D), color: jok });
         const fh = (Hb - 3 - (Hs + 1)) / Math.cos((tilt * Math.PI) / 180);
@@ -131,7 +178,7 @@ export const BOOTH: ProductDef = {
     };
 
     const a = side('');
-    const D1 = zs + D;
+    const D1 = zs + D + ext;
     if (str(p, 'sisi') !== 'ganda') return { members: a.list, boards: a.boards, casters: [], W, D: D1, H: Hb, boardThick: 0, wall: true };
 
     // Ganda: sisi A dicerminkan (menghadap −z), sisi B digeser; sandaran keduanya bertemu di tengah
@@ -150,6 +197,11 @@ export const BOOTH: ProductDef = {
 
   checks: (p) => {
     const out: ProductCheck[] = [];
+    const nT = str(p, 'mejaBooth', 'none') === 'none' ? 0 : num(p, 'jumlahMejaBooth');
+    if (nT && num(p, 'panjang') / nT < num(p, 'diameterMejaBooth') + 15)
+      out.push({ level: 'warn', message: 'Meja terlalu rapat: daun meja saling bersentuhan.', fix: { label: 'Kurangi 1 meja', params: { jumlahMejaBooth: Math.max(1, nT - 1) } } });
+    if (nT && str(p, 'mejaBooth') === 'lengan' && num(p, 'diameterMejaBooth') > 60)
+      out.push({ level: 'warn', message: 'Meja lengan selebar ini mudah melendut; pakai tiang tegak atau diameter ≤ 60 cm.', fix: { label: 'Diameter 55 cm', params: { diameterMejaBooth: 55 } } });
     if (num(p, 'panjang') > 160 && str(p, 'pipa') === '20') out.push({ level: 'warn', message: 'Booth panjang dengan pipa 20×20 terasa goyang saat diduduki banyak orang.', fix: { label: 'Pakai pipa 30×30', params: { pipa: '30' } } });
     out.push({ level: 'info', message: `Muat ±${Math.max(1, Math.floor(num(p, 'panjang') / 60))} orang per sisi. Meja di depan booth: tinggi 75 cm, tepi meja menutupi dudukan ±5 cm.` });
     if (str(p, 'sisi') === 'ganda') out.push({ level: 'info', message: 'Jarak antar booth berhadapan (dengan meja 70 cm di tengah) sekitar 170–190 cm.' });

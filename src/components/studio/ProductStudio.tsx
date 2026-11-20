@@ -223,7 +223,8 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
           <aside className="flex-1 lg:flex-none lg:w-[400px] min-h-0 flex flex-col bg-white border-t lg:border-t-0 lg:border-r border-stone-200 lg:order-1">
             <div className="shrink-0 px-4 pt-3 pb-2 border-b border-stone-100 space-y-2.5">
               <div className="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
-                {def.presets.map((p) => (
+                {/* hanya template dalam sub-kategori yang sama (satu produk bisa punya ratusan template) */}
+                {def.presets.filter((p) => (p.group || '') === (preset?.group || '')).map((p) => (
                   <button
                     key={p.id}
                     onClick={() => applyPreset(p.id)}

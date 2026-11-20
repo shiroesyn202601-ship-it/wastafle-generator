@@ -52,6 +52,14 @@ export interface Preset {
   desc: string; // ciri struktur, mis. "kaki tegak, palang H"
   params: Params; // struktur + ukuran bawaan
   sizes?: { label: string; desc: string; params: Params }[]; // ukuran / pemakaian umum dengan rangka yang sama
+  group?: string; // id sub-kategori (mis. 'kerja'); kosong = desain dasar
+}
+
+/** Sub-kategori pemakaian sebuah produk, mis. Meja → "Meja kerja", "Meja akuarium" */
+export interface PresetGroup {
+  id: string;
+  name: string;
+  desc: string;
 }
 
 /** Papan / daun meja / alas rak (kotak dalam cm, koordinat sama dengan rangka) */
@@ -104,6 +112,7 @@ export interface ProductDef {
   params: ParamDef[];
   defaults: Params;
   presets: Preset[];
+  groups?: PresetGroup[]; // sub-kategori; template-nya ada di `presets` dengan `group` yang sama
   build: (p: Params) => ProductBuild;
   checks: (p: Params, b: ProductBuild) => ProductCheck[];
   summary: (p: Params) => string; // mis. "120 × 75 × 75 cm · 4 tingkat"

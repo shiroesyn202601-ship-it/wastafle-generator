@@ -37,8 +37,13 @@ interface Card {
   subtitle: string;
   sizes?: string[];
   icon: string;
+  group?: string; // id sub-kategori template
   expandable?: boolean; // kartu produk tanpa template tertentu: buka daftar contoh
 }
+
+const BASIC = ''; // "sub-kategori" untuk desain dasar (template tanpa group)
+
+const groupName = (id: ProductId, group?: string) => PRODUCTS[id].groups?.find((g) => g.id === group)?.name;
 
 const allDesigns = (): Card[] =>
   PRODUCT_LIST.flatMap((def) =>
@@ -47,9 +52,10 @@ const allDesigns = (): Card[] =>
       product: def.id,
       preset: pr.id,
       title: pr.name,
-      subtitle: `${def.name} · ${pr.desc}`,
+      subtitle: [def.name, groupName(def.id, pr.group), pr.desc].filter(Boolean).join(' · '),
       sizes: pr.sizes?.map((s) => s.label),
       icon: def.icon,
+      group: pr.group || BASIC,
     }))
   );
 
@@ -65,7 +71,7 @@ const matches = (c: Card, q: string) => {
 /** Beranda: pilih desain (dikelompokkan / semua), tampilan gambar besar / daftar, cari */
 export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImport }) => {
   const [view, setViewState] = useState<ViewPref>(loadView);
-  const [open, setOpen] = useState<{ cat: number; id: ProductId } | null>(null);
+  const [open, setOpen] = useState<{ cat: number; id: ProductId; key: string; group: string } | null>(null);
   const [q, setQ] = useState('');
   const setView = (v: Partial<ViewPref>) => {
     const next = { ...view, ...v };
@@ -142,9 +148,21 @@ export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImpor
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">{children}</div>
     );
 
-  /** Daftar contoh (template) satu produk */
-  const presetPanel = (id: ProductId) => {
+  /** Sub-kategori satu produk: desain dasar + tiap sub-kategori (masing-masing 20 template) */
+  const groupsOf = (id: ProductId) => {
     const def = PRODUCTS[id];
+    const basic = def.presets.filter((p) => !p.group).length;
+    return [
+      ...(basic ? [{ id: BASIC, name: 'Desain dasar', desc: 'satu contoh per bentuk rangka', count: basic }] : []),
+      ...(def.groups || []).map((g) => ({ ...g, count: def.presets.filter((p) => p.group === g.id).length })),
+    ];
+  };
+
+  /** Daftar contoh (template) satu produk, dipilah per sub-kategori */
+  const presetPanel = (id: ProductId, group: string, setGroup: (g: string) => void) => {
+    const def = PRODUCTS[id];
+    const groups = groupsOf(id);
+    const sel = groups.find((g) => g.id === group) || groups[0];
     return (
       <div className="p-4 rounded-2xl bg-white border border-stone-200 space-y-3">
         <div className="flex items-baseline justify-between gap-2">
@@ -153,10 +171,29 @@ export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImpor
             Mulai dari ukuran standar →
           </button>
         </div>
+        {groups.length > 1 && (
+          <div className="flex flex-wrap gap-1.5" role="tablist" aria-label={`Jenis ${def.name.toLowerCase()}`}>
+            {groups.map((g) => {
+              const on = g.id === sel.id;
+              return (
+                <button
+                  key={g.id || 'dasar'}
+                  role="tab"
+                  aria-selected={on}
+                  onClick={() => setGroup(g.id)}
+                  className={`px-3 py-1.5 rounded-full border text-sm font-semibold cursor-pointer transition ${on ? 'bg-stone-900 border-stone-900 text-white' : 'bg-white border-stone-300 text-stone-700 hover:border-stone-500'}`}
+                >
+                  {g.name} <span className={on ? 'text-stone-300' : 'text-stone-400'}>{g.count}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {sel && <p className="text-sm text-stone-500">{sel.desc}</p>}
         {wrap(
           designs
-            .filter((c) => c.product === id)
-            .map((c) => renderCard({ ...c, subtitle: PRODUCTS[id].presets.find((p) => p.id === c.preset)?.desc || '' }, () => onPick(c.product, c.preset)))
+            .filter((c) => c.product === id && c.group === sel?.id)
+            .map((c) => renderCard({ ...c, subtitle: def.presets.find((p) => p.id === c.preset)?.desc || '' }, () => onPick(c.product, c.preset)))
         )}
       </div>
     );
@@ -245,36 +282,60 @@ export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImpor
           </section>
         ) : view.group ? (
           CATEGORIES.map((cat, ci) => {
-            const openHere = open && open.cat === ci ? open.id : null;
+            const openHere = open && open.cat === ci ? open : null;
             return (
               <section key={cat.title} className="space-y-2.5">
                 <h2 className="text-sm font-bold uppercase tracking-wider text-stone-500">{cat.title}</h2>
                 {wrap([
                   ...cat.items.map((it) => {
                     const def = PRODUCTS[it.product];
+                    const key = `${it.product}-${it.preset || ''}-${it.group || ''}`;
+                    const inGroup = it.group ? def.presets.filter((p) => p.group === it.group) : [];
                     const card: Card = {
-                      key: `${it.product}-${it.preset || ''}`,
+                      key,
                       product: it.product,
-                      preset: it.preset || def.presets[0]?.id,
+                      preset: it.preset || inGroup[0]?.id || def.presets[0]?.id,
                       title: it.title,
-                      subtitle: it.preset ? it.subtitle : `${it.subtitle} · ${def.presets.length} desain`,
+                      subtitle: it.preset ? it.subtitle : `${it.subtitle} · ${it.group ? inGroup.length : def.presets.length} desain`,
                       icon: it.icon || def.icon,
                       expandable: !it.preset,
                     };
-                    const active = !it.preset && openHere === it.product;
-                    return renderCard(card, () => (it.preset ? onPick(it.product, it.preset) : setOpen(active ? null : { cat: ci, id: it.product })), active);
+                    const active = !it.preset && openHere?.key === key;
+                    const firstGroup = groupsOf(it.product)[0]?.id ?? BASIC;
+                    return renderCard(
+                      card,
+                      () => (it.preset ? onPick(it.product, it.preset) : setOpen(active ? null : { cat: ci, id: it.product, key, group: it.group ?? firstGroup })),
+                      active
+                    );
                   }),
                   ...(ci === CATEGORIES.length - 1 ? [kitchenCard] : []),
                 ])}
-                {openHere && presetPanel(openHere)}
+                {openHere && presetPanel(openHere.id, openHere.group, (g) => setOpen({ ...openHere, group: g }))}
               </section>
             );
           })
         ) : (
-          <section className="space-y-2.5">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-stone-500">Semua desain</h2>
-            {wrap([...designs.map((c) => renderCard(c, () => onPick(c.product, c.preset))), kitchenCard])}
-          </section>
+          <>
+            {PRODUCT_LIST.map((def) => (
+              <section key={def.id} className="space-y-3">
+                <h2 className="text-sm font-bold uppercase tracking-wider text-stone-500">
+                  {def.name} <span className="font-semibold normal-case tracking-normal">· {def.presets.length} desain</span>
+                </h2>
+                {groupsOf(def.id).map((g) => (
+                  <div key={g.id || 'dasar'} className="space-y-2">
+                    <h3 className="font-bold text-stone-800">
+                      {g.name} <span className="text-sm font-normal text-stone-500">· {g.desc}</span>
+                    </h3>
+                    {wrap(designs.filter((c) => c.product === def.id && c.group === g.id).map((c) => renderCard(c, () => onPick(c.product, c.preset))))}
+                  </div>
+                ))}
+              </section>
+            ))}
+            <section className="space-y-2.5">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-stone-500">Dapur</h2>
+              {wrap([kitchenCard])}
+            </section>
+          </>
         )}
 
         <p className="text-xs text-stone-500">Desain tersimpan otomatis di browser ini. Simpan file desain untuk dipindah ke HP / komputer lain.</p>
