@@ -92,10 +92,10 @@ export const ProductResult: React.FC<Props> = ({ title, summary, host, build, pa
 };
 
 const VIEWS: { view: DesignView; label: string; w: number; h: number }[] = [
-  { view: 'iso', label: '3D', w: 960, h: 600 },
-  { view: 'front', label: 'Tampak depan', w: 480, h: 360 },
-  { view: 'side', label: 'Tampak samping', w: 480, h: 360 },
-  { view: 'top', label: 'Tampak atas', w: 480, h: 360 },
+  { view: 'iso', label: '3D', w: 1120, h: 700 },
+  { view: 'front', label: 'Tampak depan', w: 400, h: 300 },
+  { view: 'side', label: 'Tampak samping', w: 400, h: 300 },
+  { view: 'top', label: 'Tampak atas', w: 400, h: 300 },
 ];
 
 /** Gambar produk persis seperti desain sekarang: 3D besar + tampak depan, samping, atas */

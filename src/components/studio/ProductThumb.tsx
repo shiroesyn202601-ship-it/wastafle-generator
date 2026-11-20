@@ -20,6 +20,7 @@ export const ProductThumb: React.FC<Props> = ({ product, preset, size = 0, fallb
   const [visible, setVisible] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const seen = useRef(false);
+  const [attempt, setAttempt] = useState(0); // WebGL sempat gagal: coba lagi beberapa kali
 
   useEffect(() => {
     const el = box.current;
@@ -44,11 +45,17 @@ export const ProductThumb: React.FC<Props> = ({ product, preset, size = 0, fallb
     const hit = cachedThumbnail(product, preset, size);
     setSrc(hit);
     if (hit || !visible) return;
-    productThumbnail(product, preset, size, () => alive && seen.current).then((u) => alive && u && setSrc(u));
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    productThumbnail(product, preset, size, () => alive && seen.current).then((u) => {
+      if (!alive) return;
+      if (u) setSrc(u);
+      else if (attempt < 3 && seen.current) retry = setTimeout(() => alive && setAttempt((a) => a + 1), 9000);
+    });
     return () => {
       alive = false;
+      if (retry) clearTimeout(retry);
     };
-  }, [product, preset, size, visible]);
+  }, [product, preset, size, visible, attempt]);
 
   return (
     <div ref={box} className="w-full h-full">

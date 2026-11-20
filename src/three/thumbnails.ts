@@ -13,8 +13,51 @@ const TW = 360;
 const TH = 270;
 
 type Ctx = { renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera; group: THREE.Group };
-let ctx: Ctx | null | false = null; // false = WebGL tidak tersedia
+let ctx: Ctx | null | false = null; // false = WebGL tidak tersedia (dicoba lagi setelah RETRY_MS)
+let failedAt = 0;
+const RETRY_MS = 8000;
+
+/**
+ * Renderer bersama. Bila konteks WebGL hilang (GPU sibuk / di-reset browser) atau gagal dibuat, jangan menyerah
+ * selamanya: buat ulang pada permintaan berikutnya.
+ */
+function getCtx(): Ctx | false {
+  if (ctx && ctx.renderer.getContext().isContextLost()) {
+    try {
+      ctx.renderer.dispose();
+    } catch {
+      // abaikan
+    }
+    ctx = null;
+  }
+  if (ctx === false && Date.now() - failedAt > RETRY_MS) ctx = null;
+  if (ctx === null) {
+    ctx = init();
+    if (!ctx) failedAt = Date.now();
+  }
+  return ctx;
+}
 const cache = new Map<string, string>();
+const MAX_PARAM_THUMBS = 150; // gambar pilihan (berubah tiap slider digeser) dibatasi supaya memori tidak terus naik
+
+/** Simpan ke cache; gambar pilihan yang paling lama dibuang bila melewati batas */
+function remember(key: string, url: string) {
+  cache.delete(key);
+  cache.set(key, url);
+  if (!key.includes('#')) return;
+  let n = 0;
+  for (const k of cache.keys()) if (k.includes('#')) n++;
+  for (const k of cache.keys()) {
+    if (n <= MAX_PARAM_THUMBS) break;
+    if (k.includes('#')) {
+      cache.delete(k);
+      n--;
+    }
+  }
+}
+
+/** WebP jauh lebih kecil daripada PNG (browser lama otomatis memberi PNG) */
+const snapshot = (canvas: HTMLCanvasElement) => canvas.toDataURL('image/webp', 0.88);
 const pending = new Map<string, Promise<string | null>>();
 const wanters = new Map<string, Set<() => boolean>>(); // siapa saja yang masih menunggu gambar ini
 let queue: Promise<unknown> = Promise.resolve();
@@ -22,7 +65,11 @@ let queue: Promise<unknown> = Promise.resolve();
 function init(): Ctx | false {
   try {
     const canvas = document.createElement('canvas');
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true, powerPreference: 'low-power' });
+    canvas.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      ctx = null; // dibuat ulang saat gambar berikutnya diminta
+    });
     renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     renderer.setSize(TW, TH, false);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -72,9 +119,9 @@ function render(product: ProductId, preset: string | undefined, size: number): s
 }
 
 function renderParams(product: ProductId, params: Params): string | null {
-  if (ctx === null) ctx = init();
-  if (!ctx) return null;
-  const { renderer, scene, camera, group } = ctx;
+  const c = getCtx();
+  if (!c) return null;
+  const { renderer, scene, camera, group } = c;
   const def = PRODUCTS[product];
   const d = { ...newDesign(product), params };
   const build = def.build(params);
@@ -93,7 +140,7 @@ function renderParams(product: ProductId, params: Params): string | null {
   camera.lookAt(sphere.center);
   camera.updateProjectionMatrix();
   renderer.render(scene, camera);
-  const url = renderer.domElement.toDataURL('image/png');
+  const url = snapshot(renderer.domElement);
   clear(group);
   return url;
 }
@@ -133,7 +180,7 @@ function enqueue(key: string, make: () => string | null, wanted?: () => boolean)
       }
       try {
         const url = make();
-        if (url) cache.set(key, url);
+        if (url) remember(key, url);
         return url;
       } catch {
         return null;
@@ -168,11 +215,13 @@ export function designImages(
   const job = queue
     .then(() => new Promise((r) => setTimeout(r, 0)))
     .then(() => {
-      if (ctx === null) ctx = init();
-      if (!ctx) return views.map(() => null);
-      const { renderer, scene, camera, group } = ctx;
+      const c = getCtx();
+      if (!c) return views.map(() => null);
+      const { renderer, scene, camera, group } = c;
       const out: (string | null)[] = [];
+      const ratio = renderer.getPixelRatio();
       try {
+        renderer.setPixelRatio(1); // gambar besar: cukup 1x supaya ringan untuk GPU
         clear(group);
         buildProductModel(group, host, build, paint, board, [], new Map(), { wall: false });
         const sphere = new THREE.Box3().setFromObject(group).getBoundingSphere(new THREE.Sphere());
@@ -186,12 +235,13 @@ export function designImages(
           camera.position.copy(sphere.center).addScaledVector(new THREE.Vector3(...VIEW_DIR[v.view]).normalize(), dist);
           camera.lookAt(sphere.center);
           renderer.render(scene, camera);
-          out.push(renderer.domElement.toDataURL('image/png'));
+          out.push(snapshot(renderer.domElement));
         }
       } catch {
         while (out.length < views.length) out.push(null);
       } finally {
         clear(group);
+        renderer.setPixelRatio(ratio);
         renderer.setSize(TW, TH, false);
         camera.aspect = TW / TH;
         camera.updateProjectionMatrix();

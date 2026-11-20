@@ -119,6 +119,9 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
   const floorMatRef = useRef<THREE.MeshStandardMaterial | null>(null);
   const isDark = useIsDark();
   const [glError, setGlError] = useState(false);
+  // WebGL bisa gagal / hilang (GPU sibuk, driver di-reset): buat ulang renderer otomatis, lalu lewat tombol
+  const [attempt, setAttempt] = useState(0);
+  const [gen, setGen] = useState(0); // naik tiap renderer baru siap: model & kamera dibangun ulang
   const [view, setView] = useState<ViewPreset>('iso');
   const [showDims, setShowDims] = useState(() => lsBool(LS_DIMS, true));
   const [showHuman, setShowHuman] = useState(() => lsBool(LS_HUMAN, false));
@@ -148,6 +151,7 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
       setGlError(true);
       return;
     }
+    setGlError(false)
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xeeece7);
     sceneRef.current = scene;
@@ -340,9 +344,12 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
     renderer.domElement.addEventListener('pointerdown', onDown);
     renderer.domElement.addEventListener('pointerup', onUp);
     renderer.domElement.addEventListener('pointermove', onMove);
+    let lostTimer: ReturnType<typeof setTimeout> | undefined;
     const onLost = (e: Event) => {
       e.preventDefault();
       setGlError(true);
+      // coba buat ulang sendiri dua kali; setelah itu pengguna bisa menekan tombol
+      if (attempt < 2) lostTimer = setTimeout(() => setAttempt((a) => a + 1), 1500);
     };
     renderer.domElement.addEventListener('webglcontextlost', onLost);
 
@@ -359,7 +366,10 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
     ro.observe(container);
     resize();
 
+    setGen((g) => g + 1);
+
     return () => {
+      if (lostTimer) clearTimeout(lostTimer);
       cancelAnimationFrame(raf);
       ro.disconnect();
       renderer.domElement.removeEventListener('pointerdown', onDown);
@@ -376,7 +386,8 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
       humanRef.current = null;
       if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attempt]);
 
   // Mode gelap: latar & lantai ikut gelap
   useEffect(() => {
@@ -399,7 +410,7 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
     sizeRef.current = { W: build.W / 100, D: build.D / 100, H: build.H / 100 };
 
     buildProductModel(group, host, build, paint, boardMaterial, hingePartsRef.current, hingeAnimRef.current);
-  }, [host, build, paint, boardMaterial]);
+  }, [host, build, paint, boardMaterial, gen]);
 
   // ---------- Figur orang (pembanding skala), berdiri di sebelah kiri produk ----------
   useEffect(() => {
@@ -410,7 +421,7 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
     h.position.set(-build.W / 200 - 0.38, 0, 0);
     if (showHuman && !h.parent) scene.add(h);
     if (!showHuman && h.parent) scene.remove(h);
-  }, [showHuman, build.W]);
+  }, [showHuman, build.W, gen]);
 
   // ---------- Sorot batang: terpilih (oranye), terkait pilihan (biru muda), baru berubah (biru berkedip) ----------
   useEffect(() => {
@@ -443,7 +454,7 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
     hiRef.current.selected = selectedId || null;
     hiRef.current.hint = new Set(hintIds || []);
     applyHiRef.current();
-  }, [selectedId, hintIds, host, build, paint, boardMaterial]);
+  }, [selectedId, hintIds, host, build, paint, boardMaterial, gen]);
 
   useEffect(() => {
     if (!flash || !flash.ids.length || Date.now() - flash.at > 1500) return;
@@ -537,7 +548,7 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
     const t = setTimeout(() => goTo('iso', true), 30);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fitKey]);
+  }, [fitKey, gen]);
 
   const toggleHuman = () => {
     const v = !showHuman;
@@ -565,8 +576,16 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
     <div className="relative w-full h-full overflow-hidden bg-[#eeece7]">
       <div ref={mountRef} className="absolute inset-0 cursor-grab active:cursor-grabbing touch-none" />
       {glError && (
-        <div className="absolute inset-0 flex items-center justify-center p-6 bg-[#eeece7] text-center text-sm text-stone-600">
-          Tampilan 3D tidak bisa dimuat di browser ini. Pengaturan, tampilan 2D dan potongan besi tetap bisa dipakai.
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 p-6 bg-[#eeece7] text-center text-sm text-stone-600">
+          <p className="max-w-md">
+            Tampilan 3D belum bisa dimuat (kartu grafis / WebGL browser sedang tidak tersedia). Pengaturan, Bengkel 2D dan potongan besi tetap bisa dipakai.
+          </p>
+          <button onClick={() => setAttempt((a) => a + 1)} className="px-4 py-2 rounded-xl bg-sky-600 text-white font-semibold cursor-pointer">
+            Coba muat ulang 3D
+          </button>
+          <p className="max-w-md text-xs text-stone-500">
+            Kalau tetap gagal: tutup semua jendela Chrome lalu buka lagi, dan pastikan Setelan → Sistem → “Gunakan akselerasi grafis” menyala.
+          </p>
         </div>
       )}
 
