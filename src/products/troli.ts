@@ -1,5 +1,6 @@
 import { Board, Caster, ProductCheck, ProductDef, Params } from './types';
 import { BOARD_THICK, CASTER_LOAD, CASTER_OPTIONS, board, bool, casterHeight, casterSet, materialParams, memberFactory, num, r1, str } from './common';
+import { angledFrame, cutAxisIndex, memberFromPoints } from '../utils/frameLayout';
 
 /**
  * Troli. Tiap model = konstruksi rangka berbeda:
@@ -12,9 +13,36 @@ import { BOARD_THICK, CASTER_LOAD, CASTER_OPTIONS, board, bool, casterHeight, ca
  * - kandang: lantai beroda dengan pagar jeruji tinggi di 3 sisi (roll container)
  * - saji-sepeda: gerobak saji cafe 3 ruas: baki tengah di kiri, kotak kabinet + baki bawah di kanan, roda sepeda di kiri
  * - saji-bak: gerobak saji 4 tiang: bak dalam setinggi rangka, kotak laci menggantung, baki bawah, roda sepeda di kiri
+ * - tiang: satu tiang tengah di kaki silang beroda, nampan bundar bertingkat di lengan silang
+ * - nampan: rak loyang (bakery): bingkai samping kiri-kanan dengan rel nampan rapat, muka depan terbuka
+ * - rangka-a: lantai beroda dengan rangka A di tengah, panel kaca / papan disandarkan di kedua sisi
+ * - silang: kaki silang X di kedua ujung, bak papan menggantung di bawah rangka atas
+ * - sorong: gerobak sorong 1 roda: dua balok gagang memikul bak, roda di depan, dua kaki di belakang
+ * - gerobak-2: gerobak barang: lantai berpagar rendah di 2 roda besar, gagang panjang + kaki penyangga
  */
 type Tube = [number, number];
-const MODELS = ['rak', 'buku', 'perkakas', 'saji-lipat', 'platform', 'angkong', 'kandang', 'saji-sepeda', 'saji-bak'];
+type P3 = [number, number, number];
+const MODELS = ['rak', 'buku', 'perkakas', 'saji-lipat', 'platform', 'angkong', 'kandang', 'saji-sepeda', 'saji-bak', 'tiang', 'nampan', 'rangka-a', 'silang', 'sorong', 'gerobak-2'];
+/** Gerobak dorong beroda besar tanpa roda putar (sorong & 2 roda) */
+const barrow = (p: Params) => ['sorong', 'gerobak-2'].includes(model(p));
+/**
+ * Setengah lebar tapak potongan ujung batang miring a ke b (penampang t cm), diukur di sumbu dunia k.
+ * Dipakai supaya ujung batang miring menempel rata di sisi batang lain, tidak masuk ke dalamnya.
+ */
+function cutHalf(a: P3, b: P3, t: number, k: number): number {
+  const m = memberFromPoints({ id: 'tmp', role: 'custom', label: '' }, a, b);
+  if (!m.end) return t / 2;
+  const f = angledFrame(m, t, t);
+  const di = cutAxisIndex(m);
+  let e = 0;
+  for (const s of [-1, 1])
+    for (const q of [-1, 1]) {
+      const off = [0, 1, 2].map((i) => (f.wd[i] * s * t) / 2 + (f.hd[i] * q * t) / 2);
+      const lam = -off[di] / f.u[di];
+      e = Math.max(e, Math.abs(off[k] + lam * f.u[k]));
+    }
+  return e;
+}
 /** Gerobak saji beroda sepeda (pegangan & roda sepeda selalu terpasang) */
 const bikeCart = (p: Params) => ['saji-sepeda', 'saji-bak'].includes(model(p));
 const model = (p: Params) => {
@@ -22,7 +50,7 @@ const model = (p: Params) => {
   return MODELS.includes(m) ? m : 'rak';
 };
 /** Model yang memakai pegangan dorong (toggle) di sisi kiri */
-const handleToggle = (p: Params) => ['rak', 'buku', 'perkakas'].includes(model(p));
+const handleToggle = (p: Params) => ['rak', 'buku', 'perkakas', 'tiang'].includes(model(p));
 /**
  * Batang miring yang ujungnya dipotong rata lantai (horizontal) lalu dilas ke SISI tegak batang lain:
  * as ujungnya harus mundur dari sisi itu sejauh setengah lebar potongan horizontal, supaya sudut potongan
@@ -44,10 +72,10 @@ export const TROLI: ProductDef = {
   tagline: 'dorong · saji · bengkel · angkut barang',
   icon: 'M12 10h34M12 24h34M12 10v14M46 4v20M18 28a3 3 0 1 0 .1 0M40 28a3 3 0 1 0 .1 0',
   steps: [
-    { id: 'ukuran', title: 'Ukuran', keys: ['panjang', 'lebar', 'tinggiRak'] },
-    { id: 'bentuk', title: 'Bentuk', keys: ['model', 'tingkat', 'pegangan', 'tinggiPegangan', 'bibir', 'tinggiPapan', 'lebarDaun', 'tinggiPagar', 'palang'] },
+    { id: 'ukuran', title: 'Ukuran', keys: ['panjang', 'lebar', 'tinggiRak', 'tinggiRangka'] },
+    { id: 'bentuk', title: 'Bentuk', keys: ['model', 'tingkat', 'pegangan', 'tinggiPegangan', 'bibir', 'tinggiPapan', 'lebarDaun', 'tinggiPagar', 'jarakRel', 'dalamBak', 'palang'] },
     { id: 'bahan', title: 'Bahan', keys: ['pipa', 'papan', 'warna'] },
-    { id: 'tambahan', title: 'Roda', keys: ['rodaSepeda', 'ukuranRoda', 'rodaBesar', 'remRoda'] },
+    { id: 'tambahan', title: 'Roda', keys: ['rodaSepeda', 'rodaGerobak', 'ukuranRoda', 'rodaBesar', 'remRoda'] },
   ],
   params: [
     {
@@ -64,34 +92,45 @@ export const TROLI: ProductDef = {
         { value: 'kandang', label: 'Kandang / jeruji', desc: 'Pagar jeruji tinggi 3 sisi' },
         { value: 'saji-sepeda', label: 'Gerobak saji + kabinet', desc: 'Roda sepeda, baki selang-seling, kotak kabinet' },
         { value: 'saji-bak', label: 'Gerobak saji bak + laci', desc: 'Roda sepeda, bak dalam, 2 laci, baki bawah' },
+        { value: 'tiang', label: 'Nampan tiang tengah', desc: 'Satu tiang, nampan bundar bertingkat' },
+        { value: 'nampan', label: 'Rak loyang (rel nampan)', desc: 'Bingkai samping dengan rel rapat, loyang digeser masuk' },
+        { value: 'rangka-a', label: 'Rangka A (kaca / papan)', desc: 'Panel bersandar miring di dua sisi' },
+        { value: 'silang', label: 'Kaki silang + bak', desc: 'Kaki X di kedua ujung, bak menggantung' },
+        { value: 'sorong', label: 'Gerobak sorong 1 roda', desc: 'Bak di atas balok gagang, roda depan' },
+        { value: 'gerobak-2', label: 'Gerobak barang 2 roda', desc: 'Lantai berpagar di 2 roda besar' },
       ],
     },
-    { key: 'panjang', label: 'Panjang', type: 'number', unit: 'cm', min: 35, max: 140, step: 1, help: 'Untuk angkong: lebar rangka tegak.', marks: [{ value: 60, label: 'saji' }, { value: 90, label: 'bengkel' }] },
-    { key: 'lebar', label: 'Lebar', type: 'number', unit: 'cm', min: 25, max: 80, step: 1, marks: [{ value: 40, label: 'saji' }, { value: 55, label: 'bengkel' }], showIf: (p) => model(p) !== 'angkong' },
-    { key: 'tinggiRak', label: 'Tinggi rak paling atas', type: 'number', unit: 'cm', min: 40, max: 110, step: 1, help: 'Dari lantai sampai permukaan papan teratas (gerobak bak: sampai bibir bak).', marks: [{ value: 85, label: 'nyaman berdiri' }], showIf: tiered },
-    { key: 'tingkat', label: 'Jumlah rak', type: 'number', unit: 'rak', min: 1, max: 5, step: 1, showIf: shelved },
+    { key: 'panjang', label: 'Panjang', type: 'number', unit: 'cm', min: 35, max: 140, step: 1, help: 'Untuk angkong: lebar rangka tegak. Nampan tiang tengah: garis tengah nampan. Gerobak: panjang bak / lantai.', marks: [{ value: 60, label: 'saji' }, { value: 90, label: 'bengkel' }] },
+    { key: 'lebar', label: 'Lebar', type: 'number', unit: 'cm', min: 25, max: 90, step: 1, marks: [{ value: 40, label: 'saji' }, { value: 55, label: 'bengkel' }], showIf: (p) => model(p) !== 'angkong' && model(p) !== 'tiang' },
+    { key: 'tinggiRak', label: 'Tinggi rak paling atas', type: 'number', unit: 'cm', min: 40, max: 110, step: 1, help: 'Dari lantai sampai permukaan papan teratas (gerobak bak / troli bak: sampai bibir bak).', marks: [{ value: 85, label: 'nyaman berdiri' }], showIf: (p) => tiered(p) || ['tiang', 'silang'].includes(model(p)) },
+    { key: 'tinggiRangka', label: 'Tinggi rangka', type: 'number', unit: 'cm', min: 60, max: 190, step: 1, help: 'Dari lantai sampai pipa paling atas.', marks: [{ value: 170, label: 'rak loyang' }], showIf: (p) => ['nampan', 'rangka-a'].includes(model(p)) },
+    { key: 'tingkat', label: 'Jumlah rak', type: 'number', unit: 'rak', min: 1, max: 5, step: 1, showIf: (p) => shelved(p) || model(p) === 'tiang' },
     { key: 'pegangan', label: 'Pegangan dorong', type: 'toggle', help: 'Pipa pegangan di sisi kiri.', showIf: handleToggle },
     { key: 'tinggiPegangan', label: 'Tinggi pegangan', type: 'number', unit: 'cm', min: 70, max: 115, step: 1, marks: [{ value: 97, label: 'ergonomis' }], help: 'Untuk angkong: tinggi keseluruhan.', showIf: (p) => handleOn(p) || model(p) === 'angkong' },
     { key: 'bibir', label: 'Bibir penahan barang', type: 'toggle', help: 'Pagar rendah ±5 cm di keliling tiap rak supaya barang tidak jatuh saat didorong.', showIf: (p) => model(p) === 'rak' || model(p) === 'saji-lipat' },
     { key: 'tinggiPapan', label: 'Tinggi papan pegboard', type: 'number', unit: 'cm', min: 110, max: 180, step: 1, help: 'Ujung atas papan gantung alat dari lantai.', showIf: (p) => model(p) === 'perkakas' },
     { key: 'lebarDaun', label: 'Lebar sayap lipat', type: 'number', unit: 'cm', min: 15, max: 40, step: 1, help: 'Tiap sisi kiri & kanan.', showIf: (p) => model(p) === 'saji-lipat' },
     { key: 'tinggiPagar', label: 'Tinggi pagar jeruji', type: 'number', unit: 'cm', min: 60, max: 170, step: 1, help: 'Dari lantai sampai pipa atas pagar.', showIf: (p) => model(p) === 'kandang' },
-    { key: 'palang', label: 'Pipa penyangga papan', type: 'choice', options: [{ value: '20x20', label: '20×20 mm', desc: 'Beban ringan' }, { value: '20x40', label: '20×40 mm', desc: 'Beban berat / panjang' }], showIf: (p) => model(p) !== 'angkong' && !bikeCart(p) },
+    { key: 'jarakRel', label: 'Jarak antar rel nampan', type: 'number', unit: 'cm', min: 6, max: 20, step: 1, help: 'Makin rapat makin banyak loyang, tapi isi loyang harus lebih pendek.', marks: [{ value: 10, label: 'roti' }], showIf: (p) => model(p) === 'nampan' },
+    { key: 'dalamBak', label: 'Tinggi dinding bak / pagar', type: 'number', unit: 'cm', min: 10, max: 60, step: 1, help: 'Dari alas sampai bibir atas bak (gerobak 2 roda: tinggi pagar).', showIf: (p) => ['silang', 'sorong', 'gerobak-2'].includes(model(p)) },
+    { key: 'palang', label: 'Pipa penyangga papan', type: 'choice', options: [{ value: '20x20', label: '20×20 mm', desc: 'Beban ringan' }, { value: '20x40', label: '20×40 mm', desc: 'Beban berat / panjang' }], showIf: (p) => ['rak', 'buku', 'perkakas', 'saji-lipat', 'platform', 'kandang', 'rangka-a'].includes(model(p)) },
     ...materialParams(true),
-    { key: 'ukuranRoda', label: 'Ukuran roda', type: 'choice', options: CASTER_OPTIONS, showIf: (p) => model(p) !== 'angkong' },
+    { key: 'ukuranRoda', label: 'Ukuran roda', type: 'choice', options: CASTER_OPTIONS, showIf: (p) => model(p) !== 'angkong' && !barrow(p) },
     { key: 'rodaSepeda', label: 'Roda sepeda (sisi pegangan)', type: 'choice', options: [{ value: '12', label: 'Roda 12"', desc: 'Troli kecil' }, { value: '16', label: 'Roda 16"', desc: 'Paling umum' }, { value: '20', label: 'Roda 20"', desc: 'Gerobak besar, jalan kasar' }], showIf: bikeCart },
     { key: 'rodaBesar', label: 'Roda angkong', type: 'choice', options: [{ value: '8', label: 'Roda 8"', desc: 'Lantai rata' }, { value: '10', label: 'Roda 10"', desc: 'Jalan kasar / tangga' }], showIf: (p) => model(p) === 'angkong' },
-    { key: 'remRoda', label: 'Roda dengan rem', type: 'toggle', help: 'Troli tidak meluncur sendiri.', showIf: (p) => model(p) !== 'angkong' },
+    { key: 'rodaGerobak', label: 'Roda gerobak', type: 'choice', options: [{ value: '12', label: 'Roda 12"', desc: 'Gerobak kecil' }, { value: '14', label: 'Roda 14"', desc: 'Gerobak sorong biasa' }, { value: '16', label: 'Roda 16"', desc: 'Paling umum' }, { value: '20', label: 'Roda 20"', desc: 'Muatan berat, jalan kasar' }], showIf: barrow },
+    { key: 'remRoda', label: 'Roda dengan rem', type: 'toggle', help: 'Troli tidak meluncur sendiri.', showIf: (p) => model(p) !== 'angkong' && !barrow(p) },
   ],
   defaults: {
     model: 'rak', panjang: 70, lebar: 45, tinggiRak: 85, tingkat: 3, pegangan: true, tinggiPegangan: 97, palang: '20x20', bibir: false,
-    tinggiPapan: 150, lebarDaun: 25, tinggiPagar: 130, rodaBesar: '8', rodaSepeda: '16',
+    tinggiPapan: 150, lebarDaun: 25, tinggiPagar: 130, rodaBesar: '8', rodaSepeda: '16', tinggiRangka: 170, jarakRel: 10, dalamBak: 30, rodaGerobak: '16',
     pipa: '20', papan: 'kayu', warna: '#1f2226', ukuranRoda: '3', remRoda: true,
   },
   groups: [
-    { id: 'rak', name: 'Troli rak (saji · salon · bengkel)', desc: 'Troli bertingkat untuk menyajikan, menyimpan dan membawa alat' },
-    { id: 'angkut', name: 'Troli angkut barang', desc: 'Untuk memindah barang berat: dus, galon, karung' },
+    { id: 'rak', name: 'Troli rak (saji · salon · bengkel · roti)', desc: 'Troli bertingkat untuk menyajikan, menyimpan dan membawa alat' },
+    { id: 'angkut', name: 'Troli angkut barang', desc: 'Untuk memindah barang berat: dus, galon, karung, kaca, cucian' },
     { id: 'gerobak-saji', name: 'Gerobak saji roda sepeda', desc: 'Bar cart cafe / kopi keliling: 2 roda sepeda di sisi pegangan, roda putar di ujung lain' },
+    { id: 'gerobak', name: 'Gerobak dorong barang', desc: 'Gerobak beroda besar untuk kebun, proyek dan pasar' },
   ],
   signature: (p) => model(p),
   presets: [
@@ -205,6 +244,78 @@ export const TROLI: ProductDef = {
         { label: 'Mini (dalam ruangan)', desc: '80 × 45 cm, roda 12"', params: { panjang: 80, lebar: 45, tinggiRak: 85, rodaSepeda: '12', pipa: '30', ukuranRoda: '3' } },
       ],
     },
+    {
+      id: 'nampan-tiang',
+      group: 'rak',
+      name: 'Troli nampan tiang tengah',
+      desc: 'satu tiang di tengah kaki silang beroda, nampan bundar bertingkat ditopang lengan silang di tiang',
+      params: { model: 'tiang', panjang: 45, tinggiRak: 80, tingkat: 3, pegangan: false, pipa: '20', ukuranRoda: '3' },
+      sizes: [
+        { label: 'Salon / barbershop', desc: 'nampan Ø 40 cm, 3 susun', params: { panjang: 40, tinggiRak: 80, tingkat: 3, pegangan: false } },
+        { label: 'Saji kue / hampers', desc: 'nampan Ø 50 cm, 2 susun', params: { panjang: 50, tinggiRak: 75, tingkat: 2, pegangan: false } },
+        { label: 'Dengan gagang dorong', desc: 'nampan Ø 45 cm, 3 susun, gagang di pucuk tiang', params: { panjang: 45, tinggiRak: 80, tingkat: 3, pegangan: true, tinggiPegangan: 100 } },
+      ],
+    },
+    {
+      id: 'rak-nampan',
+      group: 'rak',
+      name: 'Troli rak loyang (rel nampan)',
+      desc: 'bingkai samping kiri-kanan dengan rel nampan rapat di sisi dalam, muka depan terbuka untuk menggeser loyang',
+      params: { model: 'nampan', panjang: 48, lebar: 66, tinggiRangka: 170, jarakRel: 10, pipa: '20', ukuranRoda: '4' },
+      sizes: [
+        { label: 'Loyang 40 × 60 (roti)', desc: '48 × 66 cm, tinggi 170, rel tiap 10 cm', params: { panjang: 48, lebar: 66, tinggiRangka: 170, jarakRel: 10, ukuranRoda: '4' } },
+        { label: 'Nampan 60 × 80 (katering)', desc: '68 × 86 cm, tinggi 175, rel tiap 12 cm', params: { panjang: 68, lebar: 86, tinggiRangka: 175, jarakRel: 12, pipa: '30', ukuranRoda: '4' } },
+        { label: 'Pendek (bawah meja)', desc: '48 × 66 cm, tinggi 85', params: { panjang: 48, lebar: 66, tinggiRangka: 85, jarakRel: 10, ukuranRoda: '3' } },
+      ],
+    },
+    {
+      id: 'rangka-a',
+      group: 'angkut',
+      name: 'Troli rangka A (kaca / papan)',
+      desc: 'rangka A di tengah lantai beroda, panel disandarkan miring di kedua sisi dengan penahan kaki di tepi lantai',
+      params: { model: 'rangka-a', panjang: 100, lebar: 70, tinggiRangka: 140, palang: '20x40', pipa: '30', ukuranRoda: '4' },
+      sizes: [
+        { label: 'Kaca / cermin', desc: '100 × 70 cm, tinggi 140', params: { panjang: 100, lebar: 70, tinggiRangka: 140, ukuranRoda: '4' } },
+        { label: 'Triplek / gipsum', desc: '130 × 80 cm, tinggi 120, roda 5"', params: { panjang: 130, lebar: 80, tinggiRangka: 120, pipa: '40', ukuranRoda: '5' } },
+        { label: 'Lukisan / pameran', desc: '80 × 60 cm, tinggi 120', params: { panjang: 80, lebar: 60, tinggiRangka: 120, pipa: '20', palang: '20x20', ukuranRoda: '3' } },
+      ],
+    },
+    {
+      id: 'kaki-silang',
+      group: 'angkut',
+      name: 'Troli kaki silang + bak',
+      desc: 'kaki silang X di kedua ujung, bak papan menggantung di bawah rangka atas',
+      params: { model: 'silang', panjang: 75, lebar: 50, tinggiRak: 85, dalamBak: 50, pipa: '20', ukuranRoda: '3' },
+      sizes: [
+        { label: 'Laundry / linen hotel', desc: '75 × 50 cm, bak 50 cm', params: { panjang: 75, lebar: 50, tinggiRak: 85, dalamBak: 50 } },
+        { label: 'Mainan / barang kecil', desc: '60 × 40 cm, bak 35 cm', params: { panjang: 60, lebar: 40, tinggiRak: 70, dalamBak: 35 } },
+        { label: 'Besar (gudang)', desc: '90 × 60 cm, bak 50 cm, roda 4"', params: { panjang: 90, lebar: 60, tinggiRak: 90, dalamBak: 50, pipa: '30', ukuranRoda: '4' } },
+      ],
+    },
+    {
+      id: 'gerobak-sorong',
+      group: 'gerobak',
+      name: 'Gerobak sorong 1 roda',
+      desc: 'dua balok gagang memikul bak papan, satu roda di depan dan dua kaki di belakang',
+      params: { model: 'sorong', panjang: 70, lebar: 50, dalamBak: 25, rodaGerobak: '14', pipa: '30' },
+      sizes: [
+        { label: 'Taman / kebun', desc: 'bak 70 × 50 cm, roda 14"', params: { panjang: 70, lebar: 50, dalamBak: 25, rodaGerobak: '14', pipa: '30' } },
+        { label: 'Proyek / pasir', desc: 'bak 80 × 60 cm, roda 16"', params: { panjang: 80, lebar: 60, dalamBak: 30, rodaGerobak: '16', pipa: '40' } },
+        { label: 'Kecil (pot / anak)', desc: 'bak 50 × 38 cm, roda 12"', params: { panjang: 50, lebar: 38, dalamBak: 18, rodaGerobak: '12', pipa: '20' } },
+      ],
+    },
+    {
+      id: 'gerobak-dua-roda',
+      group: 'gerobak',
+      name: 'Gerobak barang 2 roda',
+      desc: 'lantai berpagar jeruji rendah di atas dua roda besar, gagang panjang dan kaki penyangga di sisi gagang',
+      params: { model: 'gerobak-2', panjang: 120, lebar: 70, dalamBak: 30, rodaGerobak: '16', pipa: '30' },
+      sizes: [
+        { label: 'Pasar / sayur', desc: '120 × 70 cm, pagar 30 cm, roda 16"', params: { panjang: 120, lebar: 70, dalamBak: 30, rodaGerobak: '16', pipa: '30' } },
+        { label: 'Galon / dus', desc: '90 × 60 cm, pagar 40 cm, roda 14"', params: { panjang: 90, lebar: 60, dalamBak: 40, rodaGerobak: '14', pipa: '30' } },
+        { label: 'Besar (bahan bangunan)', desc: '140 × 80 cm, pagar 25 cm, roda 20"', params: { panjang: 140, lebar: 80, dalamBak: 25, rodaGerobak: '20', pipa: '40' } },
+      ],
+    },
   ],
   summary: (p) => {
     const m = model(p);
@@ -212,6 +323,11 @@ export const TROLI: ProductDef = {
     if (m === 'angkong') return `lebar ${num(p, 'panjang')} cm · tinggi ${num(p, 'tinggiPegangan')} cm · roda ${str(p, 'rodaBesar', '8')}"`;
     if (m === 'platform') return `${num(p, 'panjang')} × ${num(p, 'lebar')} cm · platform`;
     if (m === 'kandang') return `${num(p, 'panjang')} × ${num(p, 'lebar')} cm · pagar ${num(p, 'tinggiPagar')} cm`;
+    if (m === 'tiang') return `nampan Ø ${num(p, 'panjang')} cm · ${num(p, 'tingkat')} susun · tinggi ${num(p, 'tinggiRak')} cm`;
+    if (m === 'nampan') return `${num(p, 'panjang')} × ${num(p, 'lebar')} cm · tinggi ${num(p, 'tinggiRangka')} cm · rel tiap ${num(p, 'jarakRel')} cm`;
+    if (m === 'rangka-a') return `${num(p, 'panjang')} × ${num(p, 'lebar')} cm · rangka A ${num(p, 'tinggiRangka')} cm`;
+    if (m === 'silang') return `${num(p, 'panjang')} × ${num(p, 'lebar')} cm · bak ${num(p, 'dalamBak')} cm`;
+    if (barrow(p)) return `${num(p, 'panjang')} × ${num(p, 'lebar')} cm · ${m === 'sorong' ? 'bak' : 'pagar'} ${num(p, 'dalamBak')} cm · roda ${str(p, 'rodaGerobak', '16')}"`;
     return `${num(p, 'panjang')} × ${num(p, 'lebar')} cm · ${num(p, 'tingkat')} rak`;
   },
 
@@ -412,6 +528,270 @@ export const TROLI: ProductDef = {
       }
       const casters = [...wheels, ...casterSet([xr], [zb, zf], inch, brake)];
       return { members: list, boards, casters, W: ox + W, D: D + 2 * oz, H, boardThick: 0 };
+    }
+
+    // ---------- Nampan bundar di satu tiang tengah (kaki silang beroda) ----------
+    if (m === 'tiang') {
+      const col = Math.max(4, L); // tiang tengah minimal 40×40
+      const colT: Tube = [col * 10, col * 10];
+      const arm: Tube = [20, 20];
+      const R = W / 2;
+      const span = Math.max(48, Math.round(W * 0.95));
+      const S = Math.max(W, span);
+      const cx = S / 2;
+      const cz = S / 2;
+      // kaki silang: kiri-kanan menerus, depan-belakang dipotong dua dan dilas di kedua sisinya
+      const yBase = c + col / 2;
+      add('alas-x', 'x', cx - span / 2, yBase, cz, span, 'rail-x', 'Kaki silang kiri-kanan', colT);
+      add('alas-z-0', 'z', cx, yBase, cz - span / 2, span / 2 - col / 2, 'rail-z', 'Kaki silang belakang', colT);
+      add('alas-z-1', 'z', cx, yBase, cz + col / 2, span / 2 - col / 2, 'rail-z', 'Kaki silang depan', colT);
+      const topSurface = Math.max(c + col + 30, num(p, 'tinggiRak', 80));
+      const handle = bool(p, 'pegangan');
+      const hh = handle ? Math.max(topSurface + 12, num(p, 'tinggiPegangan', 97)) : 0;
+      const yArmTop = topSurface - b - 1; // as lengan nampan teratas
+      const yArmLow = Math.min(yArmTop, c + col + 18);
+      const colTop = handle ? hh - 2 : yArmTop + 1;
+      add('tiang', 'y', cx, c + col, cz, colTop - c - col, 'post', 'Tiang tengah', colT);
+      const a = Math.max(8, R - 4 - col / 2); // panjang lengan dari sisi tiang
+      for (let i = 0; i < n; i++) {
+        const y = n === 1 ? yArmTop : r1(yArmLow + ((yArmTop - yArmLow) * i) / (n - 1));
+        const t = i + 1;
+        add(`n${t}-kanan`, 'x', cx + col / 2, y, cz, a, 'rail-x', `Lengan nampan ${t} kanan`, arm);
+        add(`n${t}-kiri`, 'x', cx - col / 2 - a, y, cz, a, 'rail-x', `Lengan nampan ${t} kiri`, arm);
+        add(`n${t}-depan`, 'z', cx, y, cz + col / 2, a, 'rail-z', `Lengan nampan ${t} depan`, arm);
+        add(`n${t}-belakang`, 'z', cx, y, cz - col / 2 - a, a, 'rail-z', `Lengan nampan ${t} belakang`, arm);
+        if (b > 0) boards.push({ ...board(`nampan-${t}`, `Nampan bundar ${t}`, cx - R, cx + R, y + 1, y + 1 + b, cz - R, cz + R), shape: 'round' });
+      }
+      if (handle) add('gagang', 'x', cx - 9, hh - 1, cz, 18, 'rail-x', 'Gagang dorong (pucuk tiang)', arm);
+      const e = span / 2 - col / 2;
+      const casters: Caster[] = ([[cx - e, cz], [cx + e, cz], [cx, cz - e], [cx, cz + e]] as [number, number][]).map(([x, z], i) => ({ id: `roda-${i}`, x, z, topY: c, sizeInch: inch, brake }));
+      return { members: list, boards, casters, W: S, D: S, H: handle ? hh : topSurface, boardThick: 0 };
+    }
+
+    // ---------- Rak loyang: bingkai samping + rel nampan rapat (bakery rack) ----------
+    if (m === 'nampan') {
+      const Ht = Math.max(60, num(p, 'tinggiRangka', 170));
+      const xl = L / 2;
+      const xr = W - L / 2;
+      const zb = L / 2;
+      const zf = D - L / 2;
+      ([
+        [xl, zb, 'kiri belakang'],
+        [xr, zb, 'kanan belakang'],
+        [xl, zf, 'kiri depan'],
+        [xr, zf, 'kanan depan'],
+      ] as [number, number, string][]).forEach(([x, z, nm], i) => add(`tiang-${i}`, 'y', x, c, z, Ht - c, 'post', `Tiang ${nm}`, post));
+      const yTopR = Ht - L / 2;
+      const yBotR = c + L / 2 + 3;
+      // bingkai samping kiri & kanan: rel atas & bawah di antara tiang depan dan belakang
+      [xl, xr].forEach((x, k) => {
+        const nm = k ? 'kanan' : 'kiri';
+        add(`samping-${nm}-atas`, 'z', x, yTopR, zb + L / 2, zf - zb - L, 'rail-z', `Bingkai ${nm} atas`, post);
+        add(`samping-${nm}-bawah`, 'z', x, yBotR, zb + L / 2, zf - zb - L, 'rail-z', `Bingkai ${nm} bawah`, post);
+      });
+      // pengikat kiri-kanan: atas depan & belakang, bawah depan & belakang (muka depan tetap terbuka)
+      ([
+        ['atas-belakang', yTopR, zb, 'Pengikat atas belakang'],
+        ['atas-depan', yTopR, zf, 'Pengikat atas depan'],
+        ['bawah-belakang', yBotR, zb, 'Pengikat bawah belakang'],
+        ['bawah-depan', yBotR, zf, 'Pengikat bawah depan'],
+      ] as [string, number, number, string][]).forEach(([id, y, z, label]) => add(id, 'x', xl + L / 2, y, z, xr - xl - L, 'rail-x', label, post));
+      // rel nampan: pipa 20×20 dilas di sisi dalam tiang depan & belakang, sepanjang kedalaman
+      const gap = Math.min(20, Math.max(6, num(p, 'jarakRel', 10)));
+      const yR0 = yBotR + L / 2 + 10;
+      const yR1 = yTopR - L / 2 - 6;
+      const nr = Math.max(1, Math.floor((yR1 - yR0) / gap) + 1);
+      for (let k = 0; k < nr; k++) {
+        const y = r1(yR0 + k * gap);
+        add(`rel-kiri-${k + 1}`, 'z', xl + L / 2 + 1, y, zb - L / 2, zf - zb + L, 'rail-z', `Rel nampan kiri ${k + 1}`, [20, 20]);
+        add(`rel-kanan-${k + 1}`, 'z', xr - L / 2 - 1, y, zb - L / 2, zf - zb + L, 'rail-z', `Rel nampan kanan ${k + 1}`, [20, 20]);
+        boards.push({ ...board(`loyang-${k + 1}`, `Loyang / nampan ${k + 1} (lepas)`, xl + L / 2 + 1, xr - L / 2 - 1, y + 1, y + 1.2, zb - L / 2 + 1, zf + L / 2 - 1), steelMm: 1 });
+      }
+      return { members: list, boards, casters: casterSet([xl, xr], [zb, zf], inch, brake), W, D, H: Ht, boardThick: 0 };
+    }
+
+    // ---------- Lantai beroda + rangka A di tengah (troli kaca / papan) ----------
+    if (m === 'rangka-a') {
+      const xl = L / 2;
+      const xr = W - L / 2;
+      const zb = L / 2;
+      const zf = D - L / 2;
+      const zc = D / 2;
+      const yd = c + rh / 2;
+      const y0 = yd + rh / 2; // atas rangka lantai
+      add('lantai-belakang', 'x', 0, yd, zb, W, 'rail-x', 'Rangka lantai belakang', rail);
+      add('lantai-depan', 'x', 0, yd, zf, W, 'rail-x', 'Rangka lantai depan', rail);
+      const nz = Math.max(2, Math.ceil(W / 45) + 1);
+      const xsL: number[] = [];
+      for (let k = 0; k < nz; k++) {
+        const x = xl + ((xr - xl) * k) / (nz - 1);
+        xsL.push(x);
+        add(`lantai-lintang-${k + 1}`, 'z', x, yd, zb + rail[0] / 20, zf - zb - rail[0] / 10, 'rail-z', k === 0 || k === nz - 1 ? `Rangka lantai ${k ? 'kanan' : 'kiri'}` : `Palang lantai ${k}`, rail);
+      }
+      const hA = Math.max(y0 + 60, num(p, 'tinggiRangka', 140));
+      const yTopLeg = hA - L; // ujung atas kaki A = bawah pipa bubungan
+      const sp = Math.max(8, Math.min(D / 2 - L - 12, (yTopLeg - y0) * Math.tan((8 * Math.PI) / 180)));
+      let hz = L / 2;
+      for (let k = 0; k < 4; k++) hz = cutHalf([0, y0, zc + sp], [0, yTopLeg, zc + hz], L, 2);
+      // rangka A di kedua ujung (+ tengah bila panjang), berdiri di atas palang lantai
+      const stations = W > 100 && nz >= 3 ? [xsL[0], xsL[Math.floor((nz - 1) / 2)], xsL[nz - 1]] : [xsL[0], xsL[nz - 1]];
+      stations.forEach((x, i) => {
+        const nm = i === 0 ? 'kiri' : i === stations.length - 1 ? 'kanan' : 'tengah';
+        ([1, -1] as const).forEach((s) => {
+          const sn = s > 0 ? 'depan' : 'belakang';
+          line(`kaki-a-${nm}-${sn}`, [x, y0, zc + s * sp], [x, yTopLeg, zc + s * hz], 'post', `Kaki A ${nm} sisi ${sn}`, post);
+        });
+      });
+      add('bubungan', 'x', 0, hA - L / 2, zc, W, 'rail-x', 'Pipa bubungan (puncak rangka A)', post);
+      // penahan kaki panel di tepi lantai depan & belakang (dilas di atas rangka lantai)
+      const lipT: Tube = [20, 40];
+      add('penahan-depan', 'x', 0, y0 + 2, zf, W, 'rail-x', 'Penahan kaki panel depan', lipT);
+      add('penahan-belakang', 'x', 0, y0 + 2, zb, W, 'rail-x', 'Penahan kaki panel belakang', lipT);
+      if (b > 0) {
+        boards.push(board('alas-belakang', 'Alas tumpuan panel belakang', 0, W, y0, y0 + b, zb + 1, zc - sp - hz));
+        boards.push(board('alas-depan', 'Alas tumpuan panel depan', 0, W, y0, y0 + b, zc + sp + hz, zf - 1));
+      }
+      return { members: list, boards, casters: casterSet([xl, xr], [zb, zf], inch, brake), W, D, H: hA, boardThick: 0 };
+    }
+
+    // ---------- Kaki silang X di kedua ujung + bak menggantung (troli cucian) ----------
+    if (m === 'silang') {
+      const H = Math.max(c + 50, num(p, 'tinggiRak', 85)); // bibir atas bak = atas rangka
+      const yR = H - L / 2;
+      const yLeg = H - L;
+      let hz = L / 2;
+      for (let k = 0; k < 4; k++) hz = cutHalf([0, c, hz], [0, yLeg, D - hz], L, 2);
+      const casters: Caster[] = [];
+      // tiap ujung: kaki luar & kaki dalam bersebelahan (geser setebal pipa), dilas di titik silang; masing-masing
+      // memikul pipa rangka atas sendiri (dua pipa rangka atas berdampingan)
+      ([
+        [L / 2, 1.5 * L, 'kiri'],
+        [W - L / 2, W - 1.5 * L, 'kanan'],
+      ] as [number, number, string][]).forEach(([xo, xi, nm], i) => {
+        line(`kaki-${nm}-luar`, [xo, c, hz], [xo, yLeg, D - hz], 'post', `Kaki silang ${nm} luar`, post);
+        line(`kaki-${nm}-dalam`, [xi, c, D - hz], [xi, yLeg, hz], 'post', `Kaki silang ${nm} dalam`, post);
+        add(`atas-${nm}-luar`, 'z', xo, yR, 0, D, 'rail-z', `Rangka atas ${nm} luar`, post);
+        add(`atas-${nm}-dalam`, 'z', xi, yR, 0, D, 'rail-z', `Rangka atas ${nm} dalam`, post);
+        casters.push({ id: `roda-${i}-0`, x: xo, z: hz, topY: c, sizeInch: inch, brake });
+        casters.push({ id: `roda-${i}-1`, x: xi, z: D - hz, topY: c, sizeInch: inch, brake });
+      });
+      add('atas-depan', 'x', 2 * L, yR, D - L / 2, W - 4 * L, 'rail-x', 'Rangka atas depan', post);
+      add('atas-belakang', 'x', 2 * L, yR, L / 2, W - 4 * L, 'rail-x', 'Rangka atas belakang', post);
+      // bak: rangka alas digantung 4 batang tegak dari rangka atas depan & belakang
+      const depth = Math.min(Math.max(15, num(p, 'dalamBak', 50)), yLeg - c - 20);
+      const yB = yR - depth; // as rangka alas bak
+      const xe = [2.5 * L, W - 2.5 * L];
+      xe.forEach((x, k) => add(`alas-bak-${k ? 'kanan' : 'kiri'}`, 'z', x, yB, 0, D, 'rail-z', `Rangka alas bak ${k ? 'kanan' : 'kiri'}`, post));
+      [L / 2, D - L / 2].forEach((z, k) => add(`alas-bak-${k ? 'depan' : 'belakang'}`, 'x', 3 * L, yB, z, W - 6 * L, 'rail-x', `Rangka alas bak ${k ? 'depan' : 'belakang'}`, post));
+      xe.forEach((x, i) =>
+        [L / 2, D - L / 2].forEach((z, k) => add(`penggantung-${i}-${k}`, 'y', x, yB + L / 2, z, yR - yB - L, 'post', `Batang gantung bak ${i ? 'kanan' : 'kiri'} ${k ? 'depan' : 'belakang'}`, post))
+      );
+      // palang pengikat kedua kaki dalam, di bawah bak (kaki dalam kiri & kanan sejajar)
+      const yp = (c + yB - L / 2) / 2;
+      if (yB - L / 2 - c > 14) {
+        const zp = D - hz + ((2 * hz - D) * (yp - c)) / (yLeg - c);
+        add('palang-kaki', 'x', 2 * L, yp, zp, W - 4 * L, 'rail-x', 'Palang pengikat kaki dalam', [20, 20]);
+      }
+      if (b > 0) {
+        const t = 1.8;
+        const yb = yB + L / 2;
+        boards.push(board('bak-alas', 'Bak (alas)', 3 * L, W - 3 * L, yb, yb + b, 0, D));
+        boards.push(board('bak-depan', 'Bak (dinding depan)', 2 * L, W - 2 * L, yB - L / 2, H, D, D + t));
+        boards.push(board('bak-belakang', 'Bak (dinding belakang)', 2 * L, W - 2 * L, yB - L / 2, H, -t, 0));
+        boards.push(board('bak-kiri', 'Bak (dinding kiri)', 3 * L, 3 * L + t, yb + b, yR - L / 2, 0, D));
+        boards.push(board('bak-kanan', 'Bak (dinding kanan)', W - 3 * L - t, W - 3 * L, yb + b, yR - L / 2, 0, D));
+      }
+      return { members: list, boards, casters, W, D, H, boardThick: 0 };
+    }
+
+    // ---------- Gerobak sorong 1 roda ----------
+    if (m === 'sorong') {
+      const big = parseInt(str(p, 'rodaGerobak', '14')) || 14;
+      const r = (big * 2.54) / 2;
+      const grip = 40; // panjang gagang di belakang bak
+      const x0 = grip;
+      const x1 = grip + W;
+      const zb = L / 2;
+      const zf = D - L / 2;
+      const zc = D / 2;
+      const yBm = 2 * r + 5 + L / 2; // as balok gagang
+      add('balok-belakang', 'x', 0, yBm, zb, x1, 'rail-x', 'Balok + gagang belakang', post);
+      add('balok-depan', 'x', 0, yBm, zf, x1, 'rail-x', 'Balok + gagang depan', post);
+      const xw = x1 - Math.max(10, r * 0.5); // as roda
+      [x0 + L / 2, (x0 + xw) / 2, xw, x1 - L / 2].forEach((x, k) =>
+        add(`lintang-${k + 1}`, 'z', x, yBm, zb + L / 2, zf - zb - L, 'rail-z', k === 2 ? 'Palang dudukan roda' : `Palang alas bak ${k + 1}`, post)
+      );
+      // garpu roda: dua batang tegak berdiri di atas as, ujung atas dilas di bawah palang dudukan roda
+      [zc - 6, zc + 6].forEach((z, k) => add(`garpu-${k}`, 'y', xw, r + 1, z, yBm - L / 2 - r - 1, 'custom', `Garpu roda ${k ? 'depan' : 'belakang'}`, [20, 20]));
+      add('as-roda', 'z', xw, r, zc - 9, 18, 'rail-z', 'As roda (besi as Ø20)', [20, 20]);
+      // dua kaki belakang + palang
+      const xk = x0 + 6;
+      [zb, zf].forEach((z, k) => add(`kaki-${k}`, 'y', xk, 0, z, yBm - L / 2, 'post', `Kaki belakang ${k ? 'depan' : 'belakang'}`, post));
+      add('palang-kaki', 'z', xk, 14, zb + L / 2, zf - zb - L, 'rail-z', 'Palang kaki belakang', [20, 20]);
+      // bak: tiang sudut di atas balok, bibir atas keliling
+      const depth = Math.max(10, num(p, 'dalamBak', 25));
+      const yb = yBm + L / 2;
+      const rim = yb + b + depth;
+      const cxs = [x0 + L / 2, x1 - L / 2];
+      cxs.forEach((x, i) => [zb, zf].forEach((z, k) => add(`tiang-bak-${i}-${k}`, 'y', x, yb, z, rim - yb, 'post', `Tiang sudut bak ${i ? 'depan' : 'belakang'} ${k ? 'kanan' : 'kiri'}`, post)));
+      [zb, zf].forEach((z, k) => add(`bibir-${k ? 'kanan' : 'kiri'}`, 'x', x0 + L, rim - L / 2, z, W - 2 * L, 'rail-x', `Bibir bak ${k ? 'kanan' : 'kiri'}`, post));
+      cxs.forEach((x, i) => add(`bibir-${i ? 'depan' : 'belakang'}`, 'z', x, rim - L / 2, zb + L / 2, zf - zb - L, 'rail-z', `Bibir bak ${i ? 'depan' : 'belakang'}`, post));
+      if (b > 0) {
+        const t = 1.8;
+        boards.push(board('bak-alas', 'Bak (alas)', x0 + L, x1 - L, yb, yb + b, 0, D));
+        boards.push(board('bak-kiri', 'Bak (dinding kiri)', x0 - t, x1 + t, yb, rim, -t, 0));
+        boards.push(board('bak-kanan', 'Bak (dinding kanan)', x0 - t, x1 + t, yb, rim, D, D + t));
+        boards.push(board('bak-belakang', 'Bak (dinding belakang)', x0 - t, x0, yb, rim, 0, D));
+        boards.push(board('bak-depan', 'Bak (dinding depan)', x1, x1 + t, yb, rim, 0, D));
+      }
+      const wheel: Caster = { id: 'roda-gerobak', x: xw, z: zc, topY: 2 * r + 1, sizeInch: big, brake: false, axle: 'z' };
+      return { members: list, boards, casters: [wheel], W: Math.max(x1 + 2, xw + r), D, H: rim, boardThick: 0 };
+    }
+
+    // ---------- Gerobak barang 2 roda (lantai berpagar) ----------
+    if (m === 'gerobak-2') {
+      const big = parseInt(str(p, 'rodaGerobak', '16')) || 16;
+      const r = (big * 2.54) / 2;
+      const grip = 35;
+      const xa = grip;
+      const xb = grip + W;
+      const zb = L / 2;
+      const zf = D - L / 2;
+      const yd = 2 * r + 5 + L / 2; // as balok lantai
+      add('balok-belakang', 'x', 0, yd, zb, xb, 'rail-x', 'Balok lantai + gagang belakang', post);
+      add('balok-depan', 'x', 0, yd, zf, xb, 'rail-x', 'Balok lantai + gagang depan', post);
+      add('pegangan', 'z', L / 2, yd, zb + L / 2, zf - zb - L, 'rail-z', 'Pipa genggam gagang', post);
+      const nl = Math.max(3, Math.ceil(W / 40) + 1);
+      for (let k = 0; k < nl; k++) {
+        const x = xa + L / 2 + ((W - L) * k) / (nl - 1);
+        add(`lintang-${k + 1}`, 'z', x, yd, zb + L / 2, zf - zb - L, 'rail-z', `Palang lantai ${k + 1}`, post);
+      }
+      // roda: as melintang di bawah lantai, dudukan as tegak di bawah balok kiri & kanan, roda di sisi dalam
+      const xw = xa + W * 0.62;
+      add('as-roda', 'z', xw, r, 0, D, 'rail-z', 'As roda (besi as Ø20)', [20, 20]);
+      [zb, zf].forEach((z, k) => add(`dudukan-as-${k}`, 'y', xw, r + 1, z, yd - L / 2 - r - 1, 'custom', `Dudukan as roda ${k ? 'depan' : 'belakang'}`, post));
+      const wheels: Caster[] = [L + 4, D - L - 4].map((z, i) => ({ id: `roda-gerobak-${i}`, x: xw, z, topY: 2 * r + 1, sizeInch: big, brake: false, axle: 'z' }));
+      // kaki penyangga di sisi gagang
+      const xk = xa + 4 + L / 2;
+      [zb, zf].forEach((z, k) => add(`kaki-${k}`, 'y', xk, 0, z, yd - L / 2, 'post', `Kaki penyangga ${k ? 'depan' : 'belakang'}`, post));
+      add('palang-kaki', 'z', xk, 14, zb + L / 2, zf - zb - L, 'rail-z', 'Palang kaki penyangga', [20, 20]);
+      // pagar jeruji rendah di kedua sisi panjang, pipa atas keliling
+      const yl = yd + L / 2;
+      const hp = Math.max(10, num(p, 'dalamBak', 30));
+      const yTop = yl + hp; // bawah pipa atas pagar
+      const np = Math.max(2, Math.round(W / 30) + 1);
+      [zb, zf].forEach((z, k) => {
+        const sn = k ? 'depan' : 'belakang';
+        for (let j = 0; j < np; j++) {
+          const x = xa + L / 2 + ((W - L) * j) / (np - 1);
+          const corner = j === 0 || j === np - 1;
+          add(`jeruji-${sn}-${j + 1}`, 'y', x, yl, z, hp, 'post', corner ? `Tiang pagar ${sn} ${j ? 'ujung' : 'pangkal'}` : `Jeruji pagar ${sn} ${j}`, corner ? post : [20, 20]);
+        }
+        add(`pagar-${sn}`, 'x', xa, yTop + 1, z, W, 'rail-x', `Pipa atas pagar ${sn}`, [20, 20]);
+      });
+      [xa + L / 2, xb - L / 2].forEach((x, k) => add(`pagar-${k ? 'ujung' : 'pangkal'}`, 'z', x, yTop + 1, zb + 1, zf - zb - 2, 'rail-z', `Pipa atas pagar ${k ? 'ujung' : 'pangkal'}`, [20, 20]));
+      if (b > 0) boards.push(board('lantai', 'Papan lantai gerobak', xa, xb, yl, yl + b, zb + L / 2, zf - L / 2));
+      return { members: list, boards, casters: wheels, W: xb, D, H: yTop + 2, boardThick: 0 };
     }
 
     // ---------- Lantai beroda (platform & kandang) ----------
@@ -615,6 +995,56 @@ export const TROLI: ProductDef = {
     if (m === 'angkong') {
       if (W < 35) out.push({ level: 'warn', message: 'Rangka angkong terlalu sempit, barang mudah jatuh ke samping.', fix: { label: 'Lebar 45 cm', params: { panjang: 45 } } });
       out.push({ level: 'info', message: 'Lidah bawah dari plat 5 mm. Roda besar dipasang di as besi Ø20 dengan ring & pen pengunci.' });
+      return out;
+    }
+    if (m === 'tiang') {
+      const n = Math.max(1, Math.round(num(p, 'tingkat', 3)));
+      const top = num(p, 'tinggiRak', 80);
+      const low = casterHeight(inch) + 22;
+      if (n > 1 && (top - low) / (n - 1) < 18)
+        out.push({ level: 'warn', message: 'Jarak antar nampan terlalu rapat, barang tidak muat di nampan bawah.', fix: { label: `${Math.max(1, Math.floor((top - low) / 18) + 1)} susun`, params: { tingkat: Math.max(1, Math.floor((top - low) / 18) + 1) } } });
+      if (W > 60) out.push({ level: 'warn', message: 'Nampan lebar di satu tiang: tepi nampan bisa melendut dan troli mudah oleng.', fix: { label: 'Nampan Ø 50 cm', params: { panjang: 50 } } });
+      if (top > 2 * Math.max(48, W * 0.95)) out.push({ level: 'warn', message: 'Troli tinggi di atas kaki silang yang kecil: mudah terguling saat didorong.', fix: { label: 'Nampan Ø 50 cm', params: { panjang: 50 } } });
+      out.push({ level: 'info', message: 'Tiang tengah pipa 40×40 menembus lubang di tengah tiap nampan; nampan dibaut ke 4 lengan di bawahnya.' });
+      if (!bool(p, 'remRoda')) out.push({ level: 'info', message: 'Tanpa rem, troli bisa meluncur di lantai miring.', fix: { label: 'Pakai roda rem', params: { remRoda: true } } });
+      return out;
+    }
+    if (m === 'nampan') {
+      const Ht = num(p, 'tinggiRangka', 170);
+      if (Ht > 3.6 * Math.min(W, D)) out.push({ level: 'warn', message: 'Rak loyang tinggi tapi alasnya sempit: mudah terguling saat didorong.', fix: { label: `Tinggi ${Math.round(3.4 * Math.min(W, D))} cm`, params: { tinggiRangka: Math.max(60, Math.round(3.4 * Math.min(W, D))) } } });
+      if (num(p, 'jarakRel', 10) < 8) out.push({ level: 'info', message: 'Rel rapat (di bawah 8 cm) hanya muat loyang berisi adonan pipih / kue kering.' });
+      out.push({ level: 'info', message: 'Rel nampan dari pipa 20×20 dilas di sisi dalam tiang depan & belakang; loyang dimasukkan dari muka depan yang terbuka. Lebar dalam = panjang dikurangi 2 tebal pipa dan 2 rel.' });
+      if (!bool(p, 'remRoda')) out.push({ level: 'warn', message: 'Rak loyang tinggi tanpa rem mudah meluncur.', fix: { label: 'Pakai roda rem', params: { remRoda: true } } });
+      return out;
+    }
+    if (m === 'rangka-a') {
+      if (D < 55) out.push({ level: 'warn', message: 'Lantai terlalu sempit: kaki panel mudah tergelincir dan troli oleng ke samping.', fix: { label: 'Lebar 70 cm', params: { lebar: 70 } } });
+      if (W > 90 && str(p, 'palang') !== '20x40') out.push({ level: 'warn', message: 'Rangka lantai panjang dengan pipa 20×20 bisa melendut di bawah kaca.', fix: { label: 'Pakai pipa 20×40', params: { palang: '20x40' } } });
+      out.push({ level: 'info', message: 'Lapisi kaki A dan penahan kaki panel dengan karet. Panel disandarkan bergantian di dua sisi supaya seimbang, lalu diikat tali.' });
+      if (!bool(p, 'remRoda')) out.push({ level: 'warn', message: 'Troli kaca tanpa rem berbahaya di lantai miring.', fix: { label: 'Pakai roda rem', params: { remRoda: true } } });
+      return out;
+    }
+    if (m === 'silang') {
+      const top = num(p, 'tinggiRak', 85);
+      const maxBak = Math.floor(top - casterHeight(inch) - 25);
+      if (num(p, 'dalamBak', 50) > maxBak) out.push({ level: 'warn', message: 'Bak terlalu dalam, alasnya hampir menyentuh palang kaki.', fix: { label: `Bak ${maxBak} cm`, params: { dalamBak: Math.max(15, maxBak) } } });
+      if (W > 80 && str(p, 'pipa') === '20') out.push({ level: 'warn', message: 'Troli panjang dengan kaki silang 20×20 terasa goyang saat penuh.', fix: { label: 'Pakai pipa 30×30', params: { pipa: '30' } } });
+      out.push({ level: 'info', message: 'Kaki luar & dalam dipasang bersebelahan dan dilas di titik silangnya (tidak dilipat). Papan bak bisa diganti kantong kanvas.' });
+      if (!bool(p, 'remRoda')) out.push({ level: 'info', message: 'Tanpa rem, troli bisa meluncur di lantai miring.', fix: { label: 'Pakai roda rem', params: { remRoda: true } } });
+      return out;
+    }
+    if (barrow(p)) {
+      const big = parseInt(str(p, 'rodaGerobak', '16')) || 16;
+      if (m === 'sorong' && W > 75 && str(p, 'pipa') === '20') out.push({ level: 'warn', message: 'Bak besar di atas balok 20×20 bisa melendut saat diisi pasir / tanah.', fix: { label: 'Pakai pipa 30×30', params: { pipa: '30' } } });
+      if (m === 'gerobak-2' && W > 110 && big < 16) out.push({ level: 'warn', message: 'Gerobak panjang dengan roda kecil berat didorong di jalan tidak rata.', fix: { label: 'Roda 16"', params: { rodaGerobak: '16' } } });
+      if (m === 'gerobak-2' && W > 120 && str(p, 'pipa') === '20') out.push({ level: 'warn', message: 'Balok lantai 20×20 terlalu kecil untuk gerobak sepanjang ini.', fix: { label: 'Pakai pipa 40×40', params: { pipa: '40' } } });
+      out.push({
+        level: 'info',
+        message:
+          m === 'sorong'
+            ? `Roda ${big}" dipasang di as besi Ø20 di antara dua garpu; saat berhenti gerobak bertumpu di roda dan dua kaki belakang. Ujung balok jadi gagang, beri karet pegangan.`
+            : `Dua roda ${big}" di as besi Ø20 di bawah lantai. Roda sedikit di depan tengah lantai supaya gagang terasa ringan saat diangkat; saat berhenti gerobak bertumpu di kaki penyangga.`,
+      });
       return out;
     }
     if (bikeCart(p)) {

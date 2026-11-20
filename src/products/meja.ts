@@ -45,7 +45,7 @@ export const MEJA: ProductDef = {
   icon: 'M6 12h48M10 12v24M50 12v24M10 28h40',
   steps: [
     { id: 'ukuran', title: 'Ukuran', keys: ['bentukDaun', 'panjang', 'lebar', 'tinggi'] },
-    { id: 'bentuk', title: 'Kaki', keys: ['modelKaki', 'sudutKaki', 'alas', 'bentangAlas', 'pijakan', 'kakiLipat', 'rakBawah', 'tinggiRakBawah', 'palangKaki', 'kakiTengah', 'rakAtas', 'tinggiRakAtas', 'tingkatAtas', 'dalamRakAtas'] },
+    { id: 'bentuk', title: 'Kaki', keys: ['modelKaki', 'sudutKaki', 'sudutPapan','alas', 'bentangAlas', 'pijakan', 'kakiLipat', 'rakBawah', 'tinggiRakBawah', 'palangKaki', 'kakiTengah', 'rakAtas', 'tinggiRakAtas', 'tingkatAtas', 'dalamRakAtas'] },
     { id: 'bahan', title: 'Bahan', keys: ['pipa', 'papan', 'warna'] },
     { id: 'tambahan', title: 'Tambahan', keys: ['roda', 'ukuranRoda', 'remRoda'] },
   ],
@@ -82,9 +82,13 @@ export const MEJA: ProductDef = {
         { value: 'konsol', label: 'Konsol 2 kaki (menempel tembok)', desc: 'Kaki hanya di depan, belakang dibaut ke tembok' },
         { value: 'kotak', label: 'Rangka kotak akuarium', desc: 'Ring atas + ring lantai, tiang tambahan di tengah' },
         { value: 'silang', label: 'Rangka akuarium bersilang', desc: 'Panel samping & belakang diberi silang X' },
+        { value: 'tiga', label: 'Kaki 3', desc: '3 kaki tegak di sudut segitiga, lengan Y di bawah daun' },
+        { value: 'y', label: 'Kaki Y (tiang bercabang)', desc: 'Tiang pendek di tiap ujung bercabang dua ke depan & belakang' },
+        { value: 'gambar', label: 'Meja gambar (papan miring)', desc: 'Kaki A, papan miring ke depan dengan bibir penahan' },
       ],
       showIf: noFold,
     },
+    { key: 'sudutPapan', label: 'Kemiringan papan', type: 'number', unit: '°', min: 5, max: 30, step: 1, help: 'Papan turun ke arah orang yang duduk. 10° untuk menulis, 15° – 20° untuk menggambar.', showIf: (p) => p.modelKaki === 'gambar' && noFold(p) },
     {
       key: 'alas',
       label: 'Alas kaki tunggal',
@@ -114,21 +118,22 @@ export const MEJA: ProductDef = {
     { key: 'remRoda', label: 'Roda dengan rem', type: 'toggle', showIf: (p) => p.roda === true && noFold(p) && isFour(p) },
   ],
   defaults: {
-    bentukDaun: 'kotak', panjang: 120, lebar: 75, tinggi: 75, modelKaki: 'lurus', sudutKaki: 8, kakiLipat: false,
+    bentukDaun: 'kotak', panjang: 120, lebar: 75, tinggi: 75, modelKaki: 'lurus', sudutKaki: 8, sudutPapan: 15, kakiLipat: false,
     rakBawah: false, tinggiRakBawah: 20, palangKaki: true, kakiTengah: false, alas: 'silang', bentangAlas: 56, pijakan: false, rakAtas: false, tinggiRakAtas: 50, tingkatAtas: 2, dalamRakAtas: 25,
     pipa: '40', papan: 'kayu', warna: '#1f2226', roda: false, ukuranRoda: '3', remRoda: true,
   },
   groups: [
     { id: 'makan', name: 'Meja makan', desc: '2 – 10 orang, rumah & komunal' },
-    { id: 'kerja', name: 'Meja kerja / belajar', desc: 'rak atas · kaki Z · trapesium' },
+    { id: 'kerja', name: 'Meja kerja / belajar', desc: 'rak atas · kaki Z · trapesium · papan gambar miring' },
     { id: 'kopi', name: 'Meja kopi, samping & konsol', desc: 'depan sofa · samping sofa · lorong / TV' },
-    { id: 'cafe', name: 'Meja cafe & bar', desc: 'kaki tunggal · komunal · bar tinggi' },
+    { id: 'cafe', name: 'Meja cafe & bar', desc: 'kaki tunggal · kaki 3 · komunal · bar tinggi' },
     { id: 'akuarium', name: 'Meja akuarium', desc: 'tangki 60 – 150 cm, rangka beban berat' },
   ],
   signature: (p) => {
-    const round = p.bentukDaun === 'bulat';
+    const round = p.bentukDaun === 'bulat' && p.modelKaki !== 'gambar';
     if (p.kakiLipat === true && !round) return 'lipat';
     let m = str(p, 'modelKaki', 'lurus');
+    if (m === 'silang') return 'kotak'; // akuarium bersilang = rangka kotak akuarium yang sama, hanya penguatnya X (masuk sizes)
     if (m === 'x' && round) m = 'lurus';
     if (m === 'pedestal') return `pedestal-${str(p, 'alas', 'silang')}`;
     if (m === 'melebar') m = 'lurus'; // kaki melebar = rangka 4 kaki yang sama, hanya miring
@@ -356,37 +361,69 @@ export const MEJA: ProductDef = {
       id: 'akuarium-kotak',
       group: 'akuarium',
       name: 'Meja akuarium rangka kotak',
-      desc: 'ring atas + ring lantai, tiang tambahan di tengah untuk tangki panjang',
+      desc: 'tiang di sudut dan tengah bentang, ring atas + ring bawah (opsi silang X di samping & belakang)',
       params: { modelKaki: 'kotak', pipa: '40', papan: 'multiplek', panjang: 80, lebar: 40 },
       sizes: [
-        { label: 'Akuarium 80 cm', desc: '80 × 40 × 75 cm', params: { panjang: 80, lebar: 40, tinggi: 75, rakBawah: false } },
-        { label: 'Akuarium 60 cm', desc: '60 × 35 × 75 cm', params: { panjang: 60, lebar: 35, tinggi: 75, rakBawah: false } },
-        { label: 'Akuarium 100 cm + rak filter', desc: '100 × 45 × 75 cm, papan bawah', params: { panjang: 100, lebar: 45, tinggi: 75, rakBawah: true } },
-        { label: 'Akuarium 120 cm + rak filter', desc: '120 × 50 × 75 cm, 6 tiang', params: { panjang: 120, lebar: 50, tinggi: 75, rakBawah: true } },
-        { label: 'Akuarium 150 cm + rak filter', desc: '150 × 55 × 75 cm, 8 tiang', params: { panjang: 150, lebar: 55, tinggi: 75, rakBawah: true } },
+        { label: 'Akuarium 80 cm', desc: '80 × 40 × 75 cm', params: { modelKaki: 'kotak', panjang: 80, lebar: 40, tinggi: 75, rakBawah: false } },
+        { label: 'Akuarium 60 cm', desc: '60 × 35 × 75 cm', params: { modelKaki: 'kotak', panjang: 60, lebar: 35, tinggi: 75, rakBawah: false } },
+        { label: 'Akuarium 100 cm + rak filter', desc: '100 × 45 × 75 cm, papan bawah', params: { modelKaki: 'kotak', panjang: 100, lebar: 45, tinggi: 75, rakBawah: true } },
+        { label: 'Akuarium 120 cm + rak filter', desc: '120 × 50 × 75 cm, 6 tiang', params: { modelKaki: 'kotak', panjang: 120, lebar: 50, tinggi: 75, rakBawah: true } },
+        { label: 'Akuarium 150 cm + rak filter', desc: '150 × 55 × 75 cm, 8 tiang', params: { modelKaki: 'kotak', panjang: 150, lebar: 55, tinggi: 75, rakBawah: true } },
+        { label: 'Bersilang X 100 cm', desc: '100 × 45 × 75 cm, silang di samping & belakang', params: { modelKaki: 'silang', panjang: 100, lebar: 45, tinggi: 75, rakBawah: false } },
+        { label: 'Bersilang X 150 cm + rak filter', desc: '150 × 55 × 75 cm, 6 kaki', params: { modelKaki: 'silang', panjang: 150, lebar: 55, tinggi: 75, rakBawah: true } },
+      ],
+    },
+
+    // ---------- Template tambahan (struktur rangka baru) ----------
+    {
+      id: 'kaki-y',
+      group: 'makan',
+      name: 'Meja kaki Y (tiang bercabang)',
+      desc: 'tiap ujung satu tiang pendek di tapak lantai, di atasnya bercabang dua batang miring ke depan dan ke belakang daun',
+      params: { modelKaki: 'y', bentukDaun: 'kotak', panjang: 180, lebar: 90, tinggi: 75, pipa: '40' },
+      sizes: [
+        { label: 'Makan 6 orang', desc: '180 × 90 × 75 cm', params: { panjang: 180, lebar: 90, tinggi: 75, pipa: '40' } },
+        { label: 'Makan 4 orang', desc: '140 × 80 × 75 cm', params: { panjang: 140, lebar: 80, tinggi: 75, pipa: '40' } },
+        { label: 'Rapat 8 orang', desc: '220 × 100 × 75 cm', params: { panjang: 220, lebar: 100, tinggi: 75, pipa: '40' } },
+        { label: 'Bar panjang', desc: '200 × 60 × 105 cm', params: { panjang: 200, lebar: 60, tinggi: 105, pipa: '40' } },
       ],
     },
     {
-      id: 'akuarium-silang',
-      group: 'akuarium',
-      name: 'Meja akuarium bersilang',
-      desc: 'panel samping & belakang diberi silang X, tidak goyang ke samping',
-      params: { modelKaki: 'silang', pipa: '40', papan: 'multiplek', panjang: 100, lebar: 45 },
+      id: 'meja-gambar',
+      group: 'kerja',
+      name: 'Meja gambar (papan miring)',
+      desc: 'kaki A di tiap ujung, papan miring turun ke depan di atas rel miring dan tiang penyangga belakang, bibir penahan di tepi bawah',
+      params: { modelKaki: 'gambar', bentukDaun: 'kotak', sudutPapan: 15, panjang: 100, lebar: 70, tinggi: 80, pipa: '30' },
       sizes: [
-        { label: 'Akuarium 100 cm', desc: '100 × 45 × 75 cm', params: { panjang: 100, lebar: 45, tinggi: 75, rakBawah: false } },
-        { label: 'Akuarium 60 cm', desc: '60 × 35 × 75 cm', params: { panjang: 60, lebar: 35, tinggi: 75, rakBawah: false } },
-        { label: 'Akuarium 120 cm + rak filter', desc: '120 × 50 × 75 cm', params: { panjang: 120, lebar: 50, tinggi: 75, rakBawah: true } },
-        { label: 'Akuarium 150 cm + rak filter', desc: '150 × 55 × 75 cm', params: { panjang: 150, lebar: 55, tinggi: 75, rakBawah: true } },
+        { label: 'Meja gambar A1', desc: '100 × 70 cm, tepi depan 80 cm, miring 15°', params: { panjang: 100, lebar: 70, tinggi: 80, sudutPapan: 15, pipa: '30' } },
+        { label: 'Meja gambar A0', desc: '130 × 90 cm, tepi depan 80 cm, miring 15°', params: { panjang: 130, lebar: 90, tinggi: 80, sudutPapan: 15, pipa: '40' } },
+        { label: 'Meja tulis / baca', desc: '80 × 55 cm, tepi depan 72 cm, miring 10°', params: { panjang: 80, lebar: 55, tinggi: 72, sudutPapan: 10, pipa: '30' } },
+        { label: 'Meja lukis anak', desc: '70 × 50 cm, tepi depan 55 cm, miring 20°', params: { panjang: 70, lebar: 50, tinggi: 55, sudutPapan: 20, pipa: '30' } },
+      ],
+    },
+    {
+      id: 'tiga-kaki',
+      group: 'cafe',
+      name: 'Meja bundar kaki 3',
+      desc: 'tiga kaki tegak di sudut segitiga, disatukan lengan Y di bawah daun dan lengan Y dekat lantai',
+      params: { modelKaki: 'tiga', bentukDaun: 'bulat', panjang: 70, tinggi: 75, pipa: '30' },
+      sizes: [
+        { label: 'Cafe 2 orang', desc: 'ø60 × 75 cm', params: { bentukDaun: 'bulat', panjang: 60, tinggi: 75, pipa: '30' } },
+        { label: 'Cafe 3 – 4 orang', desc: 'ø80 × 75 cm', params: { bentukDaun: 'bulat', panjang: 80, tinggi: 75, pipa: '40' } },
+        { label: 'Meja kopi bundar', desc: 'ø70 × 45 cm', params: { bentukDaun: 'bulat', panjang: 70, tinggi: 45, pipa: '30' } },
+        { label: 'Bar tinggi', desc: 'ø60 × 105 cm', params: { bentukDaun: 'bulat', panjang: 60, tinggi: 105, pipa: '40' } },
       ],
     },
   ],
   summary: (p) =>
-    str(p, 'bentukDaun') === 'bulat'
+    str(p, 'modelKaki') === 'gambar' && !bool(p, 'kakiLipat')
+      ? `${num(p, 'panjang')} × ${num(p, 'lebar')} cm · tepi depan ${num(p, 'tinggi')} cm · miring ${num(p, 'sudutPapan', 15)}°`
+      : str(p, 'bentukDaun') === 'bulat'
       ? `Bundar ø${num(p, 'panjang')} × tinggi ${num(p, 'tinggi')} cm`
       : `${num(p, 'panjang')} × ${num(p, 'lebar')} × ${num(p, 'tinggi')} cm${bool(p, 'kakiLipat') ? ' · kaki lipat' : ''}`,
 
   build: (p) => {
-    const round = str(p, 'bentukDaun') === 'bulat';
+    const round = str(p, 'bentukDaun') === 'bulat' && str(p, 'modelKaki') !== 'gambar';
     const W = num(p, 'panjang', 120);
     const D = round ? W : num(p, 'lebar', 75);
     const H = num(p, 'tinggi', 75);
@@ -769,6 +806,131 @@ export const MEJA: ProductDef = {
         line(`silang-belakang-${i}-b`, [c2, yLo, zb + rw], [a, yHi, zb + rw], 'custom', `Silang belakang ${i + 1} B`, rail);
       }
       if (bool(p, 'rakBawah') && b > 0) boards.push(board('papan-bawah', 'Papan bawah (filter / sump)', xl + L / 2, xr - L / 2, yb + 1, yb + 1 + b, zb + 1.5, zf + L / 2));
+    } else if (model === 'tiga') {
+      // Kaki 3: kaki tegak di sudut segitiga (1 belakang, 2 depan). Di bawah daun dan dekat lantai disatukan
+      // lengan Y: lengan belakang lurus depan–belakang, dua lengan depan miring menempel di sisinya
+      // dan ujung luarnya dipotong rata dengan sisi dalam kaki depan.
+      const cx = W / 2;
+      const cz = D / 2;
+      const R = Math.min(W, D) / 2;
+      const r = Math.max(12, R - L / 2 - 6);
+      const s60 = Math.sin(Math.PI / 3);
+      const pts: [number, number][] = [
+        [cx, cz - r],
+        [cx - r * s60, cz + r / 2],
+        [cx + r * s60, cz + r / 2],
+      ];
+      const names = ['belakang', 'kiri depan', 'kanan depan'];
+      pts.forEach(([x, z], i) => add(`kaki-${i}`, 'y', x, 0, z, yTop, 'post', `Kaki ${names[i]}`, leg));
+      const armT: [number, number] = L >= 3 ? [30, 30] : [20, 20];
+      const spider = (prefix: string, name: string, y: number, t: [number, number]) => {
+        const tc = t[0] / 10;
+        let h = tc / 2;
+        [1, 2].forEach((j) => {
+          const sx = j === 1 ? -1 : 1;
+          const a: P3 = [cx + (sx * tc) / 2, y, cz];
+          const e: P3 = [pts[j][0] - (sx * L) / 2, y, pts[j][1]];
+          h = Math.max(h, cutHalf(a, e, tc, 2));
+          line(`${prefix}-${j === 1 ? 'kiri' : 'kanan'}`, a, e, 'custom', `${name} kiri-kanan ${j === 1 ? 'kiri' : 'kanan'} (miring)`, t);
+        });
+        // lengan belakang menerus dari sisi depan kaki belakang sampai melewati tapak kedua lengan miring
+        const z0 = pts[0][1] + L / 2;
+        add(`${prefix}-belakang`, 'z', cx, y, z0, cz + h + 0.3 - z0, 'rail-z', `${name} belakang`, t);
+      };
+      spider('lengan-atas', 'Lengan atas', yTop - armT[1] / 20, armT);
+      spider('lengan-bawah', 'Lengan bawah', Math.max(10, Math.min(18, yTop * 0.2)), rail);
+    } else if (model === 'y') {
+      // Kaki Y: tiap ujung tapak lantai melintang + tiang pendek + plat dudukan, dari plat bercabang dua batang
+      // miring ke lengan atas (depan & belakang). Kedua cabang bertemu sisi-ke-sisi di atas plat, tidak saling tembus.
+      const col = Math.max(5, L + 1);
+      const colT: [number, number] = [col * 10, col * 10];
+      const inset = Math.max(col / 2 + 10, Math.min(W * 0.2, 45));
+      const xs = [inset, W - inset];
+      const zc = D / 2;
+      const footL = Math.min(D - 4, Math.max(40, D * 0.85));
+      const tp = 0.8;
+      const yL = yTop - L; // bawah lengan atas
+      const halfIn = fz1 - 2 - zc; // setengah panjang lengan atas
+      let t0 = L / 2 + 0.1;
+      let ext = L / 2;
+      let zT = halfIn - ext - 0.3;
+      let yb = L + 8;
+      for (let k = 0; k < 6; k++) {
+        zT = halfIn - ext - 0.3;
+        yb = Math.max(L + 8, yL - tp - 1.3 * (zT - t0));
+        ext = cutHalf([0, yb + tp, t0], [0, yL, zT], L, 2);
+        t0 = ext + 0.1;
+      }
+      const yp = yb + tp;
+      const ph = t0 + ext + 0.5;
+      xs.forEach((x, i) => {
+        const side = i ? 'kanan' : 'kiri';
+        add(`tapak-${side}`, 'z', x, L / 2, zc - footL / 2, footL, 'rail-z', `Tapak ${side} (lantai)`, leg);
+        add(`tiang-${side}`, 'y', x, L, zc, yb - L, 'post', `Tiang ${side}`, colT);
+        const pl = board(`plat-y-${side}`, `Plat dudukan cabang ${side}`, x - col / 2, x + col / 2, yb, yp, zc - ph, zc + ph);
+        pl.steelMm = 8;
+        boards.push(pl);
+        line(`cabang-${side}-b`, [x, yp, zc - t0], [x, yL, zc - zT], 'post', `Cabang miring ${side} belakang`, leg);
+        line(`cabang-${side}-d`, [x, yp, zc + t0], [x, yL, zc + zT], 'post', `Cabang miring ${side} depan`, leg);
+        add(`lengan-${side}`, 'z', x, yTop - L / 2, fz0 + 2 * aw, fz1 - fz0 - 4 * aw, 'rail-z', `Lengan atas ${side}`, leg);
+      });
+      add('atas-depan', 'x', fx0, ya, fz1 - 1, fx1 - fx0, 'rail-x', 'Rangka atas depan', apron);
+      add('atas-belakang', 'x', fx0, ya, fz0 + 1, fx1 - fx0, 'rail-x', 'Rangka atas belakang', apron);
+      add('balok-tengah', 'x', xs[0] + L / 2, ya, zc, xs[1] - xs[0] - L, 'rail-x', 'Balok tengah atas', apron);
+      add('palang-bawah', 'x', xs[0] + col / 2, L + (yb - L) / 2, zc, xs[1] - xs[0] - col, 'rail-x', 'Palang bawah antar tiang', apron);
+    } else if (model === 'gambar') {
+      // Meja gambar: kaki A di tiap ujung + rangka atas datar; di atasnya rel miring (turun ke depan) yang depannya
+      // duduk di rangka atas dan belakangnya ditopang tiang penyangga pendek. Papan miring di atas rel,
+      // bibir penahan di tepi bawah supaya pensil / kertas tidak jatuh.
+      const th = (Math.min(30, Math.max(5, num(p, 'sudutPapan', 15))) * Math.PI) / 180;
+      const cs = Math.cos(th);
+      const tn = Math.tan(th);
+      const zF = fz1;
+      const zB = fz0;
+      const yAx = (z: number) => H - (1 + b) / cs + (zF - 2 - z) * tn; // as rel miring: tinggi = tepi depan papan, naik ke belakang
+      const yS = yAx(zF) - 1 / cs; // atas rangka datar = bawah ujung depan rel miring
+      const yaG = yS - ah / 2;
+      const xs = [fx0 + L / 2, fx1 - L / 2];
+      const yLeg = yaG - ah / 2;
+      const zc = (fz0 + fz1) / 2;
+      const topHalf = Math.max(L + 2, (fz1 - fz0) * 0.15);
+      const yc = Math.min(25, yLeg * 0.35);
+      xs.forEach((x, i) => {
+        const side = i ? 'kanan' : 'kiri';
+        const kb: P3 = [x, 0, fz0 + L / 2];
+        const kd: P3 = [x, 0, fz1 - L / 2];
+        const tb: P3 = [x, yLeg, zc - topHalf];
+        const td: P3 = [x, yLeg, zc + topHalf];
+        line(`kaki-a-${i}-b`, kb, tb, 'post', `Kaki A ${side} belakang`, leg);
+        line(`kaki-a-${i}-d`, kd, td, 'post', `Kaki A ${side} depan`, leg);
+        add(`atas-${side}`, 'z', x, yaG, fz0, fz1 - fz0, 'rail-z', `Rangka atas ${side}`, apron);
+        const yt = yc + rw;
+        const zbIn = kb[2] + (tb[2] - kb[2]) * (yt / yLeg) + cutHalf(kb, tb, L, 2);
+        const zfIn = kd[2] + (td[2] - kd[2]) * (yt / yLeg) - cutHalf(kd, td, L, 2);
+        add(`palang-a-${side}`, 'z', x, yc, zbIn, zfIn - zbIn, 'rail-z', `Palang kaki A ${side}`, rail);
+      });
+      add('atas-depan', 'x', xs[0] + aw, yaG, fz1 - 1, xs[1] - xs[0] - 2 * aw, 'rail-x', 'Rangka atas depan', apron);
+      add('atas-belakang', 'x', xs[0] + aw, yaG, fz0 + 1, xs[1] - xs[0] - 2 * aw, 'rail-x', 'Rangka atas belakang', apron);
+      add('palang-panjang', 'x', xs[0] + 1, yc, zc, xs[1] - xs[0] - 2, 'rail-x', 'Palang penghubung kaki A', rail);
+      // rel miring kiri, kanan (+ tengah untuk papan lebar); tiang penyangga di ujung belakang tiap rel
+      const relXs = [xs[0], xs[1], ...(W > 100 ? [W / 2] : [])];
+      relXs.forEach((x, i) => {
+        const nm = i === 0 ? 'kiri' : i === 1 ? 'kanan' : 'tengah';
+        line(`rel-miring-${nm}`, [x, yAx(zF), zF], [x, yAx(zB), zB], 'custom', `Rel miring papan ${nm}`, rail);
+        const top = yAx(zB + 2) - 1 / cs; // bawah rel miring di sisi depan tiang
+        add(`tiang-penyangga-${nm}`, 'y', x, yS, zB + 1, top - yS, 'post', `Tiang penyangga papan ${nm}${i === 2 ? ' (di rangka atas belakang)' : ''}`, rail);
+      });
+      // bibir penahan 20×40 duduk di atas ujung depan rel miring
+      add('bibir-penahan', 'x', 0, yAx(zF - 2) + 1 / cs + 2, zF - 1, W, 'rail-x', 'Bibir penahan pensil (tepi bawah papan)', [20, 40]);
+      if (b > 0) {
+        const zFront = zF - 3; // tepi depan papan sedikit di belakang bibir penahan
+        const zm = (zFront + zB) / 2;
+        const ls = (zFront - zB) / cs;
+        const off = 1 + b / 2;
+        const cy = yAx(zm) + cs * off;
+        const czB = zm + Math.sin(th) * off;
+        boards.push({ ...board('papan-gambar', 'Papan gambar miring', 0, W, cy - b / 2, cy + b / 2, czB - ls / 2, czB + ls / 2), rotX: Math.round((th * 1800) / Math.PI) / 10 });
+      }
     } else if (lipat) {
       // Rangka atas keliling + batang dudukan engsel; kaki di dalam rangka, dilipat ke tengah
       add('atas-depan', 'x', fx0, ya, fz1 - 1, fx1 - fx0, 'rail-x', 'Rangka atas depan', apron);
@@ -897,7 +1059,7 @@ export const MEJA: ProductDef = {
       }
     }
 
-    if (b > 0 && model !== 'diagonal') {
+    if (b > 0 && model !== 'diagonal' && model !== 'gambar') {
       const top = board('daun-meja', round ? 'Daun meja bundar' : 'Daun meja', 0, W, yTop, H, 0, D);
       if (round) top.shape = 'round';
       boards.unshift(top);
@@ -910,7 +1072,13 @@ export const MEJA: ProductDef = {
           .map((m, i) => ({ id: `roda-${i}`, x: m.x, z: m.z, topY: c, sizeInch: inch, brake: bool(p, 'remRoda') }))
       : [];
 
-    const Htot = bool(p, 'rakAtas') && (model === 'lurus' || model === 'melebar') && !round && !lipat ? H + num(p, 'tinggiRakAtas', 50) + L + b : H;
+    const thG = (Math.min(30, Math.max(5, num(p, 'sudutPapan', 15))) * Math.PI) / 180;
+    const Htot =
+      bool(p, 'rakAtas') && (model === 'lurus' || model === 'melebar') && !round && !lipat
+        ? H + num(p, 'tinggiRakAtas', 50) + L + b
+        : model === 'gambar'
+          ? Math.round((H + (fz1 - 2 - fz0) * Math.tan(thG) + 2) * 10) / 10
+          : H;
     return { members: list, boards, casters, W, D, H: Htot, boardThick: b, hinges: hinges.length ? hinges : undefined, wall: model === 'konsol' ? true : undefined };
   },
 
@@ -929,7 +1097,7 @@ export const MEJA: ProductDef = {
     if (bool(p, 'rakBawah') && isFour(p) && num(p, 'tinggiRakBawah') > H - 30)
       out.push({ level: 'warn', message: 'Rak bawah terlalu dekat ke daun meja, barang susah masuk.', fix: { label: 'Turunkan rak ke 20 cm', params: { tinggiRakBawah: 20 } } });
     if (model === 'melebar' && num(p, 'sudutKaki') > 12) out.push({ level: 'info', message: 'Kaki sangat melebar: ujung kaki keluar dari tepi daun meja, bisa tersandung.' });
-    if (['melebar', 'x', 'trestle', 'hairpin', 'z', 'trapesium', 'silang'].includes(model) && !bool(p, 'kakiLipat')) out.push({ level: 'info', message: 'Kaki miring dipotong bersudut di kedua ujungnya. Sudutnya tertulis di daftar potongan.' });
+    if (['melebar', 'x', 'trestle', 'hairpin', 'z', 'trapesium', 'silang', 'y', 'gambar', 'tiga'].includes(model) && !bool(p, 'kakiLipat')) out.push({ level: 'info', message: 'Kaki miring dipotong bersudut di kedua ujungnya. Sudutnya tertulis di daftar potongan.' });
     if (bool(p, 'kakiLipat')) out.push({ level: 'info', message: 'Klik engsel di 3D untuk melipat kaki. Engsel kunci menahan kaki tetap tegak saat dipakai.' });
     if (model === 'pedestal') {
       const top = round ? W : Math.max(W, num(p, 'lebar'));
@@ -964,6 +1132,28 @@ export const MEJA: ProductDef = {
       if (model === 'konsol') {
         if (D > 50) out.push({ level: 'warn', message: `Konsol 2 kaki sedalam ${D} cm terlalu berat di depan; pakai kaki 4.`, fix: { label: 'Lebar 40 cm', params: { lebar: 40 } } });
         out.push({ level: 'info', message: 'Rangka belakang dan ujung palang bawah WAJIB dibaut ke tembok (fischer + baut 8 mm).' });
+      }
+      if (model === 'tiga') {
+        const top = round ? W : Math.max(W, D);
+        if (top > 90) out.push({ level: 'warn', message: `Daun ${top} cm terlalu lebar untuk 3 kaki: tepi di antara dua kaki mudah terjungkit kalau ditekan.`, fix: { label: 'Diameter 80 cm', params: { panjang: 80, bentukDaun: 'bulat' } } });
+        if (!round) out.push({ level: 'info', message: 'Kaki 3 paling pas untuk daun bundar; pada daun kotak sudut depan dan belakang tidak tertopang.', fix: { label: 'Daun bundar', params: { bentukDaun: 'bulat' } } });
+        if (H > 95 && str(p, 'pipa') !== '40') out.push({ level: 'warn', message: 'Meja bar 3 kaki sebaiknya pakai pipa 40×40 supaya tidak goyang.', fix: { label: 'Pakai pipa 40×40', params: { pipa: '40' } } });
+        out.push({ level: 'info', message: 'Meja 3 kaki tidak pernah goyang walau lantai tidak rata. Lengan miring dipotong bersudut, sudutnya ada di daftar potongan.' });
+      }
+      if (model === 'y') {
+        const need = Math.round(1.1 * (D / 2 - 8) + 19);
+        if (H < need) out.push({ level: 'warn', message: `Meja ${H} cm terlalu pendek untuk daun selebar ${D} cm: cabang Y jadi landai dan tiangnya hampir hilang.`, fix: { label: `Lebar ${Math.max(40, Math.floor(2 * ((H - 19) / 1.1 + 8)))} cm`, params: { lebar: Math.max(40, Math.floor(2 * ((H - 19) / 1.1 + 8))) } } });
+        if (W < 110) out.push({ level: 'warn', message: `Meja ${W} cm terlalu pendek untuk dua kaki Y; pakai kaki tunggal atau kaki 4.`, fix: { label: 'Panjang 140 cm', params: { panjang: 140 } } });
+        if (str(p, 'pipa') === '20') out.push({ level: 'warn', message: 'Cabang Y memikul daun lewat batang miring; pipa 20×20 bisa melentur.', fix: { label: 'Pakai pipa 40×40', params: { pipa: '40' } } });
+        out.push({ level: 'info', message: 'Kedua cabang dilas di atas plat besi 8 mm di pucuk tiang, ujung bawahnya dipotong rata dengan plat.' });
+      }
+      if (model === 'gambar') {
+        const sud = num(p, 'sudutPapan', 15);
+        if (str(p, 'bentukDaun') === 'bulat') out.push({ level: 'warn', message: 'Papan gambar miring selalu kotak; daun bundar tidak dipakai.', fix: { label: 'Daun kotak', params: { bentukDaun: 'kotak' } } });
+        if (sud > 22) out.push({ level: 'info', message: `Papan miring ${sud}°: kertas dan pensil mudah melorot, pakai penjepit kertas.`, fix: { label: 'Miring 15°', params: { sudutPapan: 15 } } });
+        if (D > 80 && sud >= 15) out.push({ level: 'info', message: `Tepi belakang papan naik sekitar ${Math.round(D * Math.tan((sud * Math.PI) / 180))} cm dari tepi depan; pastikan masih terjangkau tangan.` });
+        if (H > 95) out.push({ level: 'warn', message: 'Meja gambar setinggi ini dipakai berdiri; kaki A perlu pipa 40×40.', fix: { label: 'Pakai pipa 40×40', params: { pipa: '40' } } });
+        out.push({ level: 'info', message: 'Tinggi meja diukur di tepi depan papan (dekat bibir penahan). Tepi belakang lebih tinggi sesuai kemiringan.' });
       }
       if (model === 'kotak' || model === 'silang') {
         if (str(p, 'pipa') === '20') out.push({ level: 'warn', message: 'Akuarium sangat berat (±1 kg per liter air + kaca + batu). Pipa 20×20 tidak cukup.', fix: { label: 'Pakai pipa 40×40', params: { pipa: '40' } } });

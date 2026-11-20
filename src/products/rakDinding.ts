@@ -1,5 +1,5 @@
-import { Board, ProductCheck, ProductDef } from './types';
-import { BOARD_THICK, board, bool, materialParams, memberFactory, num, str } from './common';
+import { Board, Params, ProductBuild, ProductCheck, ProductDef } from './types';
+import { BOARD_THICK, board, bool, materialParams, memberFactory, num, r1, str } from './common';
 
 /**
  * Rak dinding / backbar / rak gantung plafon. Bentuk rangka (param `model`):
@@ -9,51 +9,98 @@ import { BOARD_THICK, board, bool, materialParams, memberFactory, num, str } fro
  * - kotak: kotak rangka utuh (4 tiang depan-belakang) menempel tembok, tanpa kaki
  * - kisi: panel kisi-kisi di tembok + rak kecil menempel bergantian kiri–kanan
  * - rel: rel gantung tanpa papan, siku dudukan + kait S (cangkir, alat dapur, apron)
+ * - melayang: rel datar dibaut tembok + jari pendek menjulur, tanpa siku tegak (papan tampak melayang)
+ * - sudut: tiang di pojok + tiang di dua tembok, papan bentuk L mengikuti pojok
+ * - miring: siku per tingkat dengan lengan miring ke depan, papan miring + bibir (majalah, sepatu)
+ * - berundak: rangka berundak (naik-datar-naik) menempel tembok, papan naik bertangga ke samping
+ * - tulang: satu tiang tengah di tembok, rak bergantian kiri-kanan ditahan batang miring di bidang tembok
+ * - segitiga: rangka A di bidang tembok (alas + 2 batang miring + puncak), papan makin ke atas makin pendek
+ * - siku-besar: satu siku segitiga besar setinggi rak, papan makin ke atas makin dalam
+ * - piring: 2 tiang tembok di ujung, rangka keliling per tingkat, jeruji piring di atas + nampan bawah
+ * - botol: tiang tembok + lengan, tiap tingkat 2 rel tidur dengan pasak penyekat botol, papan di puncak
+ * - gantung-tiang: satu batang dari plat plafon, lengan silang per tingkat, papan bundar
  * Opsi bibir penahan & gantungan gelas untuk model siku / tiang.
  */
+const MODELS = [
+  { value: 'siku', label: 'Siku lurus', desc: 'Sederhana, papan ≤ 30 cm' },
+  { value: 'siku-miring', label: 'Siku + penguat miring', desc: 'Kuat untuk botol & papan dalam' },
+  { value: 'tiang', label: 'Tiang dinding', desc: 'Rangka tegak sepanjang rak (backbar)' },
+  { value: 'gantung', label: 'Gantung dari plafon', desc: 'Di atas meja bar, tanpa tembok' },
+  { value: 'pipa', label: 'Pipa tegak depan (industrial)', desc: 'Pipa menembus papan, lepas dari tembok' },
+  { value: 'kotak', label: 'Kotak rangka', desc: 'Kotak utuh menempel tembok, tanpa kaki' },
+  { value: 'kisi', label: 'Panel kisi + rak kecil', desc: 'Kisi-kisi di tembok, rak menempel bergantian' },
+  { value: 'rel', label: 'Rel gantung + kait', desc: 'Tanpa papan, untuk cangkir / alat dapur' },
+  { value: 'melayang', label: 'Ambalan melayang', desc: 'Rel tembok + jari pendek, tanpa siku tegak' },
+  { value: 'sudut', label: 'Rak pojok (L)', desc: 'Menempel dua tembok di pojok ruangan' },
+  { value: 'miring', label: 'Papan miring + bibir', desc: 'Majalah, buku, sepatu dipajang miring' },
+  { value: 'berundak', label: 'Rangka berundak', desc: 'Papan naik bertangga ke samping' },
+  { value: 'tulang', label: 'Tiang tengah selang-seling', desc: 'Satu tiang, rak kiri-kanan bergantian' },
+  { value: 'segitiga', label: 'Rangka segitiga', desc: 'Papan makin ke atas makin pendek' },
+  { value: 'siku-besar', label: 'Siku segitiga besar', desc: 'Papan makin ke atas makin dalam' },
+  { value: 'piring', label: 'Rak piring dinding', desc: 'Jeruji piring + nampan tetesan' },
+  { value: 'botol', label: 'Rak botol tidur', desc: 'Botol berbaring di rel, papan gelas di atas' },
+  { value: 'gantung-tiang', label: 'Gantung satu batang', desc: 'Papan bundar bertingkat dari plafon' },
+];
+const KEYS = MODELS.map((m) => m.value);
+const model = (p: Params) => {
+  const m = str(p, 'model', 'siku-miring');
+  return KEYS.includes(m) ? m : 'siku-miring';
+};
+const HANG = ['gantung', 'gantung-tiang'];
+
+/** DNA rangka per bentuk: A penopang | B geometri kaki | C penguat | D susunan papan | E mobilitas | F tumpuan | G elemen khusus */
+const DNA: Record<string, string[]> = {
+  siku: ['siku-per-tingkat', 'tanpa-kaki', 'tanpa', 'susun-rata', 'diam', 'dibaut', 'tanpa'],
+  'siku-miring': ['siku-per-tingkat', 'tanpa-kaki', 'diagonal-siku', 'susun-rata', 'diam', 'dibaut', 'bibir'],
+  rel: ['siku-per-tingkat', 'tanpa-kaki', 'tanpa', 'gantungan', 'diam', 'dibaut', 'pipa-gantung+kait'],
+  miring: ['siku-per-tingkat', 'tanpa-kaki', 'tanpa', 'papan-miring', 'diam', 'dibaut', 'bibir'],
+  tiang: ['tiang-tembok', 'tegak', 'tanpa', 'susun-rata', 'diam', 'dibaut', 'tanpa'],
+  botol: ['tiang-tembok', 'tegak', 'rel-ganda', 'buaian+papan-atas', 'diam', 'dibaut', 'pasak-slot'],
+  piring: ['tiang-tembok-ujung', 'tegak', 'rangka-keliling', 'jeruji+nampan', 'diam', 'dibaut', 'jeruji'],
+  gantung: ['gantung-plafon-4-batang', 'tegak', 'rangka-keliling', 'susun-rata', 'diam', 'plafon', 'pipa-gelas'],
+  'gantung-tiang': ['gantung-plafon-1-batang', 'tegak', 'lengan-silang', 'susun-rata-bundar', 'diam', 'plafon', 'plat-plafon'],
+  pipa: ['tiang-depan', 'tegak', 'lengan-atas-bawah', 'susun-rata', 'diam', 'dibaut', 'tiang-tembus'],
+  kotak: ['kotak-tertutup', 'tegak', 'rangka-kotak', 'susun-rata', 'diam', 'dibaut', 'tanpa'],
+  kisi: ['panel-kisi', 'tanpa-kaki', 'kisi', 'zigzag', 'diam', 'dibaut', 'kisi'],
+  melayang: ['rel-tembok-datar', 'tanpa-kaki', 'rel-belakang', 'susun-rata', 'diam', 'dibaut', 'jari-pendek'],
+  sudut: ['tiang-pojok-dua-tembok', 'tegak', 'palang-depan', 'L-sudut', 'diam', 'dibaut-dua-tembok', 'tanpa'],
+  berundak: ['rangka-berundak-tembok', 'tanpa-kaki', 'batang-berundak', 'bertangga-ke-samping', 'diam', 'dibaut', 'tanpa'],
+  tulang: ['tiang-tunggal-tengah', 'tegak', 'diagonal-bidang-tembok', 'selang-seling', 'diam', 'dibaut', 'tanpa'],
+  segitiga: ['rangka-a-tembok', 'miring-ke-puncak', 'alas+puncak', 'piramida', 'diam', 'dibaut', 'tanpa'],
+  'siku-besar': ['siku-besar-menerus', 'tanpa-kaki', 'diagonal-menerus', 'bertangga-kedalaman', 'diam', 'dibaut', 'tanpa'],
+};
 export const RAK_DINDING: ProductDef = {
   id: 'rak-dinding',
   name: 'Rak dinding / backbar',
   tagline: 'ambalan · backbar · rak gantung',
   icon: 'M6 4v32M6 12h40M6 24h40M14 12v-4M14 24v-4',
   steps: [
-    { id: 'ukuran', title: 'Ukuran', keys: ['model', 'panjang', 'dalam', 'tingkat', 'jarak', 'tinggiMulai', 'tinggiPlafon'] },
+    { id: 'ukuran', title: 'Ukuran', keys: ['model', 'panjang', 'sayap', 'dalam', 'tingkat', 'jarak', 'tinggiMulai', 'tinggiPlafon'] },
     { id: 'bentuk', title: 'Tambahan', keys: ['bibir', 'gantunganGelas'] },
     { id: 'bahan', title: 'Bahan', keys: ['pipa', 'papan', 'warna'] },
     { id: 'tambahan', title: 'Selesai', keys: [] },
   ],
   params: [
-    {
-      key: 'model',
-      label: 'Penopang',
-      type: 'choice',
-      options: [
-        { value: 'siku', label: 'Siku lurus', desc: 'Sederhana, papan ≤ 30 cm' },
-        { value: 'siku-miring', label: 'Siku + penguat miring', desc: 'Kuat untuk botol & papan dalam' },
-        { value: 'tiang', label: 'Tiang dinding', desc: 'Rangka tegak sepanjang rak (backbar)' },
-        { value: 'gantung', label: 'Gantung dari plafon', desc: 'Di atas meja bar, tanpa tembok' },
-        { value: 'pipa', label: 'Pipa tegak depan (industrial)', desc: 'Pipa menembus papan, lepas dari tembok' },
-        { value: 'kotak', label: 'Kotak rangka', desc: 'Kotak utuh menempel tembok, tanpa kaki' },
-        { value: 'kisi', label: 'Panel kisi + rak kecil', desc: 'Kisi-kisi di tembok, rak menempel bergantian' },
-        { value: 'rel', label: 'Rel gantung + kait', desc: 'Tanpa papan, untuk cangkir / alat dapur' },
-      ],
-    },
+    { key: 'model', label: 'Penopang', type: 'choice', options: MODELS },
     { key: 'panjang', label: 'Panjang', type: 'number', unit: 'cm', min: 40, max: 240, step: 1, marks: [{ value: 80, label: 'ambalan' }, { value: 150, label: 'backbar' }] },
+    { key: 'sayap', label: 'Panjang sayap samping', type: 'number', unit: 'cm', min: 40, max: 160, step: 1, help: 'Panjang rak di tembok samping, diukur dari pojok.', showIf: (p) => p.model === 'sudut' },
     { key: 'dalam', label: 'Kedalaman papan', type: 'number', unit: 'cm', min: 10, max: 45, step: 1, marks: [{ value: 20, label: 'cangkir' }, { value: 28, label: 'botol' }] },
     { key: 'tingkat', label: 'Jumlah tingkat', type: 'number', unit: 'tingkat', min: 1, max: 6, step: 1 },
     { key: 'jarak', label: 'Jarak antar tingkat', type: 'number', unit: 'cm', min: 18, max: 55, step: 1, marks: [{ value: 25, label: 'cangkir' }, { value: 38, label: 'botol' }] },
-    { key: 'tinggiMulai', label: 'Tinggi tingkat terbawah', type: 'number', unit: 'cm', min: 20, max: 200, step: 1, help: 'Dari lantai. Di atas meja 90 cm biasanya mulai 130–140 cm.', marks: [{ value: 135, label: 'di atas meja' }], showIf: (p) => p.model !== 'gantung' },
-    { key: 'tinggiPlafon', label: 'Tinggi plafon', type: 'number', unit: 'cm', min: 200, max: 400, step: 1, showIf: (p) => p.model === 'gantung' },
+    { key: 'tinggiMulai', label: 'Tinggi tingkat terbawah', type: 'number', unit: 'cm', min: 20, max: 200, step: 1, help: 'Dari lantai. Di atas meja 90 cm biasanya mulai 130–140 cm.', marks: [{ value: 135, label: 'di atas meja' }], showIf: (p) => !HANG.includes(String(p.model)) },
+    { key: 'tinggiPlafon', label: 'Tinggi plafon', type: 'number', unit: 'cm', min: 200, max: 400, step: 1, showIf: (p) => HANG.includes(String(p.model)) },
     { key: 'bibir', label: 'Bibir penahan depan', type: 'toggle', help: 'Pipa kecil di tepi depan supaya botol tidak jatuh.', showIf: (p) => ['siku', 'siku-miring', 'tiang'].includes(String(p.model)) },
     { key: 'gantunganGelas', label: 'Gantungan gelas / cangkir', type: 'toggle', help: 'Batang di bawah tingkat terbawah untuk mengaitkan gelas.', showIf: (p) => ['siku', 'siku-miring', 'tiang', 'gantung'].includes(String(p.model)) },
     ...materialParams(true),
   ],
-  defaults: { model: 'siku-miring', panjang: 120, dalam: 25, tingkat: 3, jarak: 35, tinggiMulai: 135, tinggiPlafon: 280, bibir: false, gantunganGelas: false, pipa: '20', papan: 'kayu', warna: '#1f2226' },
+  defaults: { model: 'siku-miring', panjang: 120, dalam: 25, tingkat: 3, jarak: 35, tinggiMulai: 135, tinggiPlafon: 280, sayap: 80, bibir: false, gantunganGelas: false, pipa: '20', papan: 'kayu', warna: '#1f2226' },
   groups: [
-    { id: 'rumah', name: 'Ambalan & rak dinding rumah', desc: 'Buku, pajangan, dapur, kamar' },
+    { id: 'rumah', name: 'Ambalan & rak dinding rumah', desc: 'Buku, pajangan, kamar, ruang tamu' },
+    { id: 'dapur', name: 'Dapur & tempat cuci', desc: 'Piring, cangkir, alat dapur' },
     { id: 'cafe', name: 'Backbar & rak cafe', desc: 'Botol, cangkir, gelas, alat bar' },
+    { id: 'toko', name: 'Display toko & tanaman', desc: 'Majalah, produk, pot tanaman' },
   ],
-  signature: (p) => `rak-dinding:${str(p, 'model', 'siku-miring')}`,
+  signature: (p) => `rak-dinding:${DNA[model(p)].join('|')}`,
   presets: [
     {
       id: 'siku',
@@ -92,7 +139,7 @@ export const RAK_DINDING: ProductDef = {
     },
     {
       id: 'kisi',
-      group: 'rumah',
+      group: 'toko',
       name: 'Panel kisi + rak kecil',
       desc: 'panel kisi-kisi di tembok, rak kecil menempel bergantian kiri–kanan',
       params: { model: 'kisi', panjang: 90, dalam: 18, tingkat: 3, jarak: 30, tinggiMulai: 100 },
@@ -137,7 +184,7 @@ export const RAK_DINDING: ProductDef = {
     },
     {
       id: 'rel',
-      group: 'cafe',
+      group: 'dapur',
       name: 'Rel gantung + kait',
       desc: 'tanpa papan: rel di siku dudukan, kait S untuk cangkir & alat',
       params: { model: 'rel', panjang: 100, dalam: 10, tingkat: 2, jarak: 25, tinggiMulai: 140, pipa: '20' },
