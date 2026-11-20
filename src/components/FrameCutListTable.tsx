@@ -7,6 +7,7 @@ import {
   getFrameMembers,
   getFrameDims,
   memberBox,
+  memberCorners,
   memberSectionCm,
   AXIS_INDEX,
   VIEW_DEFS,
@@ -237,25 +238,23 @@ const FrameViewsBlock: React.FC<{ config: KitchenConfig; members: FrameMember[];
     ['top', 'left', 'right'],
   ];
   const rowH = (r: FrameView[]) => Math.max(...r.map((v) => span(VIEW_DEFS[v].v))) * s + pad.t + pad.b;
-  const boxes = members.map((m) => ({ m, b: memberBox(m, memberSectionCm(m, config)) }));
+  const solids = buildSolids(config, members);
 
   const renderView = (v: FrameView, ox: number, oy: number) => {
     const d = VIEW_DEFS[v];
     const hs = span(d.h);
     const vs = span(d.v);
     const map = (a: FrameAxis, flip: boolean, val: number) => (flip ? span(a) - val : val);
-    const items = boxes
-      .map(({ m, b }) => {
-        const hi = AXIS_INDEX[d.h];
-        const vi = AXIS_INDEX[d.v];
-        const di = AXIS_INDEX[d.d];
-        const ha = map(d.h, d.hFlip, b.min[hi]);
-        const hb = map(d.h, d.hFlip, b.max[hi]);
-        const va = map(d.v, d.vFlip, b.min[vi]);
-        const vb = map(d.v, d.vFlip, b.max[vi]);
-        const dc = (b.min[di] + b.max[di]) / 2;
+    const hi = AXIS_INDEX[d.h];
+    const vi = AXIS_INDEX[d.v];
+    const di = AXIS_INDEX[d.d];
+    // Bentuk sebenarnya (batang miring / papan miring / bundar) = selubung titik-titik sudut yang diproyeksikan
+    const items = solids
+      .map((so) => {
+        const hull = convexHull(so.points.map((p) => ({ x: map(d.h, d.hFlip, p[hi]), y: map(d.v, d.vFlip, p[vi]) })));
+        const dc = so.center[di];
         const depth = d.dFlip ? span(d.d) - dc : dc; // kecil = dekat ke penonton
-        return { m, h0: Math.min(ha, hb), h1: Math.max(ha, hb), v0: Math.min(va, vb), v1: Math.max(va, vb), depth };
+        return { so, hull, depth };
       })
       .sort((a, b) => b.depth - a.depth);
     const px = (h: number) => ox + pad.l + h * s;
@@ -264,24 +263,23 @@ const FrameViewsBlock: React.FC<{ config: KitchenConfig; members: FrameMember[];
     const dimX = px(0) - 12;
     return (
       <g key={v}>
-        <text x={px(0)} y={oy + 11} fontSize="10.5" fontWeight="bold" fill="#000">
+        <text x={Math.min(px(0), x + width - (7 + VIEW_LABELS[v].length) * 6.6)} y={oy + 11} fontSize="10.5" fontWeight="bold" fill="#000">
           TAMPAK {VIEW_LABELS[v].toUpperCase()}
         </text>
-        {items.map(({ m, h0, h1, v0, v1, depth }) => {
-          const color = PAPER_COLORS[ROLE_CATEGORY[m.role]];
+        {items.map(({ so, hull, depth }, i) => {
           const near = 1 - (0.6 * depth) / Math.max(1, span(d.d));
+          const isBoard = !so.member;
+          const color = isBoard ? so.color : PAPER_COLORS[ROLE_CATEGORY[so.member!.role]];
           return (
-            <rect
-              key={m.id}
-              x={px(h0)}
-              y={py(v1)}
-              width={Math.max(0.6, (h1 - h0) * s)}
-              height={Math.max(0.6, (v1 - v0) * s)}
+            <polygon
+              key={i}
+              points={hull.map((q) => `${px(q.x).toFixed(2)},${py(q.y).toFixed(2)}`).join(' ')}
               fill={color}
-              fillOpacity={0.15 + 0.55 * near}
-              stroke={color}
-              strokeOpacity={0.35 + 0.65 * near}
+              fillOpacity={isBoard ? 0.35 : 0.15 + 0.55 * near}
+              stroke={isBoard ? shade(color, 0.6) : color}
+              strokeOpacity={isBoard ? 0.9 : 0.35 + 0.65 * near}
               strokeWidth="0.6"
+              strokeLinejoin="round"
             />
           );
         })}
@@ -331,9 +329,107 @@ const FrameViewsBlock: React.FC<{ config: KitchenConfig; members: FrameMember[];
   );
 };
 
+/** Titik 3D (cm) */
+type P3 = number[];
+
+/** Benda pejal untuk digambar ulang di export: batang (lurus / miring) atau papan (kotak / bundar / miring) */
+interface Solid {
+  faces: P3[][];
+  points: P3[];
+  center: P3;
+  min: number[];
+  max: number[];
+  color: string;
+  member?: FrameMember;
+}
+
+/** Sisi kotak dari 8 sudut berurutan (indeks = i*4 + j*2 + k) */
+const BOX_FACES = [
+  [0, 1, 3, 2],
+  [4, 6, 7, 5],
+  [0, 4, 5, 1],
+  [2, 3, 7, 6],
+  [0, 2, 6, 4],
+  [1, 5, 7, 3],
+];
+
+const makeSolid = (faces: P3[][], color: string, member?: FrameMember): Solid => {
+  const points = faces.flat();
+  const min = [0, 1, 2].map((i) => Math.min(...points.map((p) => p[i])));
+  const max = [0, 1, 2].map((i) => Math.max(...points.map((p) => p[i])));
+  const center = [0, 1, 2].map((i) => points.reduce((s, p) => s + p[i], 0) / points.length);
+  return { faces, points, center, min, max, color, member };
+};
+
+type ProductBoard = NonNullable<KitchenConfig['productBoards']>[number];
+
+/** Papan persis seperti model 3D: kotak / silinder, diputar rotX di sekitar sumbu kiri–kanan lewat titik tengahnya */
+const boardSolid = (b: ProductBoard): Solid => {
+  const [x0, y0, z0] = b.box.min;
+  const [x1, y1, z1] = b.box.max;
+  const cy = (y0 + y1) / 2;
+  const cz = (z0 + z1) / 2;
+  const r = ((b.rotX || 0) * Math.PI) / 180;
+  const rot = (p: P3): P3 =>
+    r ? [p[0], cy + (p[1] - cy) * Math.cos(r) - (p[2] - cz) * Math.sin(r), cz + (p[1] - cy) * Math.sin(r) + (p[2] - cz) * Math.cos(r)] : p;
+  if (b.shape === 'round') {
+    const cx = (x0 + x1) / 2;
+    const rad = Math.min(x1 - x0, z1 - z0) / 2;
+    const N = 32;
+    const ring = (y: number) =>
+      Array.from({ length: N }, (_, i) => rot([cx + rad * Math.cos((2 * Math.PI * i) / N), y, cz + rad * Math.sin((2 * Math.PI * i) / N)]));
+    const bot = ring(y0);
+    const top = ring(y1);
+    const sides = bot.map((p, i) => [p, bot[(i + 1) % N], top[(i + 1) % N], top[i]]);
+    return makeSolid([top, bot, ...sides], b.color);
+  }
+  const c: P3[] = [];
+  [x0, x1].forEach((x) => [y0, y1].forEach((y) => [z0, z1].forEach((z) => c.push(rot([x, y, z])))));
+  return makeSolid(BOX_FACES.map((f) => f.map((i) => c[i])), b.color);
+};
+
+/** Semua benda yang terlihat: batang rangka (bentuk sebenarnya, termasuk miring) + papan produk / top table dapur */
+const buildSolids = (config: KitchenConfig, members: FrameMember[]): Solid[] => {
+  const steel = members.map((m) => {
+    const c = memberCorners(m, memberSectionCm(m, config));
+    return makeSolid(BOX_FACES.map((f) => f.map((i) => c[i])), '#3a3f47', m);
+  });
+  if (config.productBoards) return [...steel, ...config.productBoards.map(boardSolid)];
+  const { W, D, H, frameH } = getFrameDims(config);
+  return [...steel, boardSolid({ box: { min: [0, frameH, 0], max: [W, H, D] }, color: '#e6d8bd' })];
+};
+
+/** Selubung cembung titik 2D (monotone chain) */
+function convexHull(pts: { x: number; y: number }[]) {
+  const p = [...pts].sort((a, b) => a.x - b.x || a.y - b.y);
+  if (p.length < 3) return p;
+  const cross = (o: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }) =>
+    (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const lower: typeof p = [];
+  for (const q of p) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], q) <= 0) lower.pop();
+    lower.push(q);
+  }
+  const upper: typeof p = [];
+  for (const q of [...p].reverse()) {
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], q) <= 0) upper.pop();
+    upper.push(q);
+  }
+  return [...lower.slice(0, -1), ...upper.slice(0, -1)];
+}
+
+/** Gelapkan / terangkan warna hex (f < 1 lebih gelap) */
+const shade = (hex: string, f: number) => {
+  const h = hex.replace('#', '');
+  const n = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h.slice(0, 6), 16);
+  const ch = (v: number) => Math.max(0, Math.min(255, Math.round(v * f)));
+  return `rgb(${ch((n >> 16) & 255)},${ch((n >> 8) & 255)},${ch(n & 255)})`;
+};
+
 /**
- * Gambar 3D (proyeksi dimetri dari depan-kiri-atas) rangka besi + top table dengan lubang wastafel & kompor.
- * Batang digambar dari yang terjauh ke terdekat (painter's algorithm).
+ * Gambar 3D (proyeksi dimetri dari depan-kiri-atas) dengan bentuk sebenarnya seperti model 3D di layar:
+ * batang miring tetap miring, papan dudukan / sandaran / daun meja ikut tergambar.
+ * Benda digambar dari yang terjauh ke terdekat (painter's algorithm), sisi yang membelakangi penonton dibuang.
  */
 const Frame3DView: React.FC<{ config: KitchenConfig; members: FrameMember[]; x: number; y: number; width: number; height: number }> = ({
   config,
@@ -343,26 +439,27 @@ const Frame3DView: React.FC<{ config: KitchenConfig; members: FrameMember[]; x: 
   width,
   height,
 }) => {
-  const { W, D, H, frameH } = getFrameDims(config);
+  const { W, D, H } = getFrameDims(config);
   // Sumbu X naik sedikit ke kanan, kedalaman (ke belakang) naik ke kiri dan diperpendek
   const ax = (12 * Math.PI) / 180;
   const az = (38 * Math.PI) / 180;
   const kz = 0.6;
-  const proj = (px: number, py: number, pz: number): [number, number] => {
-    const back = D - pz; // z diukur dari belakang
-    return [px * Math.cos(ax) - back * kz * Math.cos(az), -px * Math.sin(ax) - back * kz * Math.sin(az) - py];
+  const proj = (p: P3): [number, number] => {
+    const back = D - p[2]; // z diukur dari belakang
+    return [p[0] * Math.cos(ax) - back * kz * Math.cos(az), -p[0] * Math.sin(ax) - back * kz * Math.sin(az) - p[1]];
   };
+  // Arah ke penonton (tegak lurus bidang gambar): kiri, atas, depan
+  const view = [-kz * Math.cos(az), kz * Math.sin(ax + az), Math.cos(ax)];
+  const light = [-0.35, 0.85, 0.4];
 
-  type B = { min: number[]; max: number[] };
-  const steel: B[] = members.map((m) => memberBox(m, memberSectionCm(m, config)));
-  const slab: B = { min: [0, frameH, 0], max: [W, H, D] };
+  const solids = buildSolids(config, members);
 
   // Urutan gambar: A sebelum B bila A jelas di belakang/kanan/bawah B
   const e = 0.05;
-  const behind = (a: B, b: B) => a.min[0] >= b.max[0] - e || a.max[2] <= b.min[2] + e || a.max[1] <= b.min[1] + e;
-  const key = (b: B) => b.min[0] + (D - b.max[2]) - b.max[1];
-  const rest = [...steel];
-  const ordered: B[] = [];
+  const behind = (a: Solid, b: Solid) => a.min[0] >= b.max[0] - e || a.max[2] <= b.min[2] + e || a.max[1] <= b.min[1] + e;
+  const key = (b: Solid) => b.min[0] + (D - b.max[2]) - b.max[1];
+  const rest = [...solids];
+  const ordered: Solid[] = [];
   while (rest.length) {
     let i = rest.findIndex((a) => !rest.some((c) => c !== a && behind(c, a) && !behind(a, c)));
     if (i < 0) i = rest.reduce((bi, b, j) => (key(b) > key(rest[bi]) ? j : bi), 0);
@@ -370,9 +467,7 @@ const Frame3DView: React.FC<{ config: KitchenConfig; members: FrameMember[]; x: 
   }
 
   // Skala & posisi agar muat di kotak
-  const corners = [slab, ...steel].flatMap((b) =>
-    [0, 1].flatMap((i) => [0, 1].flatMap((j) => [0, 1].map((k) => proj(i ? b.max[0] : b.min[0], j ? b.max[1] : b.min[1], k ? b.max[2] : b.min[2]))))
-  );
+  const corners = solids.flatMap((so) => so.points.map(proj));
   const minX = Math.min(...corners.map((c) => c[0]));
   const maxX = Math.max(...corners.map((c) => c[0]));
   const minY = Math.min(...corners.map((c) => c[1]));
@@ -382,34 +477,51 @@ const Frame3DView: React.FC<{ config: KitchenConfig; members: FrameMember[]; x: 
   const s = Math.min(width / (maxX - minX), (height - titleH - capH) / (maxY - minY));
   const offX = x + (width - (maxX - minX) * s) / 2 - minX * s;
   const offY = y + titleH + (height - titleH - capH - (maxY - minY) * s) / 2 - minY * s;
-  const pt = (px: number, py: number, pz: number) => {
-    const [a, b] = proj(px, py, pz);
+  const pt = (p: P3) => {
+    const [a, b] = proj(p);
     return `${(offX + a * s).toFixed(1)},${(offY + b * s).toFixed(1)}`;
   };
-  const poly = (pts: [number, number, number][]) => pts.map((p) => pt(...p)).join(' ');
 
-  const faces = (b: B, c: { top: string; front: string; left: string; stroke: string }, sw: number, k: string) => {
-    const [x0, y0, z0] = b.min;
-    const [x1, y1, z1] = b.max;
+  const drawSolid = (so: Solid, k: number) => {
+    const isBoard = !so.member;
     return (
-      <g key={k} stroke={c.stroke} strokeWidth={sw} strokeLinejoin="round">
-        <polygon points={poly([[x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]])} fill={c.left} />
-        <polygon points={poly([[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]])} fill={c.front} />
-        <polygon points={poly([[x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]])} fill={c.top} />
+      <g key={k} stroke={isBoard ? shade(so.color, 0.55) : '#000'} strokeWidth={isBoard ? 0.6 : 0.3} strokeLinejoin="round">
+        {so.faces.map((f, fi) => {
+          // Normal sisi (metode Newell), diarahkan keluar dari titik tengah benda
+          const n = [0, 0, 0];
+          const c = [0, 0, 0];
+          f.forEach((p, i) => {
+            const q = f[(i + 1) % f.length];
+            n[0] += (p[1] - q[1]) * (p[2] + q[2]);
+            n[1] += (p[2] - q[2]) * (p[0] + q[0]);
+            n[2] += (p[0] - q[0]) * (p[1] + q[1]);
+            for (let a = 0; a < 3; a++) c[a] += p[a] / f.length;
+          });
+          if (n[0] * (c[0] - so.center[0]) + n[1] * (c[1] - so.center[1]) + n[2] * (c[2] - so.center[2]) < 0) {
+            for (let a = 0; a < 3; a++) n[a] = -n[a];
+          }
+          const len = Math.hypot(n[0], n[1], n[2]) || 1;
+          if ((n[0] * view[0] + n[1] * view[1] + n[2] * view[2]) / len <= 1e-4) return null; // membelakangi penonton
+          const lit = Math.max(0, (n[0] * light[0] + n[1] * light[1] + n[2] * light[2]) / len);
+          return <polygon key={fi} points={f.map(pt).join(' ')} fill={shade(so.color, isBoard ? 0.72 + 0.32 * lit : 0.6 + 0.9 * lit)} />;
+        })}
       </g>
     );
   };
 
-  // Lubang di permukaan top table (posX dari kiri, posY dari belakang, sesuai model 3D)
+  // Lubang di permukaan top table dapur (posX dari kiri, posY dari belakang, sesuai model 3D)
+  const kitchenTop = !config.productBoards;
   const cutout = (cxm: number, czm: number, w: number, l: number, fill: string, k: string) => (
     <polygon
       key={k}
-      points={poly([
+      points={[
         [cxm - w / 2, H, czm - l / 2],
         [cxm + w / 2, H, czm - l / 2],
         [cxm + w / 2, H, czm + l / 2],
         [cxm - w / 2, H, czm + l / 2],
-      ])}
+      ]
+        .map(pt)
+        .join(' ')}
       fill={fill}
       stroke="#374151"
       strokeWidth="0.6"
@@ -419,15 +531,16 @@ const Frame3DView: React.FC<{ config: KitchenConfig; members: FrameMember[]; x: 
   return (
     <g>
       <text x={x} y={y + 11} fontSize="10.5" fontWeight="bold" fill="#000">
-        GAMBAR 3D · RANGKA + TOP TABLE
+        {kitchenTop ? 'GAMBAR 3D · RANGKA + TOP TABLE' : 'GAMBAR 3D · RANGKA + PAPAN'}
       </text>
-      {ordered.map((b, i) => faces(b, { top: '#6b7280', front: '#2b2f36', left: '#15181d', stroke: '#000' }, 0.3, `m${i}`))}
-      {faces(slab, { top: '#eadfcb', front: '#d4c2a2', left: '#bfa982', stroke: '#8b7355' }, 0.6, 'slab')}
-      {config.sink.enabled && cutout(config.sink.posX, config.sink.posY, config.sink.width, config.sink.length, '#9ca3af', 'sink')}
-      {config.stove.enabled && cutout(config.stove.posX, config.stove.posY, config.stove.width, config.stove.length, '#1f2937', 'stove')}
+      {ordered.map(drawSolid)}
+      {kitchenTop && config.sink.enabled && cutout(config.sink.posX, config.sink.posY, config.sink.width, config.sink.length, '#9ca3af', 'sink')}
+      {kitchenTop && config.stove.enabled && cutout(config.stove.posX, config.stove.posY, config.stove.width, config.stove.length, '#1f2937', 'stove')}
       <text x={x + width / 2} y={y + height - 2} fontSize="9" textAnchor="middle" fill="#374151">
-        {W} × {D} × {H} cm · top table {config.countertopThickness ?? 4} cm{config.sink.enabled ? ' · lubang wastafel (abu-abu)' : ''}
-        {config.stove.enabled ? ' · lubang kompor (hitam)' : ''}
+        {W} × {D} × {H} cm
+        {kitchenTop ? ` · top table ${config.countertopThickness ?? 4} cm` : ''}
+        {kitchenTop && config.sink.enabled ? ' · lubang wastafel (abu-abu)' : ''}
+        {kitchenTop && config.stove.enabled ? ' · lubang kompor (hitam)' : ''}
       </text>
     </g>
   );
@@ -483,7 +596,7 @@ export const CutListSheet: React.FC<{
         DAFTAR POTONGAN BESI RANGKA
       </text>
       <text x={M} y={M + 38} fontSize="11.5" fill="#374151">
-        Meja {config.totalWidth} × {config.totalDepth} × {config.totalHeight} cm · Besi hollow {tube}×{tube} mm · Semua ujung potong lurus 90°
+        {config.productTitle || 'Meja'} {config.totalWidth} × {config.totalDepth} × {config.totalHeight} cm · Besi hollow {tube}×{tube} mm · {members.some((m) => m.end) ? 'Batang miring: lihat sudut potong di tiap baris' : 'Semua ujung potong lurus 90°'}
       </text>
       <text x={R} y={M + 18} fontSize="11" fill="#374151" textAnchor="end">
         {date}
@@ -776,7 +889,7 @@ export const FrameCutListTable: React.FC<Props> = ({ config }) => {
       </div>
 
       <p className="text-[10px] text-stone-500 mt-3">
-        Semua ujung batang dipotong lurus 90°. Panjang L diukur ujung ke ujung; sketsa bentuk potongan tidak berskala.
+        {members.some((m) => m.end) ? 'Ujung batang dipotong lurus 90°, kecuali batang miring (lihat sudutnya di kolom Bagian).' : 'Semua ujung batang dipotong lurus 90°.'} Panjang L diukur ujung ke ujung; sketsa bentuk potongan tidak berskala.
       </p>
     </div>
   );

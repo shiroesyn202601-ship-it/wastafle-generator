@@ -64,7 +64,7 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
   const history = useRef<{ stack: FurnitureDesign[]; last: number }>({ stack: [], last: 0 });
 
   const build = useMemo(() => def.build(design.params), [def, design.params]);
-  const host = useMemo(() => toFrameHost(design, build), [design, build]);
+  const host = useMemo(() => ({ ...toFrameHost(design, build), productTitle: def.presets.find((p) => p.id === design.presetId)?.name || def.name }), [design, build, def]);
   const cut = useMemo(() => estimateCost(host, design, build, cutSettings), [host, design, build, cutSettings]);
   const checks = useMemo(() => def.checks(design.params, build), [def, design.params, build]);
   const isCustom = !!design.frame.customLayout;

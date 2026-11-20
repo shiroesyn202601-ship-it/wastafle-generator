@@ -110,6 +110,13 @@ export function casterSet(xs: number[], zs: number[], inch: number, brake: boole
  */
 export function toFrameHost(design: FurnitureDesign, build: ProductBuild): KitchenConfig {
   const pipe = parseInt(String(design.params.pipa || '40')) || 40;
+  const paint = String(design.params.warna || '#1f2226');
+  const papan = String(design.params.papan || 'multiplek');
+  const wood = papan === 'kayu' ? '#a8743f' : papan === 'hpl' ? '#f2f0ea' : '#d9be92';
+  // papan sama persis dengan model 3D (lihat three/productModel.ts)
+  const productBoards = build.boards
+    .filter((b) => papan !== 'none' || b.steelMm || b.color)
+    .map((b) => ({ box: b.box, shape: b.shape, rotX: b.rotX, color: b.steelMm ? paint : b.color || wood }));
   return {
     ...DEFAULT_KITCHEN_CONFIG,
     totalWidth: Math.max(1, Math.round(build.W)),
@@ -125,12 +132,13 @@ export function toFrameHost(design: FurnitureDesign, build: ProductBuild): Kitch
     stove: { ...DEFAULT_KITCHEN_CONFIG.stove, enabled: false },
     showFrameOnly: true,
     hideTopTable: true,
+    productBoards,
     frame: {
       ...DEFAULT_KITCHEN_CONFIG.frame,
       ...design.frame,
       hinges: design.frame.hinges ?? build.hinges ?? [],
       tubeSize: pipe,
-      paintColor: String(design.params.warna || '#1f2226'),
+      paintColor: paint,
       autoMembers: build.members,
       supports: [],
     },
