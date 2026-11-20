@@ -11,6 +11,7 @@ import { ExportDocModal } from './components/ExportDocModal';
 import { FrameEditor2D } from './components/FrameEditor2D';
 import { DriveModal } from './components/DriveModal';
 import { DriveFile } from './utils/googleDrive';
+import { ThemeToggle } from './components/ThemeToggle';
 import {
   Box,
   Layers,
@@ -274,6 +275,7 @@ export function KitchenStudio({ onHome }: { onHome: () => void }) {
 
         {/* Aksi file */}
         <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+          <ThemeToggle />
           <button
             onClick={() => setIsDriveModalOpen(true)}
             className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-stone-50 hover:bg-stone-100 text-sky-700 text-xs font-semibold rounded-lg border border-sky-500/30 transition cursor-pointer"

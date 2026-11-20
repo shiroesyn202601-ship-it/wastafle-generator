@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useIsDark } from '../theme';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -80,6 +81,8 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
 
   // Track latest config in a ref so the render tick always has current state
   const configRef = useRef(config);
+  const floorMatRef = useRef<THREE.MeshStandardMaterial | null>(null);
+  const isDark = useIsDark();
   configRef.current = config;
 
   // Initialize Scene once on mount
@@ -191,6 +194,7 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
       roughness: 0.6,
       metalness: 0.1,
     });
+    floorMatRef.current = floorMat;
     const floorMesh = new THREE.Mesh(floorGeo, floorMat);
     floorMesh.rotation.x = -Math.PI / 2;
     floorMesh.position.y = -0.001;
@@ -1477,6 +1481,16 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
     }
   }, [config]);
 
+  // Mode gelap: latar & lantai ikut gelap (preset cahaya "evening-mood" sudah gelap sendiri)
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    const temp = config.lighting?.ambientTemperature || 'warm';
+    const lightBg = { warm: 0xf6f2ed, natural: 0xf3f4f6, cool: 0xedf1f5, 'evening-mood': 0x15161b }[temp] ?? 0xf6f2ed;
+    scene.background = new THREE.Color(isDark && temp !== 'evening-mood' ? 0x1d1c1a : lightBg);
+    floorMatRef.current?.color.set(isDark ? 0x3a3734 : 0xffffff);
+  }, [isDark, config]);
+
 
   // REALISTIC CONCAVE BASIN GENERATOR (DEEP BOWL WITH TRUE HOLE IN COUNTERTOP)
   function createRealisticConcaveBowl(parent: THREE.Group, w: number, l: number, depth: number, posX: number, mat: THREE.Material) {
@@ -1821,7 +1835,7 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
         </button>
         <button
           onClick={() => setCameraPreset('inspect')}
-          className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-800/60 transition-colors"
+          className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors"
         >
           Detail Alat
         </button>

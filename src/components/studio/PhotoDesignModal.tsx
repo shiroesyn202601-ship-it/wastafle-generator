@@ -121,7 +121,7 @@ export const PhotoDesignModal: React.FC<Props> = ({ onClose, onOpen }) => {
             <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="mis. ukuran asli 120 × 60 × 75 cm, kaki pakai roda" className={input} />
           </label>
 
-          <button onClick={() => { setTried([]); run([]); }} disabled={!image || busy || !ready} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold disabled:opacity-40 cursor-pointer">
+          <button onClick={() => { setTried([]); run([]); }} disabled={!image || busy || !ready} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold disabled:opacity-40 cursor-pointer">
             {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
             {busy ? 'AI sedang melihat foto…' : result ? 'Buat ulang' : 'Buat desain dari foto'}
           </button>

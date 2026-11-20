@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useIsDark } from '../theme';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -47,6 +48,9 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
   const hingePartsRef = useRef<HingePart[]>([]);
   const hingeAnimRef = useRef(new Map<string, HingeAnimState>());
   const sizeRef = useRef({ W: 1, D: 1, H: 1 });
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const floorMatRef = useRef<THREE.MeshStandardMaterial | null>(null);
+  const isDark = useIsDark();
   const [glError, setGlError] = useState(false);
   const [view, setView] = useState<ViewPreset>('iso');
 
@@ -63,6 +67,7 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
     }
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xeeece7);
+    sceneRef.current = scene;
     const w = container.clientWidth || 300;
     const h = container.clientHeight || 300;
     const camera = new THREE.PerspectiveCamera(40, w / h, 0.05, 60);
@@ -113,6 +118,7 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
       new THREE.PlaneGeometry(14, 14),
       new THREE.MeshStandardMaterial({ map: createFloorTileTexture(), roughness: 0.7, metalness: 0.05 })
     );
+    floorMatRef.current = floor.material as THREE.MeshStandardMaterial;
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -0.001;
     floor.receiveShadow = true;
@@ -232,6 +238,13 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
       if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
     };
   }, []);
+
+  // Mode gelap: latar & lantai ikut gelap
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (scene) scene.background = new THREE.Color(isDark ? 0x1d1c1a : 0xeeece7);
+    floorMatRef.current?.color.set(isDark ? 0x3a3734 : 0xffffff);
+  }, [isDark]);
 
   // ---------- Bangun ulang model saat desain berubah ----------
   useEffect(() => {

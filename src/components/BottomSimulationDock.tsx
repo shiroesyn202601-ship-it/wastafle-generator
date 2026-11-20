@@ -231,7 +231,7 @@ export const BottomSimulationDock: React.FC<Props> = ({ config, onChange }) => {
                 className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
                   isAnyOpen
                     ? 'bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-200'
-                    : 'bg-gradient-to-r from-amber-600/80 to-amber-700/80 hover:from-amber-500 hover:to-amber-600 text-white shadow-md shadow-amber-900/30'
+                    : 'bg-gradient-to-r from-amber-600/80 to-amber-600/90 hover:from-amber-500 hover:to-amber-600 text-white shadow-md shadow-amber-900/30'
                 }`}
               >
                 <Sparkles className="w-3.5 h-3.5" />

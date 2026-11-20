@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { ArrowRight, Camera, FolderOpen, History, LayoutGrid, List, Layers, Search, X } from 'lucide-react';
 import { CATEGORIES, PRODUCTS, PRODUCT_LIST, ProductId } from '../../products';
 import { ProductThumb } from './ProductThumb';
+import { ThemeToggle } from '../ThemeToggle';
 
 interface Props {
   onPick: (id: ProductId, presetId?: string) => void;
@@ -117,7 +118,7 @@ export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImpor
         aria-expanded={c.expandable ? active : undefined}
         className={`p-3 rounded-2xl border text-left cursor-pointer transition ${active ? 'bg-sky-50 border-sky-600 ring-1 ring-sky-600' : 'bg-white border-stone-200 hover:border-stone-400'}`}
       >
-        <div className="aspect-[4/3] rounded-xl bg-stone-100 mb-2 overflow-hidden">
+        <div className="aspect-[4/3] rounded-xl bg-stone-100 thumb-bg mb-2 overflow-hidden">
           <ProductThumb product={c.product} preset={c.preset} fallbackIcon={c.icon} alt={c.title} />
         </div>
         <div className="font-bold leading-tight">{c.title}</div>
@@ -130,7 +131,7 @@ export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImpor
         aria-expanded={c.expandable ? active : undefined}
         className={`w-full flex items-center gap-3 p-2.5 rounded-xl border text-left cursor-pointer transition ${active ? 'bg-sky-50 border-sky-600 ring-1 ring-sky-600' : 'bg-white border-stone-200 hover:border-stone-400'}`}
       >
-        <div className="w-24 h-[72px] shrink-0 rounded-lg bg-stone-100 overflow-hidden">
+        <div className="w-24 h-[72px] shrink-0 rounded-lg bg-stone-100 thumb-bg overflow-hidden">
           <ProductThumb product={c.product} preset={c.preset} fallbackIcon={c.icon} alt={c.title} />
         </div>
         <div className="min-w-0 flex-1">
@@ -184,7 +185,7 @@ export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImpor
                   onClick={() => setGroup(g.id)}
                   className={`px-3 py-1.5 rounded-full border text-sm font-semibold cursor-pointer transition ${on ? 'bg-stone-900 border-stone-900 text-white' : 'bg-white border-stone-300 text-stone-700 hover:border-stone-500'}`}
                 >
-                  {g.name} <span className={on ? 'text-stone-300' : 'text-stone-400'}>{g.count}</span>
+                  {g.name} <span className={on ? 'text-white/70' : 'text-stone-400'}>{g.count}</span>
                 </button>
               );
             })}
@@ -215,7 +216,8 @@ export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImpor
             <div className="font-bold leading-tight">Studio Rangka</div>
             <div className="hidden sm:block text-xs text-stone-500">Rancang furnitur rangka besi, langsung dapat daftar potongan besi</div>
           </div>
-          <label className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-stone-300 bg-white text-sm font-semibold text-stone-700 hover:bg-stone-50 cursor-pointer">
+          <ThemeToggle className="ml-auto" />
+          <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-stone-300 bg-white text-sm font-semibold text-stone-700 hover:bg-stone-50 cursor-pointer">
             <FolderOpen className="w-4 h-4" /> <span className="hidden sm:inline">Buka file</span>
             <input type="file" accept=".json,application/json" onChange={onImport} className="hidden" />
           </label>
@@ -230,13 +232,13 @@ export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImpor
           </p>
         </div>
 
-        <button onClick={onPhoto} className="w-full flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-sky-600 to-sky-500 text-white text-left cursor-pointer hover:from-sky-700 hover:to-sky-600 shadow-sm">
+        <button onClick={onPhoto} className="w-full flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-sky-600 to-sky-500 text-white text-left cursor-pointer hover:from-sky-500 hover:to-sky-400 shadow-sm">
           <span className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
             <Camera className="w-5 h-5" />
           </span>
           <span className="flex-1 min-w-0">
             <span className="block font-bold">Punya foto furnitur? Buat desain dari foto</span>
-            <span className="block text-sm text-sky-100">Upload gambar meja / kursi / rak, AI membuatkan desain yang mirip</span>
+            <span className="block text-sm text-white/80">Upload gambar meja / kursi / rak, AI membuatkan desain yang mirip</span>
           </span>
           <ArrowRight className="w-5 h-5 shrink-0" />
         </button>

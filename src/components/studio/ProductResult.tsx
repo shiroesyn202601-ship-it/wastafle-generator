@@ -60,7 +60,7 @@ export const ProductResult: React.FC<Props> = ({ title, summary, host, cut, sett
         </section>
 
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => printCutListPdf(host)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-700 hover:bg-sky-600 text-white text-sm font-semibold cursor-pointer">
+          <button onClick={() => printCutListPdf(host)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-sm font-semibold cursor-pointer">
             <FileDown className="w-4 h-4" /> Unduh PDF daftar potongan
           </button>
           <button onClick={() => downloadCutListPng(host)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 text-sm font-semibold text-stone-800 cursor-pointer">

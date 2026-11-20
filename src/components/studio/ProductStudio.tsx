@@ -9,6 +9,7 @@ import { ProductResult } from './ProductResult';
 import { KitchenConfig } from '../../types/kitchen';
 import { getFrameMembers } from '../../utils/frameLayout';
 import { MemberSheet } from './MemberSheet';
+import { ThemeToggle } from '../ThemeToggle';
 import { PriceSettings, loadPrices, savePrices } from '../../products/pricing';
 import { shareUrl } from '../../products/share';
 
@@ -156,7 +157,7 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
               {v.icon}
               {v.label}
               {v.id === 'potongan' && (
-                <span className={`text-xs font-normal tabular-nums ${tab === v.id ? 'text-stone-300' : 'text-stone-500'}`}>
+                <span className={`text-xs font-normal tabular-nums ${tab === v.id ? 'text-white/70' : 'text-stone-500'}`}>
                   {cut.bars} btg · {cut.totalLengthM.toLocaleString('id-ID')} m
                 </span>
               )}
@@ -165,6 +166,7 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
         </nav>
 
         <div className="flex items-center gap-0.5 sm:gap-1">
+          <ThemeToggle />
           <button
             onClick={undo}
             disabled={!history.current.stack.length}
@@ -374,7 +376,7 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
               )}
               <button
                 onClick={() => (stepIdx < def.steps.length - 1 ? setStepIdx(stepIdx + 1) : goTab('potongan'))}
-                className="flex-1 py-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold cursor-pointer"
+                className="flex-1 py-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-sm font-bold cursor-pointer"
               >
                 {stepIdx < def.steps.length - 1 ? `Lanjut: ${def.steps[stepIdx + 1].title}` : `Lihat potongan besi${warnCount ? ` (${warnCount} peringatan)` : ''}`}
               </button>

@@ -10,6 +10,16 @@
     <meta property="og:description" content="Rancang meja, rak, troli dan meja dapur rangka besi hollow dengan 3D interaktif, daftar potongan besi, dan perkiraan biaya bahan." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      // Pasang tema sebelum aplikasi dimuat supaya tidak berkedip putih (lihat src/theme.ts)
+      (function () {
+        try {
+          var p = localStorage.getItem('studiorangka_theme');
+          var d = p === 'dark' || (p !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (d) { document.documentElement.classList.add('dark'); document.documentElement.style.colorScheme = 'dark'; }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
