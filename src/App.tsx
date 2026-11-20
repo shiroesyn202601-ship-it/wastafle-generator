@@ -5,6 +5,7 @@ import { HomeScreen } from './components/studio/HomeScreen';
 import { ProductStudio } from './components/studio/ProductStudio';
 import { FurnitureDesign, PRODUCTS, ProductId, newDesign, normalizeDesign } from './products';
 import { Role } from './components/studio/MemberSheet';
+import { designFromShare } from './products/share';
 
 type Route = 'home' | 'kitchen' | 'product';
 
@@ -43,6 +44,8 @@ function loadDesign(): FurnitureDesign | null {
 /** Link langsung ke produk: ?produk=troli&contoh=bengkel (dibaca sekali saat aplikasi dibuka) */
 function designFromUrl(): FurnitureDesign | null {
   const q = new URLSearchParams(window.location.search);
+  const shared = designFromShare(q.get('d'));
+  if (shared) return shared;
   const id = q.get('produk') as ProductId | null;
   if (!id || !(id in PRODUCTS)) return null;
   return newDesign(id, q.get('contoh') || undefined);
@@ -65,6 +68,17 @@ export default function App() {
   };
 
   useEffect(() => lsSet(LS_ROUTE, route), [route]);
+
+  // Link langsung / link bagikan dibaca sekali, lalu dihapus dari alamat supaya refresh tidak menimpa perubahan
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (q.has('d') || q.has('produk')) {
+      if (design) lsSet(LS_DESIGN, JSON.stringify(design));
+      lsSet(LS_LAST, 'product');
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const showToast = (msg: string) => {
     setToast(msg);

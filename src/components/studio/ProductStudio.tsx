@@ -9,6 +9,8 @@ import { ProductResult } from './ProductResult';
 import { KitchenConfig } from '../../types/kitchen';
 import { getFrameMembers } from '../../utils/frameLayout';
 import { MemberSheet, Role } from './MemberSheet';
+import { DEFAULT_PRICES, PriceSettings, loadPrices, savePrices } from '../../products/pricing';
+import { shareUrl } from '../../products/share';
 
 const TIP_KEY = 'studiorangka_tip3d';
 const tipSeen = () => {
@@ -33,17 +35,36 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [expertSel, setExpertSel] = useState<string | null>(null);
   const [showTip, setShowTip] = useState(() => !tipSeen());
+  const [prices, setPricesState] = useState<PriceSettings>(loadPrices);
+  const [snapshot, setSnapshot] = useState<string | null>(null);
+  const [openBengkel] = useState(() => new URLSearchParams(window.location.search).get('tab') === 'bengkel');
+  const setPrices = (p: PriceSettings | null) => {
+    setPricesState(p || DEFAULT_PRICES);
+    savePrices(p);
+  };
+  /** Pindah tab; saat meninggalkan tab Atur, simpan gambar 3D untuk Hasil & PDF */
+  const goTab = (t: Tab) => {
+    if (tab === 'atur' && t !== 'atur') {
+      const canvas = document.querySelector('[data-product-scene] canvas') as HTMLCanvasElement | null;
+      try {
+        if (canvas) setSnapshot(canvas.toDataURL('image/jpeg', 0.85));
+      } catch {
+        // abaikan
+      }
+    }
+    setTab(t);
+  };
   const def = PRODUCTS[design.product];
   const [tab, setTab] = useState<Tab>(() => {
     const t = new URLSearchParams(window.location.search).get('tab');
-    return t === 'ahli' || t === 'hasil' ? t : 'atur';
+    return t === 'ahli' || t === 'hasil' ? t : t === 'bengkel' ? 'hasil' : 'atur';
   });
   const [stepIdx, setStepIdx] = useState(0);
   const history = useRef<{ stack: FurnitureDesign[]; last: number }>({ stack: [], last: 0 });
 
   const build = useMemo(() => def.build(design.params), [def, design.params]);
   const host = useMemo(() => toFrameHost(design, build), [design, build]);
-  const cost = useMemo(() => estimateCost(host, design, build), [host, design, build]);
+  const cost = useMemo(() => estimateCost(host, design, build, prices), [host, design, build, prices]);
   const checks = useMemo(() => def.checks(design.params, build), [def, design.params, build]);
   const isCustom = !!design.frame.customLayout;
   const members = useMemo(() => getFrameMembers(host), [host]);
@@ -116,7 +137,7 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
           <div className="text-xs text-stone-500 truncate">{def.summary(design.params)}</div>
         </div>
         <button
-          onClick={() => setTab('hasil')}
+          onClick={() => goTab('hasil')}
           className="px-3 py-1.5 rounded-full bg-amber-100 text-amber-900 text-xs font-bold tabular-nums cursor-pointer hover:bg-amber-200"
           title="Perkiraan biaya bahan, lihat rinciannya di Hasil"
         >
@@ -129,7 +150,7 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
                 key={t.id}
                 role="tab"
                 aria-selected={tab === t.id}
-                onClick={() => setTab(t.id)}
+                onClick={() => goTab(t.id)}
                 className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-sm font-semibold cursor-pointer ${tab === t.id ? 'bg-white shadow-sm text-stone-900' : 'text-stone-500 hover:text-stone-800'}`}
               >
                 {t.label}
@@ -149,7 +170,7 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
         <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
           {/* 3D */}
           <div className="h-[42dvh] lg:h-auto lg:flex-1 min-h-0 lg:order-2">
-            <div className="relative w-full h-full">
+            <div className="relative w-full h-full" data-product-scene>
               <ThreeProductScene
                 host={host}
                 build={build}
@@ -186,7 +207,7 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
                   onOpenExpert={() => {
                     setExpertSel(selectedMember.id);
                     setSelectedId(null);
-                    setTab('ahli');
+                    goTab('ahli');
                   }}
                 />
               )}
@@ -275,7 +296,7 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
               )}
 
               <button
-                onClick={() => setTab('ahli')}
+                onClick={() => goTab('ahli')}
                 className="w-full flex items-center gap-2 p-3 rounded-xl border border-dashed border-stone-300 text-left text-xs text-stone-600 hover:bg-stone-50 cursor-pointer"
               >
                 <Wrench className="w-4 h-4 shrink-0" />
@@ -293,7 +314,7 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
                 </button>
               )}
               <button
-                onClick={() => (stepIdx < def.steps.length - 1 ? setStepIdx(stepIdx + 1) : setTab('hasil'))}
+                onClick={() => (stepIdx < def.steps.length - 1 ? setStepIdx(stepIdx + 1) : goTab('hasil'))}
                 className="flex-1 py-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold cursor-pointer"
               >
                 {stepIdx < def.steps.length - 1 ? `Lanjut: ${def.steps[stepIdx + 1].title}` : `Lihat hasil${warnCount ? ` (${warnCount} peringatan)` : ''}`}
@@ -326,7 +347,20 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
 
       {tab === 'hasil' && (
         <div className="flex-1 min-h-0">
-          <ProductResult defaultTab={role === 'tukang' ? 'bengkel' : 'pemesan'} title={presetName || def.name} summary={def.summary(design.params)} host={host} cost={cost} onSaveJson={saveJson} />
+          <ProductResult
+            defaultTab={role === 'tukang' || openBengkel ? 'bengkel' : 'pemesan'}
+            title={presetName || def.name}
+            summary={def.summary(design.params)}
+            host={host}
+            cost={cost}
+            prices={prices}
+            onPrices={setPrices}
+            boardMaterial={String(design.params.papan || 'multiplek')}
+            image={snapshot}
+            url={shareUrl(design)}
+            onSaveJson={saveJson}
+            onToast={onToast}
+          />
         </div>
       )}
     </div>

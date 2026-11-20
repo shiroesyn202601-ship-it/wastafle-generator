@@ -1,6 +1,9 @@
 import { DEFAULT_KITCHEN_CONFIG, FrameAxis, FrameConfig, FrameMember, FrameMemberRole, KitchenConfig } from '../types/kitchen';
 import { boxesTouch, memberBox, memberSectionCm, getFrameMembers } from '../utils/frameLayout';
 import { Board, Caster, FurnitureDesign, ParamDef, Params, ProductBuild } from './types';
+import { DEFAULT_PRICES, PriceSettings } from './pricing';
+import { CutPiece, ProfilePlan, barsNeeded, planCuts } from './cutting';
+import { calculateFabricationCutList } from '../utils/exportDoc';
 
 export const r1 = (v: number) => Math.round(v * 10) / 10;
 export const num = (p: Params, k: string, d = 0) => (typeof p[k] === 'number' ? (p[k] as number) : d);
@@ -137,24 +140,8 @@ export function frameFromHost(prev: FrameConfig, updated: FrameConfig): FrameCon
 
 // ---------- Estimasi biaya (harga pasar 2024–2025, bisa beda per daerah) ----------
 
-/** Harga hollow per batang 6 m, tebal ±1,2–1,4 mm */
-export const PIPE_PRICE: Record<string, number> = {
-  '15×15': 45000,
-  '20×20': 84000,
-  '20×40': 118000,
-  '40×20': 118000,
-  '25×25': 95000,
-  '30×30': 105000,
-  '40×40': 123000,
-  '40×60': 156000,
-  '60×40': 156000,
-};
-const BOARD_SHEET_PRICE: Record<string, number> = { multiplek: 250000, hpl: 420000, kayu: 1100000 };
-const CASTER_PRICE: Record<number, number> = { 3: 40000, 4: 80000, 5: 110000 };
-const PAINT_PER_M2 = 20000; // dasar + 2 lapis cat
-
 export interface CostLine {
-  group: 'Pipa' | 'Papan' | 'Roda & aksesori' | 'Cat';
+  group: 'Pipa' | 'Papan' | 'Roda & aksesori' | 'Cat' | 'Ongkos';
   label: string;
   qty: number;
   unit: string;
@@ -170,6 +157,9 @@ export interface CostReport {
   paintM2: number;
   weldJoints: number;
   totalLengthM: number;
+  materialTotal: number; // total tanpa ongkos
+  plan: ProfilePlan[]; // pola potong per profil
+  pieces: CutPiece[]; // potongan bernomor (sama dengan daftar potongan)
 }
 
 const profileOf = (m: FrameMember, defMm: number) => {
@@ -177,32 +167,35 @@ const profileOf = (m: FrameMember, defMm: number) => {
   return `${w}×${m.tubeH || w}`;
 };
 
-export function estimateCost(host: KitchenConfig, design: FurnitureDesign, build: ProductBuild): CostReport {
+export function estimateCost(host: KitchenConfig, design: FurnitureDesign, build: ProductBuild, prices: PriceSettings = DEFAULT_PRICES): CostReport {
   const members = getFrameMembers(host);
   const defMm = host.frame?.tubeSize || 40;
   const lines: CostLine[] = [];
 
-  // Pipa: dibulatkan per batang 6 m per profil (+10% sisa potong)
-  const byProfile = new Map<string, number>();
+  // Pipa: jumlah batang dari pola potong (First-Fit Decreasing + lebar mata potong)
   let weight = 0;
   let paint = 0;
   members.forEach((m) => {
-    const prof = profileOf(m, defMm);
-    byProfile.set(prof, (byProfile.get(prof) || 0) + m.length);
-    const [w, h] = prof.split('×').map((v) => parseInt(v));
+    const [w, h] = profileOf(m, defMm).split('×').map((v) => parseInt(v));
     const t = 1.2;
-    weight += ((2 * (w + h) - 4 * t) * t * 7.85) / 1000 * (m.length / 100);
-    paint += (2 * (w + h)) / 1000 * (m.length / 100);
+    weight += (((2 * (w + h) - 4 * t) * t * 7.85) / 1000) * (m.length / 100);
+    paint += ((2 * (w + h)) / 1000) * (m.length / 100);
   });
+  const pieces: CutPiece[] = calculateFabricationCutList(host).hollowPieces.map((hp, i) => ({
+    no: i + 1,
+    profile: hp.profile,
+    lengthCm: hp.lengthCm,
+    qty: hp.qty,
+    label: hp.label,
+  }));
+  const plan = planCuts(pieces, prices.stockCm, prices.kerfMm / 10);
   let bars = 0;
-  [...byProfile.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .forEach(([prof, len]) => {
-      const qty = Math.ceil((len * 1.1) / 600);
-      bars += qty;
-      const price = PIPE_PRICE[prof] ?? 110000;
-      lines.push({ group: 'Pipa', label: `Hollow ${prof} mm, batang 6 m`, qty, unit: 'batang', price, subtotal: qty * price });
-    });
+  plan.forEach((pp) => {
+    const qty = barsNeeded(pp, prices.stockCm);
+    bars += qty;
+    const price = prices.pipe[pp.profile] ?? 110000;
+    lines.push({ group: 'Pipa', label: `Hollow ${pp.profile} mm, batang ${prices.stockCm / 100} m`, qty, unit: 'batang', price, subtotal: qty * price });
+  });
 
   // Papan: dihitung per m² (+30% sisa potong); lembar penuh 122×244 disebut untuk patokan belanja
   const papan = String(design.params.papan || 'multiplek');
@@ -213,7 +206,7 @@ export function estimateCost(host: KitchenConfig, design: FurnitureDesign, build
     }, 0);
     const m2 = Math.round(area * 1.3 * 100) / 100;
     const sheets = Math.ceil(m2 / 2.9768);
-    const perM2 = Math.round((BOARD_SHEET_PRICE[papan] ?? 250000) / 2.9768 / 100) * 100;
+    const perM2 = Math.round((prices.board[papan] ?? 250000) / 2.9768 / 100) * 100;
     const name = papan === 'hpl' ? 'Multiplek 18 mm + HPL' : papan === 'kayu' ? 'Papan kayu solid' : 'Multiplek 18 mm';
     lines.push({
       group: 'Papan',
@@ -228,24 +221,31 @@ export function estimateCost(host: KitchenConfig, design: FurnitureDesign, build
   // Roda / karet kaki
   if (build.casters.length) {
     const inch = build.casters[0].sizeInch;
-    const price = Math.round((CASTER_PRICE[inch] ?? 80000) * (build.casters[0].brake ? 1.15 : 1));
+    const price = Math.round((prices.caster[String(inch)] ?? 80000) * (build.casters[0].brake ? 1.15 : 1));
     lines.push({ group: 'Roda & aksesori', label: `Roda ${inch}"${build.casters[0].brake ? ' dengan rem' : ''}`, qty: build.casters.length, unit: 'buah', price, subtotal: build.casters.length * price });
   } else {
     const feet = members.filter((m) => m.axis === 'y' && m.y <= 0.5).length;
-    if (feet) lines.push({ group: 'Roda & aksesori', label: 'Karet / dop kaki', qty: feet, unit: 'buah', price: 2500, subtotal: feet * 2500 });
+    if (feet) lines.push({ group: 'Roda & aksesori', label: 'Karet / dop kaki', qty: feet, unit: 'buah', price: prices.feet, subtotal: feet * prices.feet });
   }
 
   // Cat
   const paintM2 = Math.round(paint * 100) / 100;
-  if (paintM2 > 0) lines.push({ group: 'Cat', label: 'Cat dasar + cat besi 2 lapis', qty: Math.max(0.1, paintM2), unit: 'm²', price: PAINT_PER_M2, subtotal: Math.round(paintM2 * PAINT_PER_M2) });
+  if (paintM2 > 0) lines.push({ group: 'Cat', label: 'Cat dasar + cat besi 2 lapis', qty: Math.max(0.1, paintM2), unit: 'm²', price: prices.paintPerM2, subtotal: Math.round(paintM2 * prices.paintPerM2) });
 
   // Titik las: pasangan batang yang bersentuhan
   const boxes = members.map((m) => memberBox(m, memberSectionCm(m, host)));
   let joints = 0;
   for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) if (boxesTouch(boxes[i], boxes[j])) joints++;
 
+  const materialTotal = lines.reduce((s, l) => s + l.subtotal, 0);
+  if (prices.perWeld > 0 && joints > 0)
+    lines.push({ group: 'Ongkos', label: `Ongkos las ${joints} titik sambungan`, qty: joints, unit: 'titik', price: prices.perWeld, subtotal: joints * prices.perWeld });
+
   return {
     lines,
+    materialTotal,
+    plan,
+    pieces,
     total: lines.reduce((s, l) => s + l.subtotal, 0),
     bars,
     weightKg: Math.round(weight * 10) / 10,
