@@ -1,7 +1,7 @@
 import { FrameConfig, FrameMember } from '../types/kitchen';
 import { Box3 } from '../utils/frameLayout';
 
-export type ProductId = 'meja' | 'rak' | 'troli';
+export type ProductId = 'meja' | 'kursi' | 'rak' | 'rak-tanaman' | 'troli';
 export type ParamValue = number | boolean | string;
 export type Params = Record<string, ParamValue>;
 

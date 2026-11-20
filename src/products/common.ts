@@ -204,14 +204,25 @@ export function estimateCost(host: KitchenConfig, design: FurnitureDesign, build
       lines.push({ group: 'Pipa', label: `Hollow ${prof} mm, batang 6 m`, qty, unit: 'batang', price, subtotal: qty * price });
     });
 
-  // Papan: dari luas, dibulatkan per lembar 122×244 (+15% sisa)
+  // Papan: dihitung per m² (+30% sisa potong); lembar penuh 122×244 disebut untuk patokan belanja
   const papan = String(design.params.papan || 'multiplek');
   if (build.boards.length && papan !== 'none') {
-    const area = build.boards.reduce((s, b) => s + ((b.box.max[0] - b.box.min[0]) * (b.box.max[2] - b.box.min[2])) / 10000, 0);
-    const sheets = Math.max(1, Math.ceil((area * 1.15) / 2.9768));
-    const price = BOARD_SHEET_PRICE[papan] ?? 250000;
-    const name = papan === 'hpl' ? 'Multiplek 18 mm + HPL' : papan === 'kayu' ? 'Papan kayu solid (setara lembar)' : 'Multiplek 18 mm';
-    lines.push({ group: 'Papan', label: `${name} 122×244 cm`, qty: sheets, unit: 'lembar', price, subtotal: sheets * price });
+    const area = build.boards.reduce((s, b) => {
+      const d = [0, 1, 2].map((i) => b.box.max[i] - b.box.min[i]).sort((a, c) => c - a);
+      return s + (d[0] * d[1]) / 10000; // dua sisi terbesar = muka papan
+    }, 0);
+    const m2 = Math.round(area * 1.3 * 100) / 100;
+    const sheets = Math.ceil(m2 / 2.9768);
+    const perM2 = Math.round((BOARD_SHEET_PRICE[papan] ?? 250000) / 2.9768 / 100) * 100;
+    const name = papan === 'hpl' ? 'Multiplek 18 mm + HPL' : papan === 'kayu' ? 'Papan kayu solid' : 'Multiplek 18 mm';
+    lines.push({
+      group: 'Papan',
+      label: `${name} (≈ ${sheets} lembar 122×244 bila beli utuh)`,
+      qty: Math.max(0.05, m2),
+      unit: 'm²',
+      price: perM2,
+      subtotal: Math.round(Math.max(0.05, m2) * perM2),
+    });
   }
 
   // Roda / karet kaki

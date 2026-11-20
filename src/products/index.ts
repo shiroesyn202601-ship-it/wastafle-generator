@@ -1,11 +1,13 @@
 import { MEJA } from './meja';
 import { RAK } from './rak';
 import { TROLI } from './troli';
+import { KURSI } from './kursi';
+import { RAK_TANAMAN } from './rakTanaman';
 import { FurnitureDesign, Params, ProductDef, ProductId } from './types';
 import { DEFAULT_KITCHEN_CONFIG } from '../types/kitchen';
 
-export const PRODUCTS: Record<ProductId, ProductDef> = { meja: MEJA, rak: RAK, troli: TROLI };
-export const PRODUCT_LIST: ProductDef[] = [MEJA, RAK, TROLI];
+export const PRODUCTS: Record<ProductId, ProductDef> = { meja: MEJA, kursi: KURSI, rak: RAK, 'rak-tanaman': RAK_TANAMAN, troli: TROLI };
+export const PRODUCT_LIST: ProductDef[] = [MEJA, KURSI, RAK, RAK_TANAMAN, TROLI];
 
 /** Desain baru dari sebuah produk + (opsional) contoh jadi */
 export function newDesign(id: ProductId, presetId?: string): FurnitureDesign {

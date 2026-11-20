@@ -37,7 +37,6 @@ export const RAK: ProductDef = {
     { id: 'gudang', name: 'Rak gudang', desc: '120 × 50 × 200 cm, 4 tingkat', params: { panjang: 120, dalam: 50, tinggi: 200, tingkat: 4, tinggiBawah: 10, palang: '20x40', pipa: '40', papan: 'multiplek', warna: '#6b7078' } },
     { id: 'sepatu', name: 'Rak sepatu', desc: '80 × 32 × 75 cm, 4 tingkat', params: { panjang: 80, dalam: 32, tinggi: 75, tingkat: 4, tinggiBawah: 5, palang: '20x20', pipa: '20', papan: 'multiplek' } },
     { id: 'dapur', name: 'Rak dapur / microwave', desc: '60 × 40 × 120 cm, 3 tingkat', params: { panjang: 60, dalam: 40, tinggi: 120, tingkat: 3, tinggiBawah: 10, palang: '20x20', pipa: '30', papan: 'hpl', warna: '#e9e7e1' } },
-    { id: 'tanaman', name: 'Rak tanaman', desc: '100 × 35 × 90 cm, 3 tingkat', params: { panjang: 100, dalam: 35, tinggi: 90, tingkat: 3, tinggiBawah: 10, palang: '20x20', pipa: '30', papan: 'kayu', warna: '#2f4a3a' } },
   ],
   summary: (p) => `${num(p, 'panjang')} × ${num(p, 'dalam')} × ${num(p, 'tinggi')} cm · ${num(p, 'tingkat')} tingkat`,
 

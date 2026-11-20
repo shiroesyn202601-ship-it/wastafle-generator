@@ -244,6 +244,11 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
                 </div>
               )}
 
+              {visibleParams.length === 0 && (
+                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-900">
+                  Semua pilihan sudah diatur. Periksa catatan di bawah (kalau ada), lalu tekan <b>Lihat hasil</b> untuk biaya dan daftar potongan.
+                </div>
+              )}
               {visibleParams.map((p) => (
                 <ParamControl key={p.key} def={p} value={design.params[p.key] as ParamValue} onChange={(v) => setParams({ [p.key]: v })} />
               ))}

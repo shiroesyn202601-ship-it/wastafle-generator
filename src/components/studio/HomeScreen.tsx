@@ -85,7 +85,7 @@ export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImpor
           </button>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {PRODUCT_LIST.map((p) => (
             <button
               key={p.id}
@@ -140,7 +140,7 @@ export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImpor
         )}
 
         <p className="text-xs text-stone-500">
-          Segera hadir: kursi &amp; bangku, stool, rak tanaman bertingkat. Desain tersimpan otomatis di browser ini.
+          Desain tersimpan otomatis di browser ini. Simpan file desain untuk dipindah ke HP / komputer lain.
         </p>
       </main>
     </div>
