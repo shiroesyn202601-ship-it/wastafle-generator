@@ -10,11 +10,12 @@ interface Props {
   host: KitchenConfig;
   cost: CostReport;
   onSaveJson: () => void;
+  defaultTab?: 'pemesan' | 'bengkel';
 }
 
 /** Hasil: ringkasan untuk pemesan & lembar kerja untuk bengkel */
-export const ProductResult: React.FC<Props> = ({ title, summary, host, cost, onSaveJson }) => {
-  const [tab, setTab] = useState<'pemesan' | 'bengkel'>('pemesan');
+export const ProductResult: React.FC<Props> = ({ title, summary, host, cost, onSaveJson, defaultTab = 'pemesan' }) => {
+  const [tab, setTab] = useState<'pemesan' | 'bengkel'>(defaultTab);
   const groups = ['Pipa', 'Papan', 'Roda & aksesori', 'Cat'] as const;
   const stats = [
     { label: 'Berat rangka', value: `± ${cost.weightKg.toLocaleString('id-ID')} kg` },

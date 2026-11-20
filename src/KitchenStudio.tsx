@@ -62,16 +62,16 @@ const safeSet = (key: string, value: string | null) => {
 };
 
 const VIEW_TABS: { id: ViewMode; label: string; short: string; icon: React.ReactNode }[] = [
-  { id: '3d', label: '3D Visual', short: '3D', icon: <Box className="w-4 h-4 text-amber-400" /> },
-  { id: 'frame', label: 'Editor Rangka 2D', short: 'Rangka', icon: <Grid3x3 className="w-4 h-4 text-orange-400" /> },
-  { id: 'blueprint', label: 'Blueprint CAD', short: 'Blueprint', icon: <Layers className="w-4 h-4 text-emerald-400" /> },
-  { id: 'rab', label: 'RAB & Bahan', short: 'RAB', icon: <Calculator className="w-4 h-4 text-purple-400" /> },
+  { id: '3d', label: 'Lihat 3D', short: '3D', icon: <Box className="w-4 h-4 text-amber-400" /> },
+  { id: 'frame', label: 'Mode Ahli (rangka)', short: 'Ahli', icon: <Grid3x3 className="w-4 h-4 text-orange-400" /> },
+  { id: 'blueprint', label: 'Gambar kerja', short: 'Gambar', icon: <Layers className="w-4 h-4 text-emerald-400" /> },
+  { id: 'rab', label: 'Biaya & bahan', short: 'Biaya', icon: <Calculator className="w-4 h-4 text-purple-400" /> },
 ];
 
 const SIDEBAR_TABS: { id: SidebarTab; label: string; title: string; icon: React.ReactNode }[] = [
-  { id: 'dimensions', label: 'Dimensi', title: 'Atur ukuran meja, kolom, dan laci', icon: <Sliders className="w-3.5 h-3.5 text-blue-400" /> },
-  { id: 'appliances', label: 'Wastafel', title: 'Atur posisi dan kedalaman wastafel & kompor', icon: <Flame className="w-3.5 h-3.5 text-amber-400" /> },
-  { id: 'materials', label: 'Material', title: 'Pilih top table, warna kabinet & rangka', icon: <Palette className="w-3.5 h-3.5 text-purple-400" /> },
+  { id: 'dimensions', label: 'Ukuran', title: 'Atur ukuran meja, kolom, dan laci', icon: <Sliders className="w-3.5 h-3.5 text-blue-400" /> },
+  { id: 'appliances', label: 'Bak & kompor', title: 'Atur posisi dan kedalaman wastafel & kompor', icon: <Flame className="w-3.5 h-3.5 text-amber-400" /> },
+  { id: 'materials', label: 'Bahan', title: 'Pilih top table, warna kabinet & rangka', icon: <Palette className="w-3.5 h-3.5 text-purple-400" /> },
 ];
 
 /** Studio meja dapur (wastafel, kompor, laci): tampilan lama, dibuka dari Beranda */

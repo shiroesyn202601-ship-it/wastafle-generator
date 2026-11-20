@@ -1,12 +1,20 @@
 import React, { useState } from 'react';
 import { ArrowRight, FolderOpen, History } from 'lucide-react';
 import { PRODUCT_LIST, ProductId } from '../../products';
+import { Role } from './MemberSheet';
+
+const ROLES: [Role, string][] = [
+  ['pemesan', 'Pemesan / pemula'],
+  ['tukang', 'Tukang las / bengkel'],
+];
 
 interface Props {
   onPick: (id: ProductId, presetId?: string) => void;
   onKitchen: () => void;
   resume: { title: string; subtitle: string; onClick: () => void } | null;
   onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  role: Role;
+  onRole: (r: Role) => void;
 }
 
 const KITCHEN_ICON = 'M4 10h52M8 10v26M52 10v26M24 14a6 4 0 1 0 12 0';
@@ -18,7 +26,7 @@ const Icon: React.FC<{ d: string }> = ({ d }) => (
 );
 
 /** Beranda: "Mau bikin apa?" → pilih produk → pilih contoh jadi */
-export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImport }) => {
+export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImport, role, onRole }) => {
   const [open, setOpen] = useState<ProductId | null>(null);
   const picked = PRODUCT_LIST.find((p) => p.id === open);
 
@@ -43,9 +51,27 @@ export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImpor
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-        <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-bold">Mau bikin apa?</h1>
-          <p className="text-stone-600">Pilih jenis barang, lalu mulai dari contoh yang paling mirip. Semua ukuran bisa diubah nanti.</p>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="space-y-1">
+            <h1 className="text-2xl sm:text-3xl font-bold">Mau bikin apa?</h1>
+            <p className="text-stone-600">Pilih jenis barang, lalu mulai dari contoh yang paling mirip. Semua ukuran bisa diubah nanti.</p>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-stone-500">Saya</span>
+            <div className="flex p-1 rounded-xl bg-stone-200" role="radiogroup" aria-label="Peran pengguna">
+              {ROLES.map(([r, label]) => (
+                <button
+                  key={r}
+                  role="radio"
+                  aria-checked={role === r}
+                  onClick={() => onRole(r)}
+                  className={`px-3 py-1.5 rounded-lg font-semibold cursor-pointer ${role === r ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-600'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {resume && (

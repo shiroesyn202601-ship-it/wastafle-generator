@@ -7,6 +7,17 @@ import { FrameEditor2D } from '../FrameEditor2D';
 import { ParamControl } from './ParamControl';
 import { ProductResult } from './ProductResult';
 import { KitchenConfig } from '../../types/kitchen';
+import { getFrameMembers } from '../../utils/frameLayout';
+import { MemberSheet, Role } from './MemberSheet';
+
+const TIP_KEY = 'studiorangka_tip3d';
+const tipSeen = () => {
+  try {
+    return localStorage.getItem(TIP_KEY) === '1';
+  } catch {
+    return true;
+  }
+};
 
 type Tab = 'atur' | 'ahli' | 'hasil';
 
@@ -15,9 +26,13 @@ interface Props {
   onChange: (d: FurnitureDesign) => void;
   onHome: () => void;
   onToast: (msg: string) => void;
+  role: Role;
 }
 
-export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToast }) => {
+export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToast, role }) => {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [expertSel, setExpertSel] = useState<string | null>(null);
+  const [showTip, setShowTip] = useState(() => !tipSeen());
   const def = PRODUCTS[design.product];
   const [tab, setTab] = useState<Tab>(() => {
     const t = new URLSearchParams(window.location.search).get('tab');
@@ -31,6 +46,16 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
   const cost = useMemo(() => estimateCost(host, design, build), [host, design, build]);
   const checks = useMemo(() => def.checks(design.params, build), [def, design.params, build]);
   const isCustom = !!design.frame.customLayout;
+  const members = useMemo(() => getFrameMembers(host), [host]);
+  const selectedMember = members.find((m) => m.id === selectedId) || null;
+  const dismissTip = () => {
+    setShowTip(false);
+    try {
+      localStorage.setItem(TIP_KEY, '1');
+    } catch {
+      // abaikan
+    }
+  };
 
   /** Simpan ke riwayat undo (perubahan beruntun < 0,7 dtk, mis. menggeser slider, digabung) */
   const commit = (next: FurnitureDesign) => {
@@ -124,7 +149,48 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
         <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
           {/* 3D */}
           <div className="h-[42dvh] lg:h-auto lg:flex-1 min-h-0 lg:order-2">
-            <ThreeProductScene host={host} build={build} paint={String(design.params.warna)} boardMaterial={String(design.params.papan || 'multiplek')} fitKey={design.product} />
+            <div className="relative w-full h-full">
+              <ThreeProductScene
+                host={host}
+                build={build}
+                paint={String(design.params.warna)}
+                boardMaterial={String(design.params.papan || 'multiplek')}
+                fitKey={design.product}
+                selectedId={selectedId}
+                onSelect={(id) => {
+                  setSelectedId(id);
+                  if (id && showTip) dismissTip();
+                }}
+              />
+              {showTip && (
+                <div className="absolute z-10 left-1/2 -translate-x-1/2 bottom-10 w-[min(92%,340px)] p-3 rounded-2xl bg-stone-900/95 text-white text-xs shadow-xl space-y-2">
+                  <p>
+                    <b>Seret</b> untuk memutar, <b>cubit / scroll</b> untuk zoom, dan <b>ketuk batang</b> untuk melihat panjang &amp; ukurannya.
+                  </p>
+                  <button onClick={dismissTip} className="px-3 py-1 rounded-lg bg-white text-stone-900 font-semibold cursor-pointer">
+                    Mengerti
+                  </button>
+                </div>
+              )}
+              {selectedMember && (
+                <MemberSheet
+                  member={selectedMember}
+                  host={host}
+                  role={role}
+                  onClose={() => setSelectedId(null)}
+                  onDelete={() => {
+                    commit({ ...design, frame: { ...design.frame, customLayout: true, members: members.filter((m) => m.id !== selectedMember.id) } });
+                    setSelectedId(null);
+                    onToast('Batang dihapus. Tekan Undo kalau keliru.');
+                  }}
+                  onOpenExpert={() => {
+                    setExpertSel(selectedMember.id);
+                    setSelectedId(null);
+                    setTab('ahli');
+                  }}
+                />
+              )}
+            </div>
           </div>
 
           {/* Panel pengaturan */}
@@ -242,6 +308,8 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
           </div>
           <div className="flex-1 min-h-0">
             <FrameEditor2D
+              key={expertSel || 'ahli'}
+              initialSelectedId={expertSel}
               config={host}
               onChange={(u: Partial<KitchenConfig>) => {
                 if (u.frame) commit({ ...design, frame: frameFromHost(design.frame, u.frame) });
@@ -253,7 +321,7 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
 
       {tab === 'hasil' && (
         <div className="flex-1 min-h-0">
-          <ProductResult title={presetName || def.name} summary={def.summary(design.params)} host={host} cost={cost} onSaveJson={saveJson} />
+          <ProductResult defaultTab={role === 'tukang' ? 'bengkel' : 'pemesan'} title={presetName || def.name} summary={def.summary(design.params)} host={host} cost={cost} onSaveJson={saveJson} />
         </div>
       )}
     </div>

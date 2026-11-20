@@ -5,19 +5,30 @@ export interface Box3 {
   max: [number, number, number];
 }
 
+/** Nama fungsi batang dalam bahasa sehari-hari (istilah bengkel ada di FRAME_ROLE_TRADE) */
 export const FRAME_ROLE_LABELS: Record<FrameMemberRole, string> = {
-  post: 'Tiang Vertikal',
-  'rail-x': 'Gelagar Memanjang',
-  'rail-z': 'Palang Kedalaman',
-  'sink-cradle': 'Penyangga Wastafel',
-  'stove-cradle': 'Penyangga Kompor',
-  custom: 'Batang Tambahan',
+  post: 'Kaki / tiang',
+  'rail-x': 'Palang kiri–kanan',
+  'rail-z': 'Palang depan–belakang',
+  'sink-cradle': 'Penyangga bak cuci',
+  'stove-cradle': 'Penyangga kompor',
+  custom: 'Batang tambahan',
+};
+
+/** Istilah bengkel untuk tiap fungsi batang (ditampilkan kecil di samping nama awam) */
+export const FRAME_ROLE_TRADE: Record<FrameMemberRole, string> = {
+  post: 'tiang · post',
+  'rail-x': 'gelagar memanjang',
+  'rail-z': 'palang kedalaman',
+  'sink-cradle': 'cradle wastafel',
+  'stove-cradle': 'gelagar kompor',
+  custom: 'batang kustom',
 };
 
 export const AXIS_LABELS: Record<FrameAxis, string> = {
-  x: 'Memanjang (X)',
-  y: 'Vertikal (Y)',
-  z: 'Kedalaman (Z)',
+  x: 'Kiri–kanan (X)',
+  y: 'Tegak (Y)',
+  z: 'Depan–belakang (Z)',
 };
 
 /** Ukuran-ukuran dasar meja dalam cm yang dipakai rangka */

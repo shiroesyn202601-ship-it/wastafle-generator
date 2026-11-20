@@ -17,6 +17,8 @@ interface Props {
   paint: string; // warna cat rangka
   boardMaterial: string; // multiplek | hpl | kayu | none
   fitKey: string; // ganti nilai ini (mis. id produk) untuk mengepaskan kamera ulang
+  selectedId?: string | null; // batang yang disorot
+  onSelect?: (memberId: string | null) => void; // ketuk batang (null = ketuk area kosong)
 }
 
 function disposeHierarchy(node: THREE.Object3D) {
@@ -33,7 +35,9 @@ function disposeHierarchy(node: THREE.Object3D) {
 }
 
 /** Scene 3D ringan untuk produk rangka (meja, rak, troli): rangka + engsel, papan, roda */
-export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMaterial, fitKey }) => {
+export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMaterial, fitKey, selectedId, onSelect }) => {
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
   const mountRef = useRef<HTMLDivElement>(null);
   const groupRef = useRef<THREE.Group | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -164,10 +168,30 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
       const id = hingeAt(e);
       const part = hingePartsRef.current.find((p) => p.id === id);
       const st = id ? hingeAnimRef.current.get(id) : undefined;
-      if (part && st) st.target = st.target > 0.0001 ? 0 : part.limit;
+      if (part && st) {
+        st.target = st.target > 0.0001 ? 0 : part.limit;
+        return;
+      }
+      // Ketuk batang rangka → pilih; ketuk area lain → batal pilih
+      const r = renderer.domElement.getBoundingClientRect();
+      ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      ray.setFromCamera(ndc, camera);
+      let o: THREE.Object3D | null = ray.intersectObject(group, true)[0]?.object || null;
+      while (o && !o.userData.memberId) o = o.parent;
+      onSelectRef.current?.(o ? (o.userData.memberId as string) : null);
     };
     const onMove = (e: PointerEvent) => {
-      if (e.buttons === 0) renderer.domElement.style.cursor = hingeAt(e) ? 'pointer' : '';
+      if (e.buttons !== 0) return;
+      let pointer = !!hingeAt(e);
+      if (!pointer && onSelectRef.current) {
+        const r = renderer.domElement.getBoundingClientRect();
+        ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+        ray.setFromCamera(ndc, camera);
+        let o: THREE.Object3D | null = ray.intersectObject(group, true)[0]?.object || null;
+        while (o && !o.userData.memberId) o = o.parent;
+        pointer = !!o;
+      }
+      renderer.domElement.style.cursor = pointer ? 'pointer' : '';
     };
     renderer.domElement.addEventListener('pointerdown', onDown);
     renderer.domElement.addEventListener('pointerup', onUp);
@@ -281,29 +305,51 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
     }
   }, [host, build, paint, boardMaterial]);
 
+  // ---------- Sorot batang terpilih ----------
+  useEffect(() => {
+    const group = groupRef.current;
+    if (!group) return;
+    const hi = new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0xb45309, emissiveIntensity: 0.45, metalness: 0.3, roughness: 0.45 });
+    group.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh || !mesh.userData.memberId) return;
+      if (!mesh.userData.origMat) mesh.userData.origMat = mesh.material;
+      mesh.material = mesh.userData.memberId === selectedId ? hi : (mesh.userData.origMat as THREE.Material);
+    });
+    return () => hi.dispose();
+  }, [selectedId, host, build, paint, boardMaterial]);
+
   // ---------- Kamera ----------
-  const goTo = (v: ViewPreset) => {
+  const goTo = (v: ViewPreset, instant = false) => {
     const cam = cameraRef.current;
     const ctl = controlsRef.current;
     if (!cam || !ctl) return;
     const { W, D, H } = sizeRef.current;
-    const span = Math.max(W, D, H);
-    const dist = span * (cam.aspect >= 1 ? 1.9 : 2.6) + 0.4;
-    const look = new THREE.Vector3(0, H * 0.45, 0);
-    const pos =
+    // Jarak kamera dari bola pembungkus produk: r / sin(setengah sudut pandang tersempit)
+    const r = 0.5 * Math.sqrt(W * W + D * D + H * H);
+    const fv = THREE.MathUtils.degToRad(cam.fov);
+    const fh = 2 * Math.atan(Math.tan(fv / 2) * cam.aspect);
+    const dist = (r / Math.sin(Math.min(fv, fh) / 2)) * 1.08;
+    const look = new THREE.Vector3(0, H / 2, 0);
+    const dir =
       v === 'front'
-        ? new THREE.Vector3(0, H * 0.55, dist)
+        ? new THREE.Vector3(0, 0.12, 1)
         : v === 'side'
-        ? new THREE.Vector3(dist, H * 0.55, 0)
+        ? new THREE.Vector3(1, 0.12, 0)
         : v === 'top'
-        ? new THREE.Vector3(0, dist + H, 0.001)
-        : new THREE.Vector3(dist * 0.62, H * 0.6 + span * 0.55, dist * 0.78);
-    glideRef.current = { active: true, pos, look };
+        ? new THREE.Vector3(0, 1, 0.0001)
+        : new THREE.Vector3(0.62, 0.45, 0.78);
+    const pos = look.clone().addScaledVector(dir.normalize(), dist);
+    if (instant) {
+      cam.position.copy(pos);
+      ctl.target.copy(look);
+      glideRef.current.active = false;
+    } else glideRef.current = { active: true, pos, look };
     setView(v);
   };
 
   useEffect(() => {
-    const t = setTimeout(() => goTo('iso'), 30);
+    const t = setTimeout(() => goTo('iso', true), 30);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fitKey]);

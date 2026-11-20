@@ -72,6 +72,7 @@ const ROLE_COLORS: Record<FrameMemberRole, string> = {
 interface Props {
   config: KitchenConfig;
   onChange: (updated: Partial<KitchenConfig>) => void;
+  initialSelectedId?: string | null; // batang yang langsung terpilih saat editor dibuka
 }
 
 interface DragState {
@@ -116,14 +117,14 @@ const END_NAMES: Record<FrameAxis, [string, string]> = {
   z: ['belakang', 'depan'],
 };
 
-export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
+export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelectedId }) => {
   const { W, D, H, topT, plinthH, carcaseD, frameH, postBottom, tube } = getFrameDims(config);
   const baseMembers = useMemo(() => getFrameMembers(config), [config]);
   const [draft, setDraft] = useState<FrameMember[] | null>(null);
   const members = draft ?? baseMembers;
 
   const [view, setView] = useState<View>('front');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null);
   const [snap, setSnap] = useState(1);
   const [magnet, setMagnet] = useState(true);
   const [guides, setGuides] = useState<Guide[]>([]);
@@ -861,7 +862,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
                 view === v ? 'bg-white/15 text-white ring-1 ring-white/10' : 'text-neutral-400 hover:text-white'
               }`}
             >
-              <span className="hidden sm:inline">Tampak </span>
+              <span className="hidden sm:inline">Tampilan </span>
               {VIEW_LABELS[v]}
             </button>
           ))}
@@ -869,13 +870,13 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
 
         <div className="flex items-center gap-1.5 overflow-x-auto max-w-full">
           <button onClick={addPost} className={`${btn} bg-emerald-600 hover:bg-emerald-500 text-white`}>
-            <Plus className="w-3.5 h-3.5" /> Tiang
+            <Plus className="w-3.5 h-3.5" /> Kaki / tiang
           </button>
           <button onClick={addRailX} className={`${btn} bg-emerald-600/80 hover:bg-emerald-500 text-white`}>
-            <Plus className="w-3.5 h-3.5" /> Palang X
+            <Plus className="w-3.5 h-3.5" /> Palang kiri–kanan
           </button>
           <button onClick={addRailZ} className={`${btn} bg-emerald-600/60 hover:bg-emerald-500 text-white`}>
-            <Plus className="w-3.5 h-3.5" /> Palang Z
+            <Plus className="w-3.5 h-3.5" /> Palang depan–belakang
           </button>
           <button
             onClick={() => setMagnet(!magnet)}
@@ -941,7 +942,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
             </div>
             {!isCustom && (
               <div className="absolute bottom-2 left-3 right-3 text-[10px] sm:text-[11px] text-emerald-300/80 pointer-events-none">
-                Rangka masih otomatis. Edit pertama mengubahnya ke mode manual (tidak lagi ikut perubahan modul/ukuran).
+                Rangka masih otomatis. Begitu satu batang diubah di sini, rangka tidak lagi mengikuti pengaturan ukuran.
               </div>
             )}
           </div>
@@ -1013,7 +1014,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
                   ];
                   return (
                     <div className="p-2 rounded-lg bg-emerald-500/[0.06] border border-emerald-500/25 space-y-1.5">
-                      <div className="text-[10px] font-semibold text-emerald-300">Sambung Palang dari Tiang Ini</div>
+                      <div className="text-[10px] font-semibold text-emerald-300">Sambung palang dari tiang ini</div>
                       <NumField label="Tinggi as palang dari lantai (cm)" value={cy} onCommit={(v) => setConnectY(v)} />
                       <div className="grid grid-cols-2 gap-1.5">
                         {dirs.map(({ axis, dir, label }) => {
@@ -1156,7 +1157,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
                           onClick={() => addHinge(selected)}
                           className="w-full flex items-center justify-center gap-1 py-1.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-[11px] font-semibold text-amber-200 cursor-pointer"
                         >
-                          <Plus className="w-3 h-3" /> Engsel di Titik Batang
+                          <Plus className="w-3 h-3" /> Lipat di satu titik
                         </button>
                         <button
                           onClick={() => addHinge(selected, 'edge')}
@@ -1164,19 +1165,19 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
                           title={partners.length === 0 ? 'Tidak ada batang sejajar yang menempel di sisi panjang batang ini' : undefined}
                           className="w-full flex items-center justify-center gap-1 py-1.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-[11px] font-semibold text-amber-200 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                         >
-                          <Plus className="w-3 h-3" /> Engsel Sejajar ke Batang Sebelah
+                          <Plus className="w-3 h-3" /> Lipat seperti pintu (ke batang sebelah)
                         </button>
                         <button
                           onClick={() => addHinge(selected, 'axle')}
                           className="w-full flex items-center justify-center gap-1 py-1.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-[11px] font-semibold text-amber-200 cursor-pointer"
                         >
-                          <Plus className="w-3 h-3" /> Engsel Poros (batang ini diam)
+                          <Plus className="w-3 h-3" /> Daun berputar di kaki ini
                         </button>
                         <p className="text-[10px] text-neutral-500 leading-snug">
-                          <strong className="text-neutral-400">Titik batang:</strong> batang dibelah di titik engsel, potongannya ditekuk. Taruh di
-                          ujung untuk engsel besi-ke-besi. <strong className="text-neutral-400">Sejajar:</strong> untuk 2 batang yang bersebelahan
+                          <strong className="text-neutral-400">Lipat di satu titik:</strong> batang dibelah di titik engsel, potongannya ditekuk. Taruh di
+                          ujung untuk engsel besi-ke-besi. <strong className="text-neutral-400">Lipat seperti pintu:</strong> untuk 2 batang yang bersebelahan
                           rapat; seluruh batang ini berputar di garis tepi yang menempel ke batang sebelah (seperti daun lipat).{' '}
-                          <strong className="text-neutral-400">Poros:</strong> pasang di kaki; kaki tetap berdiri dan seluruh rangka yang
+                          <strong className="text-neutral-400">Daun berputar di kaki:</strong> pasang di kaki; kaki tetap berdiri dan seluruh rangka yang
                           tersambung di atasnya berputar (meja flip-top, daun meja bisa jadi vertikal).
                         </p>
                       </>
@@ -1240,7 +1241,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange }) => {
                                   : 'bg-white/5 border-white/10 text-neutral-300 hover:bg-white/10'
                               }`}
                             >
-                              {md === 'point' ? 'Di titik batang' : md === 'edge' ? 'Sejajar batang sebelah' : 'Poros (batang diam)'}
+                              {md === 'point' ? 'Lipat di satu titik' : md === 'edge' ? 'Lipat seperti pintu' : 'Daun berputar di kaki'}
                             </button>
                           ))}
                         </div>

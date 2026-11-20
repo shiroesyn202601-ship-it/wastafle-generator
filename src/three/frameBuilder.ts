@@ -41,6 +41,11 @@ export function buildFrameGroup(
     mesh.castShadow = true;
     return mesh;
   };
+  /** Tandai mesh dengan id batang supaya bisa diketuk / disorot di 3D */
+  const tag = (mesh: THREE.Mesh, id: string) => {
+    mesh.userData.memberId = id;
+    return mesh;
+  };
 
   // Sudut batas tiap engsel + batang daun lipat yang ikut berputar
   const limByMember = new Map<string, HingeLimit>();
@@ -69,14 +74,14 @@ export function buildFrameGroup(
       // Semua bagian engsel ini dikumpulkan dalam satu wadah (koordinat dunia) supaya bisa ikut engsel lain
       const container = new THREE.Group();
       frameGroup.add(container);
-      if (g.fixedBox) container.add(boxMesh(g.fixedBox));
+      if (g.fixedBox) container.add(tag(boxMesh(g.fixedBox), m.id));
 
       // Pivot di as engsel: bagian bergerak jadi anak pivot, lalu diputar di sekitar sumbu a
       const pivotW = toWorld(g.pivot);
       const pivot = new THREE.Group();
       pivot.position.copy(pivotW);
       pivot.userData.hingeId = hinge.id;
-      if (!g.axle) pivot.add(boxMesh(g.movingBox, pivotW));
+      if (!g.axle) pivot.add(tag(boxMesh(g.movingBox, pivotW), m.id));
       container.add(pivot);
       pivots.set(m.id, { pivot, pivotW, container });
 
@@ -200,6 +205,7 @@ export function buildFrameGroup(
       backZ + m.z / 100 + (m.axis === 'z' ? len / 2 : 0)
     );
     mesh.castShadow = true;
+    mesh.userData.memberId = m.id;
     frameGroup.add(mesh);
   });
 
@@ -219,8 +225,8 @@ export function buildFrameGroup(
     const mm = members.find((x) => x.id === id);
     if (!mm) return;
     const box = memberBox(mm, memberSectionCm(mm, cfg));
-    if (pv) pv.pivot.add(boxMesh(box, pv.pivotW));
-    else frameGroup.add(boxMesh(box));
+    if (pv) pv.pivot.add(tag(boxMesh(box, pv.pivotW), id));
+    else frameGroup.add(tag(boxMesh(box), id));
   });
 
   const feet = getFootMembers(cfg, members).filter((m) => !leafOwner.has(m.id));
