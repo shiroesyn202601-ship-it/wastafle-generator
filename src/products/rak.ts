@@ -30,7 +30,7 @@ export const RAK: ProductDef = {
   ],
   defaults: {
     panjang: 80, dalam: 30, tinggi: 180, tingkat: 5, tinggiBawah: 8, palang: '20x20',
-    pipa: '30', papan: 'multiplek', warna: '#1f2226', roda: false, ukuranRoda: '3', remRoda: true,
+    pipa: '30', papan: 'kayu', warna: '#1f2226', roda: false, ukuranRoda: '3', remRoda: true,
   },
   presets: [
     {
@@ -39,11 +39,11 @@ export const RAK: ProductDef = {
       desc: '4 tiang, papan di setiap tingkat',
       params: { roda: false },
       sizes: [
-        { label: 'Buku', desc: '80 × 30 × 180 cm, 5 tingkat', params: { panjang: 80, dalam: 30, tinggi: 180, tingkat: 5, tinggiBawah: 8, palang: '20x20', pipa: '30', papan: 'kayu' } },
-        { label: 'Gudang', desc: '120 × 50 × 200 cm, 4 tingkat', params: { panjang: 120, dalam: 50, tinggi: 200, tingkat: 4, tinggiBawah: 10, palang: '20x40', pipa: '40', papan: 'multiplek', warna: '#6b7078' } },
-        { label: 'Sepatu', desc: '80 × 32 × 75 cm, 4 tingkat', params: { panjang: 80, dalam: 32, tinggi: 75, tingkat: 4, tinggiBawah: 5, palang: '20x20', pipa: '20', papan: 'multiplek' } },
-        { label: 'Dapur / microwave', desc: '60 × 40 × 120 cm, 3 tingkat', params: { panjang: 60, dalam: 40, tinggi: 120, tingkat: 3, tinggiBawah: 10, palang: '20x20', pipa: '30', papan: 'hpl', warna: '#e9e7e1' } },
-        { label: 'Display cafe', desc: '100 × 35 × 160 cm, 4 tingkat', params: { panjang: 100, dalam: 35, tinggi: 160, tingkat: 4, tinggiBawah: 10, palang: '20x20', pipa: '30', papan: 'kayu' } },
+        { label: 'Buku', desc: '80 × 30 × 180 cm, 5 tingkat', params: { panjang: 80, dalam: 30, tinggi: 180, tingkat: 5, tinggiBawah: 8, palang: '20x20', pipa: '30' } },
+        { label: 'Gudang', desc: '120 × 50 × 200 cm, 4 tingkat', params: { panjang: 120, dalam: 50, tinggi: 200, tingkat: 4, tinggiBawah: 10, palang: '20x40', pipa: '40' } },
+        { label: 'Sepatu', desc: '80 × 32 × 75 cm, 4 tingkat', params: { panjang: 80, dalam: 32, tinggi: 75, tingkat: 4, tinggiBawah: 5, palang: '20x20', pipa: '20' } },
+        { label: 'Dapur / microwave', desc: '60 × 40 × 120 cm, 3 tingkat', params: { panjang: 60, dalam: 40, tinggi: 120, tingkat: 3, tinggiBawah: 10, palang: '20x20', pipa: '30' } },
+        { label: 'Display cafe', desc: '100 × 35 × 160 cm, 4 tingkat', params: { panjang: 100, dalam: 35, tinggi: 160, tingkat: 4, tinggiBawah: 10, palang: '20x20', pipa: '30' } },
       ],
     },
     {
@@ -52,8 +52,8 @@ export const RAK: ProductDef = {
       desc: 'rak pendek dengan 4 roda rem',
       params: { roda: true, remRoda: true },
       sizes: [
-        { label: 'Rak dapur dorong', desc: '60 × 40 × 90 cm, 3 tingkat', params: { panjang: 60, dalam: 40, tinggi: 90, tingkat: 3, tinggiBawah: 5, palang: '20x20', pipa: '30', papan: 'hpl', ukuranRoda: '3' } },
-        { label: 'Rak gudang dorong', desc: '100 × 50 × 120 cm, 3 tingkat', params: { panjang: 100, dalam: 50, tinggi: 120, tingkat: 3, tinggiBawah: 5, palang: '20x40', pipa: '40', papan: 'multiplek', ukuranRoda: '4' } },
+        { label: 'Rak dapur dorong', desc: '60 × 40 × 90 cm, 3 tingkat', params: { panjang: 60, dalam: 40, tinggi: 90, tingkat: 3, tinggiBawah: 5, palang: '20x20', pipa: '30', ukuranRoda: '3' } },
+        { label: 'Rak gudang dorong', desc: '100 × 50 × 120 cm, 3 tingkat', params: { panjang: 100, dalam: 50, tinggi: 120, tingkat: 3, tinggiBawah: 5, palang: '20x40', pipa: '40', ukuranRoda: '4' } },
       ],
     },
   ],

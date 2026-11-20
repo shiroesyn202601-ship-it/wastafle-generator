@@ -44,7 +44,7 @@ export const BOOTH: ProductDef = {
     { key: 'warnaJok', label: 'Warna jok', type: 'choice', options: JOK_OPTIONS, showIf: (p) => p.busa === true },
     ...materialParams(true),
   ],
-  defaults: { sisi: 'tunggal', panjang: 120, tinggiDudukan: 46, dalamDudukan: 48, tinggiSandaran: 100, miringSandaran: 10, busa: true, warnaJok: '#3f4a3c', pipa: '30', papan: 'multiplek', warna: '#1f2226' },
+  defaults: { sisi: 'tunggal', panjang: 120, tinggiDudukan: 46, dalamDudukan: 48, tinggiSandaran: 100, miringSandaran: 10, busa: true, warnaJok: '#3f4a3c', pipa: '30', papan: 'kayu', warna: '#1f2226' },
   presets: [
     {
       id: 'tunggal',

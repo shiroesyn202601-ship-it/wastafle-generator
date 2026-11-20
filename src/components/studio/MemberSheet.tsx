@@ -3,25 +3,22 @@ import { X, Trash2, Wrench } from 'lucide-react';
 import { FrameMember, KitchenConfig } from '../../types/kitchen';
 import { FRAME_ROLE_LABELS, FRAME_ROLE_TRADE, memberBox, memberSectionCm, memberProfileLabel } from '../../utils/frameLayout';
 
-export type Role = 'pemesan' | 'tukang';
-
 interface Props {
   member: FrameMember;
   host: KitchenConfig;
-  role: Role;
   onClose: () => void;
   onDelete: () => void;
   onOpenExpert: () => void;
 }
 
-/** Kartu info batang yang diketuk di 3D: nama awam dulu, istilah bengkel kecil (dibalik untuk tukang las) */
-export const MemberSheet: React.FC<Props> = ({ member, host, role, onClose, onDelete, onOpenExpert }) => {
+/** Kartu info batang yang diketuk di 3D: nama awam dulu, istilah bengkel kecil di bawahnya */
+export const MemberSheet: React.FC<Props> = ({ member, host, onClose, onDelete, onOpenExpert }) => {
   const box = memberBox(member, memberSectionCm(member, host));
   const plain = FRAME_ROLE_LABELS[member.role];
   const trade = FRAME_ROLE_TRADE[member.role];
-  const [main, sub] = role === 'tukang' ? [trade, plain] : [plain, `istilah bengkel: ${trade}`];
+  const [main, sub] = [plain, `istilah bengkel: ${trade}`];
   const rows = [
-    { k: 'Panjang potong', v: role === 'tukang' ? `${Math.round(member.length * 10)} mm` : `${member.length} cm` },
+    { k: 'Panjang potong', v: `${member.length} cm` },
     { k: 'Ukuran pipa', v: `${memberProfileLabel(member, host)} mm` },
     { k: 'Tinggi dari lantai', v: `${Math.round(box.min[1] * 10) / 10} cm` },
   ];
@@ -55,7 +52,7 @@ export const MemberSheet: React.FC<Props> = ({ member, host, role, onClose, onDe
           <Trash2 className="w-3.5 h-3.5" /> Hapus batang
         </button>
         <button onClick={onOpenExpert} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-stone-800 text-white text-xs font-semibold hover:bg-stone-700 cursor-pointer">
-          <Wrench className="w-3.5 h-3.5" /> Ubah di Mode Ahli
+          <Wrench className="w-3.5 h-3.5" /> Ubah di 2D
         </button>
       </div>
     </div>

@@ -1,15 +1,15 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Undo2, Download, AlertTriangle, Info, Wrench, ChevronRight, Check } from 'lucide-react';
+import { ArrowLeft, Undo2, Download, AlertTriangle, Info, ChevronRight, Check, Scissors, Box, Grid2x2 } from 'lucide-react';
 import { FurnitureDesign, Params, ParamValue, PRODUCTS } from '../../products';
-import { estimateCost, frameFromHost, rupiahShort, toFrameHost } from '../../products/common';
+import { estimateCost, frameFromHost, toFrameHost } from '../../products/common';
 import { ThreeProductScene } from '../../three/ThreeProductScene';
 import { FrameEditor2D } from '../FrameEditor2D';
 import { ParamControl } from './ParamControl';
 import { ProductResult } from './ProductResult';
 import { KitchenConfig } from '../../types/kitchen';
 import { getFrameMembers } from '../../utils/frameLayout';
-import { MemberSheet, Role } from './MemberSheet';
-import { DEFAULT_PRICES, PriceSettings, loadPrices, savePrices } from '../../products/pricing';
+import { MemberSheet } from './MemberSheet';
+import { PriceSettings, loadPrices, savePrices } from '../../products/pricing';
 import { shareUrl } from '../../products/share';
 
 const TIP_KEY = 'studiorangka_tip3d';
@@ -21,7 +21,8 @@ const tipSeen = () => {
   }
 };
 
-type Tab = 'atur' | 'ahli' | 'hasil';
+/** Tampilan: 3D (atur + model), 2D (gambar rangka per tampak), potongan besi */
+type Tab = '3d' | '2d' | 'potongan';
 
 /** Gaya cafe populer di Indonesia: satu ketuk mengatur pipa, warna cat & bahan papan */
 const STYLES: { label: string; desc: string; params: Record<string, string> }[] = [
@@ -36,43 +37,30 @@ interface Props {
   onChange: (d: FurnitureDesign) => void;
   onHome: () => void;
   onToast: (msg: string) => void;
-  role: Role;
 }
 
-export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToast, role }) => {
+export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToast }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [expertSel, setExpertSel] = useState<string | null>(null);
   const [showTip, setShowTip] = useState(() => !tipSeen());
-  const [prices, setPricesState] = useState<PriceSettings>(loadPrices);
-  const [snapshot, setSnapshot] = useState<string | null>(null);
-  const [openBengkel] = useState(() => new URLSearchParams(window.location.search).get('tab') === 'bengkel');
-  const setPrices = (p: PriceSettings | null) => {
-    setPricesState(p || DEFAULT_PRICES);
+  // pengaturan potong (panjang batang & lebar mata potong), tersimpan di browser
+  const [cutSettings, setCutState] = useState<PriceSettings>(loadPrices);
+  const setCutSettings = (p: PriceSettings) => {
+    setCutState(p);
     savePrices(p);
   };
-  /** Pindah tab; saat meninggalkan tab Atur, simpan gambar 3D untuk Hasil & PDF */
-  const goTab = (t: Tab) => {
-    if (tab === 'atur' && t !== 'atur') {
-      const canvas = document.querySelector('[data-product-scene] canvas') as HTMLCanvasElement | null;
-      try {
-        if (canvas) setSnapshot(canvas.toDataURL('image/jpeg', 0.85));
-      } catch {
-        // abaikan
-      }
-    }
-    setTab(t);
-  };
+  const goTab = (t: Tab) => setTab(t);
   const def = PRODUCTS[design.product];
   const [tab, setTab] = useState<Tab>(() => {
     const t = new URLSearchParams(window.location.search).get('tab');
-    return t === 'ahli' || t === 'hasil' ? t : t === 'bengkel' ? 'hasil' : 'atur';
+    return t === '2d' || t === 'ahli' ? '2d' : t === 'potongan' || t === 'hasil' || t === 'bengkel' ? 'potongan' : '3d';
   });
   const [stepIdx, setStepIdx] = useState(0);
   const history = useRef<{ stack: FurnitureDesign[]; last: number }>({ stack: [], last: 0 });
 
   const build = useMemo(() => def.build(design.params), [def, design.params]);
   const host = useMemo(() => toFrameHost(design, build), [design, build]);
-  const cost = useMemo(() => estimateCost(host, design, build, prices), [host, design, build, prices]);
+  const cut = useMemo(() => estimateCost(host, design, build, cutSettings), [host, design, build, cutSettings]);
   const checks = useMemo(() => def.checks(design.params, build), [def, design.params, build]);
   const isCustom = !!design.frame.customLayout;
   const members = useMemo(() => getFrameMembers(host), [host]);
@@ -123,11 +111,6 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
     .map((k) => def.params.find((p) => p.key === k))
     .filter((p): p is NonNullable<typeof p> => !!p && (!p.showIf || p.showIf(design.params)));
   const warnCount = checks.filter((c) => c.level === 'warn').length;
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'atur', label: 'Atur' },
-    { id: 'ahli', label: 'Mode Ahli' },
-    { id: 'hasil', label: 'Hasil' },
-  ];
   const preset = def.presets.find((p) => p.id === design.presetId);
   const presetName = preset?.name;
   /** Ukuran umum yang sedang terpakai (semua nilainya sama dengan desain sekarang) */
@@ -147,27 +130,39 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
           </div>
           <div className="text-xs text-stone-500 truncate">{def.summary(design.params)}</div>
         </div>
-        <button
-          onClick={() => goTab('hasil')}
-          className="px-3 py-1.5 rounded-full bg-amber-100 text-amber-900 text-xs font-bold tabular-nums cursor-pointer hover:bg-amber-200"
-          title="Perkiraan biaya bahan, lihat rinciannya di Hasil"
-        >
-          ± {rupiahShort(cost.total)} · {cost.bars} batang
-        </button>
-        <div className="flex items-center gap-1 order-last sm:order-none w-full sm:w-auto">
-          <nav className="flex flex-1 sm:flex-none p-1 rounded-xl bg-stone-100" role="tablist">
-            {tabs.map((t) => (
+        <div className="flex items-center gap-1.5 order-last sm:order-none w-full sm:w-auto">
+          <div className="flex p-1 rounded-xl bg-stone-100" role="radiogroup" aria-label="Tampilan">
+            {(
+              [
+                ['2d', '2D', <Grid2x2 key="i" className="w-4 h-4" />],
+                ['3d', '3D', <Box key="i" className="w-4 h-4" />],
+              ] as const
+            ).map(([id, label, icon]) => (
               <button
-                key={t.id}
-                role="tab"
-                aria-selected={tab === t.id}
-                onClick={() => goTab(t.id)}
-                className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-sm font-semibold cursor-pointer ${tab === t.id ? 'bg-white shadow-sm text-stone-900' : 'text-stone-500 hover:text-stone-800'}`}
+                key={id}
+                role="radio"
+                aria-checked={tab === id}
+                onClick={() => goTab(id)}
+                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-bold cursor-pointer ${tab === id ? 'bg-stone-900 text-white shadow-sm' : 'text-stone-500 hover:text-stone-800'}`}
               >
-                {t.label}
+                {icon}
+                {label}
               </button>
             ))}
-          </nav>
+          </div>
+          <button
+            onClick={() => goTab(tab === 'potongan' ? '3d' : 'potongan')}
+            aria-pressed={tab === 'potongan'}
+            className={`flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold border cursor-pointer ${
+              tab === 'potongan' ? 'bg-sky-600 text-white border-sky-600' : 'bg-white text-stone-800 border-stone-300 hover:bg-stone-50'
+            }`}
+            title="Pola potong batang & daftar potongan besi"
+          >
+            <Scissors className="w-4 h-4" /> Potongan besi
+            <span className={`text-xs font-normal tabular-nums ${tab === 'potongan' ? 'text-sky-100' : 'text-stone-500'}`}>
+              {cut.bars} btg · {cut.totalLengthM.toLocaleString('id-ID')} m
+            </span>
+          </button>
           <button onClick={undo} disabled={!history.current.stack.length} className="p-2 rounded-lg text-stone-600 hover:bg-stone-100 disabled:opacity-30 cursor-pointer" title="Batalkan perubahan terakhir">
             <Undo2 className="w-4 h-4" />
           </button>
@@ -177,7 +172,7 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
         </div>
       </header>
 
-      {tab === 'atur' && (
+      {tab === '3d' && (
         <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
           {/* 3D */}
           <div className="h-[42dvh] lg:h-auto lg:flex-1 min-h-0 lg:order-2">
@@ -208,7 +203,6 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
                 <MemberSheet
                   member={selectedMember}
                   host={host}
-                  role={role}
                   onClose={() => setSelectedId(null)}
                   onDelete={() => {
                     commit({ ...design, frame: { ...design.frame, customLayout: true, members: members.filter((m) => m.id !== selectedMember.id) } });
@@ -218,7 +212,7 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
                   onOpenExpert={() => {
                     setExpertSel(selectedMember.id);
                     setSelectedId(null);
-                    goTab('ahli');
+                    goTab('2d');
                   }}
                 />
               )}
@@ -264,8 +258,8 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
               {isCustom && (
                 <div className="p-3 rounded-xl bg-violet-50 border border-violet-200 text-xs text-violet-900 space-y-2">
                   <p>
-                    Rangka sudah diubah sendiri di <b>Mode Ahli</b>, jadi ukuran pipa tidak lagi mengikuti pengaturan di sini (papan &amp; roda tetap
-                    ikut).
+                    Rangka sudah diubah sendiri di tampilan <b>2D</b>, jadi ukuran pipa tidak lagi mengikuti pengaturan di sini (papan &amp; roda
+                    tetap ikut).
                   </p>
                   <button
                     onClick={() => commit({ ...design, frame: { ...design.frame, customLayout: false, members: undefined } })}
@@ -318,7 +312,7 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
               )}
               {visibleParams.length === 0 && (
                 <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-900">
-                  Semua pilihan sudah diatur. Periksa catatan di bawah (kalau ada), lalu tekan <b>Lihat hasil</b> untuk biaya dan daftar potongan.
+                  Semua pilihan sudah diatur. Periksa catatan di bawah (kalau ada), lalu tekan <b>Lihat potongan besi</b>.
                 </div>
               )}
               {visibleParams.map((p) => (
@@ -347,12 +341,12 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
               )}
 
               <button
-                onClick={() => goTab('ahli')}
+                onClick={() => goTab('2d')}
                 className="w-full flex items-center gap-2 p-3 rounded-xl border border-dashed border-stone-300 text-left text-xs text-stone-600 hover:bg-stone-50 cursor-pointer"
               >
-                <Wrench className="w-4 h-4 shrink-0" />
+                <Grid2x2 className="w-4 h-4 shrink-0" />
                 <span className="flex-1">
-                  <b className="text-stone-800">Mode Ahli</b>: geser batang satu per satu, tambah palang, pasang engsel lipat.
+                  <b className="text-stone-800">Tampilan 2D</b>: geser batang satu per satu, tambah palang, pasang engsel lipat.
                 </span>
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -365,22 +359,22 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
                 </button>
               )}
               <button
-                onClick={() => (stepIdx < def.steps.length - 1 ? setStepIdx(stepIdx + 1) : goTab('hasil'))}
+                onClick={() => (stepIdx < def.steps.length - 1 ? setStepIdx(stepIdx + 1) : goTab('potongan'))}
                 className="flex-1 py-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold cursor-pointer"
               >
-                {stepIdx < def.steps.length - 1 ? `Lanjut: ${def.steps[stepIdx + 1].title}` : `Lihat hasil${warnCount ? ` (${warnCount} peringatan)` : ''}`}
+                {stepIdx < def.steps.length - 1 ? `Lanjut: ${def.steps[stepIdx + 1].title}` : `Lihat potongan besi${warnCount ? ` (${warnCount} peringatan)` : ''}`}
               </button>
             </div>
           </aside>
         </div>
       )}
 
-      {tab === 'ahli' && (
+      {tab === '2d' && (
         <div className="flex-1 min-h-0 flex flex-col">
           <div className="shrink-0 px-4 py-2 bg-stone-800 text-stone-100 text-xs flex flex-wrap items-center gap-x-3 gap-y-1">
-            <Wrench className="w-3.5 h-3.5" />
+            <Grid2x2 className="w-3.5 h-3.5" />
             <span>
-              <b>Mode Ahli</b>: tampak depan/samping/atas, angka per batang, engsel lipat. Perubahan di sini membuat rangka tidak lagi otomatis.
+              <b>Tampilan 2D</b>: tampak depan/samping/atas, angka per batang, engsel lipat. Perubahan di sini membuat rangka tidak lagi otomatis.
             </span>
           </div>
           <div className="flex-1 min-h-0">
@@ -396,18 +390,15 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
         </div>
       )}
 
-      {tab === 'hasil' && (
+      {tab === 'potongan' && (
         <div className="flex-1 min-h-0">
           <ProductResult
-            defaultTab={role === 'tukang' || openBengkel ? 'bengkel' : 'pemesan'}
             title={presetName || def.name}
             summary={def.summary(design.params)}
             host={host}
-            cost={cost}
-            prices={prices}
-            onPrices={setPrices}
-            boardMaterial={String(design.params.papan || 'multiplek')}
-            image={snapshot}
+            cut={cut}
+            settings={cutSettings}
+            onSettings={setCutSettings}
             url={shareUrl(design)}
             onSaveJson={saveJson}
             onToast={onToast}

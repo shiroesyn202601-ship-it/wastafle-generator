@@ -72,7 +72,7 @@ export const MEJA: ProductDef = {
   defaults: {
     bentukDaun: 'kotak', panjang: 120, lebar: 75, tinggi: 75, modelKaki: 'lurus', sudutKaki: 8, kakiLipat: false,
     rakBawah: false, tinggiRakBawah: 20, palangKaki: true, kakiTengah: false, alas: 'silang', bentangAlas: 56, pijakan: false,
-    pipa: '40', papan: 'multiplek', warna: '#1f2226', roda: false, ukuranRoda: '3', remRoda: true,
+    pipa: '40', papan: 'kayu', warna: '#1f2226', roda: false, ukuranRoda: '3', remRoda: true,
   },
   presets: [
     {
@@ -81,10 +81,10 @@ export const MEJA: ProductDef = {
       desc: '4 kaki tegak, palang kaki bentuk H',
       params: { modelKaki: 'lurus', palangKaki: true },
       sizes: [
-        { label: 'Makan 4 orang', desc: '120 × 75 × 75 cm', params: { panjang: 120, lebar: 75, tinggi: 75, papan: 'kayu', pipa: '40' } },
-        { label: 'Cafe 2 orang', desc: '70 × 70 × 75 cm', params: { panjang: 70, lebar: 70, tinggi: 75, papan: 'hpl', pipa: '30' } },
-        { label: 'Belajar / kerja', desc: '100 × 55 × 75 cm', params: { panjang: 100, lebar: 55, tinggi: 75, papan: 'hpl', pipa: '30', warna: '#e9e7e1' } },
-        { label: 'Bar tinggi', desc: '120 × 50 × 105 cm', params: { panjang: 120, lebar: 50, tinggi: 105, papan: 'hpl', pipa: '40' } },
+        { label: 'Makan 4 orang', desc: '120 × 75 × 75 cm', params: { panjang: 120, lebar: 75, tinggi: 75, pipa: '40' } },
+        { label: 'Cafe 2 orang', desc: '70 × 70 × 75 cm', params: { panjang: 70, lebar: 70, tinggi: 75, pipa: '30' } },
+        { label: 'Belajar / kerja', desc: '100 × 55 × 75 cm', params: { panjang: 100, lebar: 55, tinggi: 75, pipa: '30' } },
+        { label: 'Bar tinggi', desc: '120 × 50 × 105 cm', params: { panjang: 120, lebar: 50, tinggi: 105, pipa: '40' } },
       ],
     },
     {
@@ -93,9 +93,9 @@ export const MEJA: ProductDef = {
       desc: '6 kaki tegak, tidak melendut',
       params: { modelKaki: 'lurus', kakiTengah: true, palangKaki: true },
       sizes: [
-        { label: 'Makan 6 orang', desc: '180 × 90 × 75 cm', params: { panjang: 180, lebar: 90, tinggi: 75, papan: 'kayu', pipa: '40' } },
-        { label: 'Komunal cafe', desc: '240 × 90 × 75 cm', params: { panjang: 240, lebar: 90, tinggi: 75, papan: 'kayu', pipa: '40' } },
-        { label: 'Bar panjang', desc: '200 × 50 × 105 cm', params: { panjang: 200, lebar: 50, tinggi: 105, papan: 'hpl', pipa: '40' } },
+        { label: 'Makan 6 orang', desc: '180 × 90 × 75 cm', params: { panjang: 180, lebar: 90, tinggi: 75, pipa: '40' } },
+        { label: 'Komunal cafe', desc: '240 × 90 × 75 cm', params: { panjang: 240, lebar: 90, tinggi: 75, pipa: '40' } },
+        { label: 'Bar panjang', desc: '200 × 50 × 105 cm', params: { panjang: 200, lebar: 50, tinggi: 105, pipa: '40' } },
       ],
     },
     {
@@ -104,9 +104,9 @@ export const MEJA: ProductDef = {
       desc: 'daun bulat, 4 kaki miring',
       params: { bentukDaun: 'bulat', modelKaki: 'melebar', sudutKaki: 7, palangKaki: true },
       sizes: [
-        { label: 'Makan 4 orang', desc: 'ø100 × 75 cm', params: { panjang: 100, tinggi: 75, papan: 'kayu', pipa: '30' } },
-        { label: 'Cafe 2 orang', desc: 'ø70 × 75 cm', params: { panjang: 70, tinggi: 75, papan: 'hpl', pipa: '30' } },
-        { label: 'Bar tinggi', desc: 'ø60 × 105 cm', params: { panjang: 60, tinggi: 105, papan: 'hpl', pipa: '30' } },
+        { label: 'Makan 4 orang', desc: 'ø100 × 75 cm', params: { panjang: 100, tinggi: 75, pipa: '30' } },
+        { label: 'Cafe 2 orang', desc: 'ø70 × 75 cm', params: { panjang: 70, tinggi: 75, pipa: '30' } },
+        { label: 'Bar tinggi', desc: 'ø60 × 105 cm', params: { panjang: 60, tinggi: 105, pipa: '30' } },
       ],
     },
     {
@@ -115,8 +115,8 @@ export const MEJA: ProductDef = {
       desc: 'kaki menyilang di kedua ujung',
       params: { modelKaki: 'x' },
       sizes: [
-        { label: 'Makan 6 orang', desc: '160 × 80 × 75 cm', params: { panjang: 160, lebar: 80, tinggi: 75, papan: 'kayu', pipa: '40', warna: '#6b7078' } },
-        { label: 'Kerja', desc: '120 × 60 × 75 cm', params: { panjang: 120, lebar: 60, tinggi: 75, papan: 'kayu', pipa: '40' } },
+        { label: 'Makan 6 orang', desc: '160 × 80 × 75 cm', params: { panjang: 160, lebar: 80, tinggi: 75, pipa: '40' } },
+        { label: 'Kerja', desc: '120 × 60 × 75 cm', params: { panjang: 120, lebar: 60, tinggi: 75, pipa: '40' } },
       ],
     },
     {
@@ -125,9 +125,9 @@ export const MEJA: ProductDef = {
       desc: '4 kaki miring keluar, palang H',
       params: { modelKaki: 'melebar', sudutKaki: 8, palangKaki: true },
       sizes: [
-        { label: 'Cafe 2 orang', desc: '70 × 70 × 75 cm', params: { panjang: 70, lebar: 70, tinggi: 75, papan: 'hpl', pipa: '30' } },
-        { label: 'Cafe 4 orang', desc: '80 × 80 × 75 cm', params: { panjang: 80, lebar: 80, tinggi: 75, papan: 'kayu', pipa: '30' } },
-        { label: 'Makan', desc: '120 × 70 × 75 cm', params: { panjang: 120, lebar: 70, tinggi: 75, papan: 'kayu', pipa: '30' } },
+        { label: 'Cafe 2 orang', desc: '70 × 70 × 75 cm', params: { panjang: 70, lebar: 70, tinggi: 75, pipa: '30' } },
+        { label: 'Cafe 4 orang', desc: '80 × 80 × 75 cm', params: { panjang: 80, lebar: 80, tinggi: 75, pipa: '30' } },
+        { label: 'Makan', desc: '120 × 70 × 75 cm', params: { panjang: 120, lebar: 70, tinggi: 75, pipa: '30' } },
       ],
     },
     {
@@ -136,9 +136,9 @@ export const MEJA: ProductDef = {
       desc: 'satu tiang tengah, alas + di lantai',
       params: { modelKaki: 'pedestal', alas: 'silang' },
       sizes: [
-        { label: 'Cafe 2 orang', desc: '60 × 60 × 75 cm', params: { panjang: 60, lebar: 60, tinggi: 75, bentangAlas: 50, papan: 'kayu', pipa: '40', pijakan: false } },
-        { label: 'Cafe 4 orang', desc: '80 × 80 × 75 cm', params: { panjang: 80, lebar: 80, tinggi: 75, bentangAlas: 66, papan: 'kayu', pipa: '40', pijakan: false } },
-        { label: 'Bar tinggi + pijakan', desc: '70 × 70 × 105 cm', params: { panjang: 70, lebar: 70, tinggi: 105, bentangAlas: 60, papan: 'hpl', pipa: '40', pijakan: true } },
+        { label: 'Cafe 2 orang', desc: '60 × 60 × 75 cm', params: { panjang: 60, lebar: 60, tinggi: 75, bentangAlas: 50, pipa: '40', pijakan: false } },
+        { label: 'Cafe 4 orang', desc: '80 × 80 × 75 cm', params: { panjang: 80, lebar: 80, tinggi: 75, bentangAlas: 66, pipa: '40', pijakan: false } },
+        { label: 'Bar tinggi + pijakan', desc: '70 × 70 × 105 cm', params: { panjang: 70, lebar: 70, tinggi: 105, bentangAlas: 60, pipa: '40', pijakan: true } },
       ],
     },
     {
@@ -147,9 +147,9 @@ export const MEJA: ProductDef = {
       desc: 'daun bulat, tiang tengah, plat besi bundar',
       params: { bentukDaun: 'bulat', modelKaki: 'pedestal', alas: 'plat' },
       sizes: [
-        { label: 'Cafe 2 orang', desc: 'ø60 × 75 cm, plat ø45', params: { panjang: 60, tinggi: 75, bentangAlas: 45, papan: 'kayu', pipa: '40', pijakan: false } },
-        { label: 'Cafe 4 orang', desc: 'ø80 × 75 cm, plat ø50', params: { panjang: 80, tinggi: 75, bentangAlas: 50, papan: 'hpl', pipa: '40', pijakan: false } },
-        { label: 'Bar tinggi + pijakan', desc: 'ø60 × 105 cm, plat ø50', params: { panjang: 60, tinggi: 105, bentangAlas: 50, papan: 'hpl', pipa: '40', pijakan: true } },
+        { label: 'Cafe 2 orang', desc: 'ø60 × 75 cm, plat ø45', params: { panjang: 60, tinggi: 75, bentangAlas: 45, pipa: '40', pijakan: false } },
+        { label: 'Cafe 4 orang', desc: 'ø80 × 75 cm, plat ø50', params: { panjang: 80, tinggi: 75, bentangAlas: 50, pipa: '40', pijakan: false } },
+        { label: 'Bar tinggi + pijakan', desc: 'ø60 × 105 cm, plat ø50', params: { panjang: 60, tinggi: 105, bentangAlas: 50, pipa: '40', pijakan: true } },
       ],
     },
     {
@@ -158,8 +158,8 @@ export const MEJA: ProductDef = {
       desc: 'tiang tengah + 4 kaki miring',
       params: { modelKaki: 'pedestal', alas: 'bintang' },
       sizes: [
-        { label: 'Cafe 4 orang', desc: '80 × 80 × 75 cm', params: { panjang: 80, lebar: 80, tinggi: 75, bentangAlas: 70, papan: 'kayu', pipa: '40', pijakan: false } },
-        { label: 'Bar tinggi', desc: '70 × 70 × 105 cm', params: { panjang: 70, lebar: 70, tinggi: 105, bentangAlas: 66, papan: 'hpl', pipa: '40', pijakan: true } },
+        { label: 'Cafe 4 orang', desc: '80 × 80 × 75 cm', params: { panjang: 80, lebar: 80, tinggi: 75, bentangAlas: 70, pipa: '40', pijakan: false } },
+        { label: 'Bar tinggi', desc: '70 × 70 × 105 cm', params: { panjang: 70, lebar: 70, tinggi: 105, bentangAlas: 66, pipa: '40', pijakan: true } },
       ],
     },
     {
@@ -168,9 +168,9 @@ export const MEJA: ProductDef = {
       desc: 'rangka U di kedua ujung, menapak rata',
       params: { modelKaki: 'u' },
       sizes: [
-        { label: 'Makan / kerja', desc: '140 × 75 × 75 cm', params: { panjang: 140, lebar: 75, tinggi: 75, papan: 'kayu', pipa: '40', pijakan: false } },
-        { label: 'Komunal cafe', desc: '240 × 90 × 75 cm', params: { panjang: 240, lebar: 90, tinggi: 75, papan: 'kayu', pipa: '40', pijakan: false } },
-        { label: 'Bar tinggi + pijakan', desc: '160 × 60 × 105 cm', params: { panjang: 160, lebar: 60, tinggi: 105, papan: 'hpl', pipa: '40', pijakan: true } },
+        { label: 'Makan / kerja', desc: '140 × 75 × 75 cm', params: { panjang: 140, lebar: 75, tinggi: 75, pipa: '40', pijakan: false } },
+        { label: 'Komunal cafe', desc: '240 × 90 × 75 cm', params: { panjang: 240, lebar: 90, tinggi: 75, pipa: '40', pijakan: false } },
+        { label: 'Bar tinggi + pijakan', desc: '160 × 60 × 105 cm', params: { panjang: 160, lebar: 60, tinggi: 105, pipa: '40', pijakan: true } },
       ],
     },
     {
@@ -179,9 +179,9 @@ export const MEJA: ProductDef = {
       desc: 'kaki dilipat ke bawah daun (engsel kunci)',
       params: { kakiLipat: true },
       sizes: [
-        { label: 'Serbaguna', desc: '120 × 60 × 75 cm', params: { panjang: 120, lebar: 60, tinggi: 75, papan: 'multiplek', pipa: '30' } },
-        { label: 'Bazar / event', desc: '180 × 75 × 75 cm', params: { panjang: 180, lebar: 75, tinggi: 75, papan: 'multiplek', pipa: '30' } },
-        { label: 'Lesehan', desc: '80 × 50 × 35 cm', params: { panjang: 80, lebar: 50, tinggi: 35, papan: 'hpl', pipa: '20' } },
+        { label: 'Serbaguna', desc: '120 × 60 × 75 cm', params: { panjang: 120, lebar: 60, tinggi: 75, pipa: '30' } },
+        { label: 'Bazar / event', desc: '180 × 75 × 75 cm', params: { panjang: 180, lebar: 75, tinggi: 75, pipa: '30' } },
+        { label: 'Lesehan', desc: '80 × 50 × 35 cm', params: { panjang: 80, lebar: 50, tinggi: 35, pipa: '20' } },
       ],
     },
     {
@@ -190,10 +190,10 @@ export const MEJA: ProductDef = {
       desc: '4 kaki tegak, papan rak di bawah',
       params: { modelKaki: 'lurus', rakBawah: true },
       sizes: [
-        { label: 'Meja kopi / tamu', desc: '90 × 50 × 45 cm', params: { panjang: 90, lebar: 50, tinggi: 45, tinggiRakBawah: 12, papan: 'kayu', pipa: '30' } },
-        { label: 'Meja TV / console', desc: '120 × 40 × 55 cm', params: { panjang: 120, lebar: 40, tinggi: 55, tinggiRakBawah: 12, papan: 'kayu', pipa: '30' } },
-        { label: 'Meja samping', desc: '45 × 45 × 55 cm', params: { panjang: 45, lebar: 45, tinggi: 55, tinggiRakBawah: 15, papan: 'kayu', pipa: '20' } },
-        { label: 'Meja kasir kecil', desc: '100 × 50 × 90 cm', params: { panjang: 100, lebar: 50, tinggi: 90, tinggiRakBawah: 20, papan: 'hpl', pipa: '40' } },
+        { label: 'Meja kopi / tamu', desc: '90 × 50 × 45 cm', params: { panjang: 90, lebar: 50, tinggi: 45, tinggiRakBawah: 12, pipa: '30' } },
+        { label: 'Meja TV / console', desc: '120 × 40 × 55 cm', params: { panjang: 120, lebar: 40, tinggi: 55, tinggiRakBawah: 12, pipa: '30' } },
+        { label: 'Meja samping', desc: '45 × 45 × 55 cm', params: { panjang: 45, lebar: 45, tinggi: 55, tinggiRakBawah: 15, pipa: '20' } },
+        { label: 'Meja kasir kecil', desc: '100 × 50 × 90 cm', params: { panjang: 100, lebar: 50, tinggi: 90, tinggiRakBawah: 20, pipa: '40' } },
       ],
     },
     {
@@ -202,8 +202,8 @@ export const MEJA: ProductDef = {
       desc: '6 kaki, rak bawah, pipa 40×40',
       params: { modelKaki: 'lurus', rakBawah: true, kakiTengah: true },
       sizes: [
-        { label: 'Bengkel', desc: '150 × 70 × 85 cm', params: { panjang: 150, lebar: 70, tinggi: 85, tinggiRakBawah: 20, pipa: '40', papan: 'multiplek' } },
-        { label: 'Dapur / prep cafe', desc: '180 × 60 × 90 cm', params: { panjang: 180, lebar: 60, tinggi: 90, tinggiRakBawah: 20, pipa: '40', papan: 'hpl' } },
+        { label: 'Bengkel', desc: '150 × 70 × 85 cm', params: { panjang: 150, lebar: 70, tinggi: 85, tinggiRakBawah: 20, pipa: '40' } },
+        { label: 'Dapur / prep cafe', desc: '180 × 60 × 90 cm', params: { panjang: 180, lebar: 60, tinggi: 90, tinggiRakBawah: 20, pipa: '40' } },
       ],
     },
   ],

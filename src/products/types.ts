@@ -112,5 +112,5 @@ export interface FurnitureDesign {
   product: ProductId;
   presetId?: string;
   params: Params;
-  frame: FrameConfig; // members/hinges/customLayout dari Mode Ahli
+  frame: FrameConfig; // members/hinges/customLayout dari tampilan 2D
 }

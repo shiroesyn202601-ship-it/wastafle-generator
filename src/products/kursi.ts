@@ -61,10 +61,10 @@ export const KURSI: ProductDef = {
   },
   presets: [
     { id: 'makan', name: 'Kursi makan', desc: 'sandaran miring 10°', params: { jenis: 'kursi', lebar: 45, dalam: 42, tinggiDudukan: 45, sandaran: true, tinggiSandaran: 85, miringSandaran: 10, palangKaki: true, pipa: '20' } },
-    { id: 'cafe', name: 'Kursi cafe kaki melebar', desc: 'kaki melebar 6°, sandaran 12°', params: { jenis: 'kursi', lebar: 44, dalam: 42, tinggiDudukan: 45, sandaran: true, tinggiSandaran: 80, miringSandaran: 12, sudutKaki: 6, palangKaki: true, pipa: '20', papan: 'hpl', warna: '#2f4a3a' } },
+    { id: 'cafe', name: 'Kursi cafe kaki melebar', desc: 'kaki melebar 6°, sandaran 12°', params: { jenis: 'kursi', lebar: 44, dalam: 42, tinggiDudukan: 45, sandaran: true, tinggiSandaran: 80, miringSandaran: 12, sudutKaki: 6, palangKaki: true, pipa: '20' } },
     { id: 'bangku', name: 'Bangku panjang', desc: '120 × 35 cm, tinggi 45 cm', params: { jenis: 'bangku', lebar: 120, dalam: 35, tinggiDudukan: 45, sandaran: false, palangKaki: true, pipa: '30' } },
-    { id: 'bangku-bilah', name: 'Bangku bilah + meja samping', desc: '150 × 40 cm, meja bundar ø40', params: { jenis: 'bangku', lebar: 150, dalam: 40, tinggiDudukan: 45, dudukan: 'bilah', sandaran: false, mejaSamping: true, diameterMeja: 40, tinggiMeja: 60, palangKaki: false, kakiTengah: true, pipa: '30', warna: '#2f4a3a' } },
-    { id: 'bangku-sandar', name: 'Bangku taman bersandaran', desc: '150 × 45 cm, sandaran 12°', params: { jenis: 'bangku', lebar: 150, dalam: 45, tinggiDudukan: 45, sandaran: true, tinggiSandaran: 85, miringSandaran: 12, palangKaki: true, kakiTengah: true, pipa: '30', warna: '#2f4a3a' } },
+    { id: 'bangku-bilah', name: 'Bangku bilah + meja samping', desc: '150 × 40 cm, meja bundar ø40', params: { jenis: 'bangku', lebar: 150, dalam: 40, tinggiDudukan: 45, dudukan: 'bilah', sandaran: false, mejaSamping: true, diameterMeja: 40, tinggiMeja: 60, palangKaki: false, kakiTengah: true, pipa: '30' } },
+    { id: 'bangku-sandar', name: 'Bangku taman bersandaran', desc: '150 × 45 cm, sandaran 12°', params: { jenis: 'bangku', lebar: 150, dalam: 45, tinggiDudukan: 45, sandaran: true, tinggiSandaran: 85, miringSandaran: 12, palangKaki: true, kakiTengah: true, pipa: '30' } },
     {
       id: 'bar',
       name: 'Stool kaki melebar + pijakan',
@@ -91,7 +91,7 @@ export const KURSI: ProductDef = {
       desc: 'tanpa sandaran, kaki tegak',
       params: { jenis: 'stool', sandaran: false, sudutKaki: 0, pijakan: true, pipa: '20' },
       sizes: [
-        { label: 'Counter (meja 90)', desc: 'dudukan 65 cm', params: { lebar: 35, dalam: 35, tinggiDudukan: 65, tinggiPijakan: 23, papan: 'hpl' } },
+        { label: 'Counter (meja 90)', desc: 'dudukan 65 cm', params: { lebar: 35, dalam: 35, tinggiDudukan: 65, tinggiPijakan: 23 } },
         { label: 'Bar (meja 105)', desc: 'dudukan 75 cm', params: { lebar: 35, dalam: 35, tinggiDudukan: 75, tinggiPijakan: 32 } },
         { label: 'Stool pendek', desc: 'dudukan 45 cm', params: { lebar: 32, dalam: 32, tinggiDudukan: 45, pijakan: false } },
       ],

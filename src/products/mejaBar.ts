@@ -58,8 +58,8 @@ export const MEJA_BAR: ProductDef = {
       desc: 'rangka terbuka, rak bawah, untuk dapur / prep',
       params: { mejaTamu: false, panelDepan: false, pijakanKaki: false, overhang: 0 },
       sizes: [
-        { label: 'Prep station', desc: '150 × 60 × 90, 2 rak', params: { panjang: 150, dalam: 60, tinggi: 90, rakBawah: 2, papan: 'hpl' } },
-        { label: 'Meja saji prasmanan', desc: '200 × 60 × 85, 1 rak', params: { panjang: 200, dalam: 60, tinggi: 85, rakBawah: 1, papan: 'hpl' } },
+        { label: 'Prep station', desc: '150 × 60 × 90, 2 rak', params: { panjang: 150, dalam: 60, tinggi: 90, rakBawah: 2 } },
+        { label: 'Meja saji prasmanan', desc: '200 × 60 × 85, 1 rak', params: { panjang: 200, dalam: 60, tinggi: 85, rakBawah: 1 } },
       ],
     },
   ],

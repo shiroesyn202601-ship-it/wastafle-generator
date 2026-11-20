@@ -34,7 +34,7 @@ export const MEJA_DINDING: ProductDef = {
     },
     ...materialParams(true),
   ],
-  defaults: { panjang: 80, dalam: 40, tinggi: 75, lipat: true, jumlahEngsel: 'siku', pipa: '20', papan: 'hpl', warna: '#e9e7e1' },
+  defaults: { panjang: 80, dalam: 40, tinggi: 75, lipat: true, jumlahEngsel: 'siku', pipa: '20', papan: 'kayu', warna: '#1f2226' },
   presets: [
     {
       id: 'lipat',
@@ -42,9 +42,9 @@ export const MEJA_DINDING: ProductDef = {
       desc: 'rel tembok + daun meja dilipat turun',
       params: { lipat: true },
       sizes: [
-        { label: 'Makan 1–2 orang', desc: '80 × 40 cm, tinggi 75', params: { panjang: 80, dalam: 40, tinggi: 75, papan: 'hpl', warna: '#e9e7e1' } },
-        { label: 'Bar dinding', desc: '120 × 35 cm, tinggi 105', params: { panjang: 120, dalam: 35, tinggi: 105, papan: 'kayu', warna: '#1f2226' } },
-        { label: 'Kerja', desc: '100 × 50 cm, tinggi 75', params: { panjang: 100, dalam: 50, tinggi: 75, papan: 'multiplek', warna: '#e9e7e1' } },
+        { label: 'Makan 1–2 orang', desc: '80 × 40 cm, tinggi 75', params: { panjang: 80, dalam: 40, tinggi: 75 } },
+        { label: 'Bar dinding', desc: '120 × 35 cm, tinggi 105', params: { panjang: 120, dalam: 35, tinggi: 105 } },
+        { label: 'Kerja', desc: '100 × 50 cm, tinggi 75', params: { panjang: 100, dalam: 50, tinggi: 75 } },
       ],
     },
     {
@@ -53,8 +53,8 @@ export const MEJA_DINDING: ProductDef = {
       desc: 'rel tembok, daun tidak dilipat',
       params: { lipat: false },
       sizes: [
-        { label: 'Bar menghadap tembok', desc: '150 × 35 cm, tinggi 105', params: { panjang: 150, dalam: 35, tinggi: 105, papan: 'kayu', warna: '#1f2226' } },
-        { label: 'Meja kerja dinding', desc: '120 × 50 cm, tinggi 75', params: { panjang: 120, dalam: 50, tinggi: 75, papan: 'hpl' } },
+        { label: 'Bar menghadap tembok', desc: '150 × 35 cm, tinggi 105', params: { panjang: 150, dalam: 35, tinggi: 105 } },
+        { label: 'Meja kerja dinding', desc: '120 × 50 cm, tinggi 75', params: { panjang: 120, dalam: 50, tinggi: 75 } },
       ],
     },
   ],

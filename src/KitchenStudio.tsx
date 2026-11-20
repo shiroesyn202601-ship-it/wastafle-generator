@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { KitchenConfig, DEFAULT_KITCHEN_CONFIG, KitchenPreset } from './types/kitchen';
 import { ThreeKitchenScene } from './components/ThreeKitchenScene';
 import { BlueprintView2D } from './components/BlueprintView2D';
-import { BillOfMaterials } from './components/BillOfMaterials';
 import { DimensionControls } from './components/DimensionControls';
 import { ApplianceControls } from './components/ApplianceControls';
 import { MaterialControls } from './components/MaterialControls';
@@ -15,7 +14,6 @@ import { DriveFile } from './utils/googleDrive';
 import {
   Box,
   Layers,
-  Calculator,
   Sliders,
   Flame,
   Palette,
@@ -34,7 +32,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 
-type ViewMode = '3d' | 'frame' | 'blueprint' | 'rab';
+type ViewMode = '3d' | 'frame' | 'blueprint';
 type SidebarTab = 'dimensions' | 'appliances' | 'materials';
 
 const LS_CONFIG = 'kitchencraft_config';
@@ -62,10 +60,9 @@ const safeSet = (key: string, value: string | null) => {
 };
 
 const VIEW_TABS: { id: ViewMode; label: string; short: string; icon: React.ReactNode }[] = [
-  { id: '3d', label: 'Lihat 3D', short: '3D', icon: <Box className="w-4 h-4 text-amber-400" /> },
-  { id: 'frame', label: 'Mode Ahli (rangka)', short: 'Ahli', icon: <Grid3x3 className="w-4 h-4 text-orange-400" /> },
-  { id: 'blueprint', label: 'Gambar kerja', short: 'Gambar', icon: <Layers className="w-4 h-4 text-emerald-400" /> },
-  { id: 'rab', label: 'Biaya & bahan', short: 'Biaya', icon: <Calculator className="w-4 h-4 text-purple-400" /> },
+  { id: 'frame', label: '2D', short: '2D', icon: <Grid3x3 className="w-4 h-4 text-orange-400" /> },
+  { id: '3d', label: '3D', short: '3D', icon: <Box className="w-4 h-4 text-amber-400" /> },
+  { id: 'blueprint', label: 'Potongan besi', short: 'Potongan', icon: <Layers className="w-4 h-4 text-emerald-400" /> },
 ];
 
 const SIDEBAR_TABS: { id: SidebarTab; label: string; title: string; icon: React.ReactNode }[] = [
@@ -430,16 +427,11 @@ export function KitchenStudio({ onHome }: { onHome: () => void }) {
               <BlueprintView2D config={config} onChange={updateConfig} />
             </div>
           )}
-          {viewMode === 'rab' && (
-            <div className="w-full h-full overflow-hidden">
-              <BillOfMaterials config={config} onOpenDocModal={() => setIsDocModalOpen(true)} />
-            </div>
-          )}
         </main>
       </div>
 
       {/* NAVIGASI BAWAH (HP & tablet) */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 h-14 grid grid-cols-5 bg-[#0f1218]/95 backdrop-blur-xl border-t border-white/[0.08] select-none">
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 h-14 grid grid-cols-4 bg-[#0f1218]/95 backdrop-blur-xl border-t border-white/[0.08] select-none">
         <button
           onClick={() => (isPanelOpen ? setIsPanelOpen(false) : openPanel())}
           className={`flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium cursor-pointer ${isPanelOpen ? 'text-amber-300' : 'text-neutral-400'}`}

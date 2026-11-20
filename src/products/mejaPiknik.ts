@@ -26,7 +26,7 @@ export const MEJA_PIKNIK: ProductDef = {
     { key: 'jarakBangku', label: 'Jarak bangku ke tepi meja', type: 'number', unit: 'cm', min: 5, max: 35, step: 1, help: 'Jarak mendatar antara tepi bangku dan tepi meja. Makin kecil makin mudah menjangkau meja, tapi kaki lebih sulit masuk.', marks: [{ value: 15, label: 'umum' }] },
     ...materialParams(true),
   ],
-  defaults: { panjang: 180, lebarMeja: 70, tinggiMeja: 75, tinggiBangku: 45, lebarBangku: 30, jarakBangku: 15, pipa: '40', papan: 'kayu', warna: '#5f7d6e' },
+  defaults: { panjang: 180, lebarMeja: 70, tinggiMeja: 75, tinggiBangku: 45, lebarBangku: 30, jarakBangku: 15, pipa: '40', papan: 'kayu', warna: '#1f2226' },
   presets: [
     {
       id: 'rangka-a',
@@ -34,9 +34,9 @@ export const MEJA_PIKNIK: ProductDef = {
       desc: 'kaki miring bentuk A di tiap ujung',
       params: {},
       sizes: [
-        { label: '4 orang', desc: '150 cm', params: { panjang: 150, lebarMeja: 70, warna: '#5f7d6e' } },
-        { label: '6 orang', desc: '200 cm', params: { panjang: 200, lebarMeja: 75, warna: '#5f7d6e' } },
-        { label: '8 orang (rangka tengah)', desc: '240 cm', params: { panjang: 240, lebarMeja: 80, warna: '#1f2226' } },
+        { label: '4 orang', desc: '150 cm', params: { panjang: 150, lebarMeja: 70 } },
+        { label: '6 orang', desc: '200 cm', params: { panjang: 200, lebarMeja: 75 } },
+        { label: '8 orang (rangka tengah)', desc: '240 cm', params: { panjang: 240, lebarMeja: 80 } },
       ],
     },
   ],

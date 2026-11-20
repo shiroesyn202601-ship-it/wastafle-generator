@@ -80,7 +80,7 @@ export const PAINT_OPTIONS = [
 
 /** Pilihan bahan yang sama untuk semua produk */
 export const materialParams = (withBoard: boolean): ParamDef[] => [
-  { key: 'pipa', label: 'Ukuran pipa kaki / tiang', type: 'choice', options: PIPE_OPTIONS, help: 'Makin besar makin kuat, makin mahal.' },
+  { key: 'pipa', label: 'Ukuran pipa kaki / tiang', type: 'choice', options: PIPE_OPTIONS, help: 'Makin besar makin kuat dan makin berat.' },
   ...(withBoard
     ? [{ key: 'papan', label: 'Bahan papan', type: 'choice' as const, options: BOARD_OPTIONS }]
     : []),
@@ -137,7 +137,7 @@ export function toFrameHost(design: FurnitureDesign, build: ProductBuild): Kitch
   };
 }
 
-/** Ambil kembali bagian rangka dari editor (Mode Ahli) ke desain produk */
+/** Ambil kembali bagian rangka dari editor (tampilan 2D) ke desain produk */
 export function frameFromHost(prev: FrameConfig, updated: FrameConfig): FrameConfig {
   const { autoMembers, ...rest } = updated as FrameConfig & { autoMembers?: FrameMember[] };
   void autoMembers;

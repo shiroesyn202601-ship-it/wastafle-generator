@@ -24,7 +24,7 @@ export const PAPAN_MENU: ProductDef = {
     { key: 'duaSisi', label: 'Papan di dua sisi', type: 'toggle', help: 'Menu terlihat dari dua arah jalan.' },
     ...materialParams(true),
   ],
-  defaults: { lebar: 60, tinggiMuka: 90, tinggi: 105, sudut: 15, duaSisi: true, pipa: '20', papan: 'multiplek', warna: '#1f2226' },
+  defaults: { lebar: 60, tinggiMuka: 90, tinggi: 105, sudut: 15, duaSisi: true, pipa: '20', papan: 'kayu', warna: '#1f2226' },
   presets: [
     {
       id: 'a-frame',

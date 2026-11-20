@@ -4,7 +4,6 @@ import { KitchenStudio } from './KitchenStudio';
 import { HomeScreen } from './components/studio/HomeScreen';
 import { ProductStudio } from './components/studio/ProductStudio';
 import { FurnitureDesign, PRODUCTS, ProductId, newDesign, normalizeDesign } from './products';
-import { Role } from './components/studio/MemberSheet';
 import { designFromShare } from './products/share';
 
 type Route = 'home' | 'kitchen' | 'product';
@@ -61,11 +60,6 @@ export default function App() {
     return r === 'kitchen' || r === 'product' ? r : 'home';
   });
   const [toast, setToast] = useState<string | null>(null);
-  const [role, setRoleState] = useState<Role>(() => (lsGet('studiorangka_role') === 'tukang' ? 'tukang' : 'pemesan'));
-  const setRole = (r: Role) => {
-    setRoleState(r);
-    lsSet('studiorangka_role', r);
-  };
 
   useEffect(() => lsSet(LS_ROUTE, route), [route]);
 
@@ -136,9 +130,9 @@ export default function App() {
 
   return (
     <>
-      {route === 'home' && <HomeScreen onPick={openProduct} onKitchen={openKitchen} resume={resume} onImport={handleImport} role={role} onRole={setRole} />}
+      {route === 'home' && <HomeScreen onPick={openProduct} onKitchen={openKitchen} resume={resume} onImport={handleImport} />}
       {route === 'product' && design && (
-        <ProductStudio design={design} onChange={updateDesign} onHome={() => setRoute('home')} onToast={showToast} role={role} />
+        <ProductStudio design={design} onChange={updateDesign} onHome={() => setRoute('home')} onToast={showToast} />
       )}
       {route === 'kitchen' && <KitchenStudio onHome={() => setRoute('home')} />}
 

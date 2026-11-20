@@ -398,7 +398,7 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
       <div ref={mountRef} className="absolute inset-0 cursor-grab active:cursor-grabbing touch-none" />
       {glError && (
         <div className="absolute inset-0 flex items-center justify-center p-6 bg-[#eeece7] text-center text-sm text-stone-600">
-          Tampilan 3D tidak bisa dimuat di browser ini. Pengaturan, Mode Ahli dan Hasil tetap bisa dipakai.
+          Tampilan 3D tidak bisa dimuat di browser ini. Pengaturan, tampilan 2D dan potongan besi tetap bisa dipakai.
         </div>
       )}
       <div className="absolute top-2 left-2 flex gap-1 p-1 rounded-xl bg-white/85 backdrop-blur border border-stone-300 shadow-sm">

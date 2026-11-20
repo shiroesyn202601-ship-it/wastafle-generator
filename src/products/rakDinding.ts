@@ -66,7 +66,7 @@ export const RAK_DINDING: ProductDef = {
       desc: 'tiang tegak dari tingkat bawah sampai atas',
       params: { model: 'tiang' },
       sizes: [
-        { label: 'Display merchandise', desc: '120 × 30 cm, 4 tingkat', params: { panjang: 120, dalam: 30, tingkat: 4, jarak: 35, tinggiMulai: 60, papan: 'kayu' } },
+        { label: 'Display merchandise', desc: '120 × 30 cm, 4 tingkat', params: { panjang: 120, dalam: 30, tingkat: 4, jarak: 35, tinggiMulai: 60 } },
         { label: 'Backbar penuh', desc: '180 × 28 cm, 4 tingkat, bibir', params: { panjang: 180, dalam: 28, tingkat: 4, jarak: 38, tinggiMulai: 100, bibir: true } },
       ],
     },
@@ -77,7 +77,7 @@ export const RAK_DINDING: ProductDef = {
       params: { model: 'gantung' },
       sizes: [
         { label: 'Atas meja bar', desc: '150 × 30 cm, 2 tingkat, gantungan gelas', params: { panjang: 150, dalam: 30, tingkat: 2, jarak: 30, tinggiPlafon: 280, gantunganGelas: true } },
-        { label: 'Rak tanaman gantung', desc: '100 × 25 cm, 1 tingkat', params: { panjang: 100, dalam: 25, tingkat: 1, jarak: 30, tinggiPlafon: 280, gantunganGelas: false, warna: '#2f4a3a' } },
+        { label: 'Rak tanaman gantung', desc: '100 × 25 cm, 1 tingkat', params: { panjang: 100, dalam: 25, tingkat: 1, jarak: 30, tinggiPlafon: 280, gantunganGelas: false } },
       ],
     },
   ],
