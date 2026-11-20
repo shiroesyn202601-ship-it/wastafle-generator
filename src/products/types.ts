@@ -15,7 +15,16 @@ export type ProductId =
   | 'papan-menu'
   | 'pembatas'
   | 'rak-baju'
-  | 'dipan';
+  | 'dipan'
+  | 'rak-tv'
+  | 'rak-partisi'
+  | 'gantungan-berdiri'
+  | 'rak-gondola'
+  | 'gerobak-lapak'
+  | 'rak-sepeda'
+  | 'jemuran'
+  | 'rak-kamar-mandi'
+  | 'rak-dapur';
 export type ParamValue = number | boolean | string;
 export type Params = Record<string, ParamValue>;
 

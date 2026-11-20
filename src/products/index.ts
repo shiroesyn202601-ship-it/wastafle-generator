@@ -12,6 +12,15 @@ import { PAPAN_MENU } from './papanMenu';
 import { PEMBATAS } from './pembatas';
 import { RAK_BAJU } from './rakBaju';
 import { DIPAN } from './dipan';
+import { RAK_TV } from './rakTv';
+import { RAK_PARTISI } from './rakPartisi';
+import { GANTUNGAN_BERDIRI } from './gantunganBerdiri';
+import { RAK_GONDOLA } from './rakGondola';
+import { GEROBAK_LAPAK } from './gerobakLapak';
+import { RAK_SEPEDA } from './rakSepeda';
+import { JEMURAN } from './jemuran';
+import { RAK_KAMAR_MANDI } from './rakKamarMandi';
+import { RAK_DAPUR } from './rakDapur';
 import { FurnitureDesign, Params, ProductDef, ProductId } from './types';
 import { DEFAULT_KITCHEN_CONFIG } from '../types/kitchen';
 
@@ -30,8 +39,17 @@ export const PRODUCTS: Record<ProductId, ProductDef> = {
   pembatas: PEMBATAS,
   'rak-baju': RAK_BAJU,
   dipan: DIPAN,
+  'rak-tv': RAK_TV,
+  'rak-partisi': RAK_PARTISI,
+  'gantungan-berdiri': GANTUNGAN_BERDIRI,
+  'rak-gondola': RAK_GONDOLA,
+  'gerobak-lapak': GEROBAK_LAPAK,
+  'rak-sepeda': RAK_SEPEDA,
+  'jemuran': JEMURAN,
+  'rak-kamar-mandi': RAK_KAMAR_MANDI,
+  'rak-dapur': RAK_DAPUR,
 };
-export const PRODUCT_LIST: ProductDef[] = [MEJA, KURSI, RAK, RAK_TANAMAN, TROLI, MEJA_PIKNIK, MEJA_DINDING, MEJA_BAR, BOOTH, RAK_DINDING, PAPAN_MENU, PEMBATAS, RAK_BAJU, DIPAN];
+export const PRODUCT_LIST: ProductDef[] = [MEJA, KURSI, RAK, RAK_TANAMAN, TROLI, MEJA_PIKNIK, MEJA_DINDING, MEJA_BAR, BOOTH, RAK_DINDING, PAPAN_MENU, PEMBATAS, RAK_BAJU, DIPAN, RAK_TV, RAK_PARTISI, GANTUNGAN_BERDIRI, RAK_GONDOLA, GEROBAK_LAPAK, RAK_SEPEDA, JEMURAN, RAK_KAMAR_MANDI, RAK_DAPUR];
 
 /** Kategori di Beranda: produk atau jalan pintas ke contoh jadi tertentu */
 export interface CategoryItem {
@@ -102,6 +120,39 @@ export const CATEGORIES: { title: string; items: CategoryItem[] }[] = [
       { product: 'rak', group: 'rak-sepatu', title: 'Rak sepatu', subtitle: 'miring · bangku + gantungan' },
       { product: 'rak-tanaman', title: 'Rak tanaman', subtitle: 'tangga · piramida · menara' },
       { product: 'troli', title: 'Troli', subtitle: 'saji · pegboard · angkong' },
+    ],
+  },
+  {
+    title: 'Ruang tamu & sekat',
+    items: [
+      { product: 'rak-tv', title: 'Rak TV / bufet', subtitle: 'kubus · menara · bingkai · standing' },
+      { product: 'rak-tv', preset: 'standing', title: 'Standing TV beroda', subtitle: 'ruang rapat · kelas · lobi' },
+      { product: 'rak-partisi', title: 'Rak partisi / sekat ruangan', subtitle: 'dua muka · bilah · sampai plafon' },
+      { product: 'rak-partisi', group: 'partisi-plafon', title: 'Partisi sampai plafon', subtitle: 'tiang jepit lantai–plafon' },
+      { product: 'gantungan-berdiri', title: 'Gantungan mantel berdiri', subtitle: 'tiang · tripod · pohon · hall tree' },
+      { product: 'gantungan-berdiri', preset: 'tiang-helm', title: 'Rak helm berdiri', subtitle: 'kos · kantor · parkiran' },
+    ],
+  },
+  {
+    title: 'Dapur, kamar mandi & cuci',
+    items: [
+      { product: 'rak-dapur', title: 'Rak dapur', subtitle: 'piring · microwave · bumbu · galon' },
+      { product: 'rak-dapur', group: 'rak-galon', title: 'Rak galon & dispenser', subtitle: 'galon tidur · kaki X' },
+      { product: 'rak-kamar-mandi', title: 'Rak kamar mandi & laundry', subtitle: 'atas kloset · mesin cuci · sudut' },
+      { product: 'rak-kamar-mandi', preset: 'bingkai-samping', title: 'Rak atas mesin cuci', subtitle: 'kolong lega · rak deterjen' },
+      { product: 'jemuran', title: 'Jemuran', subtitle: 'berdiri · lipat · dinding · plafon' },
+      { product: 'jemuran', group: 'rak-handuk', title: 'Rak handuk berdiri', subtitle: 'kamar mandi · kamar' },
+    ],
+  },
+  {
+    title: 'Toko, lapak & garasi',
+    items: [
+      { product: 'rak-gondola', title: 'Rak gondola / display toko', subtitle: 'minimarket · warung · apotek' },
+      { product: 'rak-gondola', group: 'rak-kasir', title: 'Rak kasir', subtitle: 'rak rokok · rak putar permen' },
+      { product: 'gerobak-lapak', title: 'Gerobak & lapak', subtitle: 'angkringan · bazar · pasar · tenda' },
+      { product: 'gerobak-lapak', preset: 'angkringan', title: 'Gerobak angkringan', subtitle: '2 roda besar · atap · rak bawah' },
+      { product: 'gerobak-lapak', group: 'warung-tenda', title: 'Tenda / kanopi warung', subtitle: 'pelana · miring · kantilever' },
+      { product: 'rak-sepeda', title: 'Rak sepeda & parkir', subtitle: 'lantai · dinding · plafon garasi' },
     ],
   },
 ];
