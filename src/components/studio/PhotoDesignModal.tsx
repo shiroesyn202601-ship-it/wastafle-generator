@@ -1,9 +1,9 @@
 import React, { useRef, useState } from 'react';
-import { ArrowRight, Camera, CheckCircle2, ImagePlus, Loader2, RefreshCw, Settings, Sparkles, X, XCircle } from 'lucide-react';
+import { ArrowRight, Camera, CheckCircle2, ImagePlus, Loader2, RefreshCw, Sparkles, X, XCircle } from 'lucide-react';
 import { FurnitureDesign, PRODUCTS } from '../../products';
 import { LogLine, PhotoResult, designFromPhoto, prepareImage } from '../../ai/photoDesign';
 import { ImageData } from '../../ai/providers';
-import { AiSettings, DEFAULT_AI_SETTINGS, hasAnyKey, loadAiSettings, saveAiSettings } from '../../ai/settings';
+import { hasAnyKey, loadAiSettings } from '../../ai/settings';
 
 interface Props {
   onClose: () => void;
@@ -14,19 +14,8 @@ const lines = (s: string) => s.split(/[\n,]+/).map((x) => x.trim()).filter(Boole
 
 /** Upload foto furnitur → AI memilih produk + mengisi ukuran → buka di studio */
 export const PhotoDesignModal: React.FC<Props> = ({ onClose, onOpen }) => {
-  const [settings, setSettings] = useState<AiSettings>(loadAiSettings);
-  const [showSettings, setShowSettings] = useState(() => !hasAnyKey(loadAiSettings()));
-  const [draft, setDraft] = useState(() => {
-    const s = loadAiSettings();
-    return {
-      gemini: s.geminiKeys.join('\n'),
-      groq: s.groqKey,
-      openrouter: s.openrouterKey,
-      geminiModels: s.geminiModels.join(', '),
-      groqModels: s.groqModels.join(', '),
-      openrouterModels: s.openrouterModels.join(', '),
-    };
-  });
+  const [settings] = useState(loadAiSettings);
+  const ready = hasAnyKey(settings);
   const [image, setImage] = useState<(ImageData & { preview: string }) | null>(null);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -35,20 +24,6 @@ export const PhotoDesignModal: React.FC<Props> = ({ onClose, onOpen }) => {
   const [error, setError] = useState<string | null>(null);
   const [tried, setTried] = useState<string[]>([]); // otak yang hasilnya sudah ditolak pengguna
   const fileRef = useRef<HTMLInputElement>(null);
-
-  const saveSettings = () => {
-    const s: AiSettings = {
-      geminiKeys: Array.from(new Set(lines(draft.gemini))),
-      groqKey: draft.groq.trim(),
-      openrouterKey: draft.openrouter.trim(),
-      geminiModels: lines(draft.geminiModels).length ? lines(draft.geminiModels) : DEFAULT_AI_SETTINGS.geminiModels,
-      groqModels: lines(draft.groqModels).length ? lines(draft.groqModels) : DEFAULT_AI_SETTINGS.groqModels,
-      openrouterModels: lines(draft.openrouterModels).length ? lines(draft.openrouterModels) : DEFAULT_AI_SETTINGS.openrouterModels,
-    };
-    saveAiSettings(s);
-    setSettings(s);
-    setShowSettings(false);
-  };
 
   const pickFile = async (file?: File) => {
     if (!file) return;
@@ -65,10 +40,7 @@ export const PhotoDesignModal: React.FC<Props> = ({ onClose, onOpen }) => {
 
   const run = async (avoid: string[]) => {
     if (!image) return;
-    if (!hasAnyKey(settings)) {
-      setShowSettings(true);
-      return;
-    }
+    if (!ready) return;
     setBusy(true);
     setError(null);
     setResult(null);
@@ -103,73 +75,23 @@ export const PhotoDesignModal: React.FC<Props> = ({ onClose, onOpen }) => {
             <h2 id="photo-title" className="font-bold leading-tight">Desain dari foto</h2>
             <p className="text-xs text-stone-500">Upload foto furnitur, AI membuatkan desain yang mirip</p>
           </div>
-          <button onClick={() => setShowSettings((v) => !v)} className={`p-2 rounded-lg cursor-pointer ${showSettings ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'}`} aria-label="Pengaturan AI" title="Pengaturan AI">
-            <Settings className="w-4 h-4" />
-          </button>
           <button onClick={onClose} className="p-2 rounded-lg text-stone-600 hover:bg-stone-100 cursor-pointer" aria-label="Tutup">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="p-4 space-y-4">
-          {showSettings && (
-            <section className="p-4 rounded-xl bg-white border border-stone-200 space-y-3">
-              <div>
-                <h3 className="font-bold">Pengaturan AI (gratis)</h3>
-                <p className="text-xs text-stone-500">Key disimpan hanya di browser ini dan dikirim langsung ke penyedia AI-nya.</p>
-              </div>
-              <label className="block space-y-1">
-                <span className="text-sm font-semibold">Key Gemini — satu per baris</span>
-                <textarea value={draft.gemini} onChange={(e) => setDraft({ ...draft, gemini: e.target.value })} rows={3} spellCheck={false} placeholder={'AIza...\nAIza...'} className={`${input} font-mono text-xs`} />
-                <span className="block text-xs text-stone-500">
-                  Buat gratis di{' '}
-                  <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-sky-700 underline">aistudio.google.com</a>. Bisa beberapa key (akun Google berbeda): kalau limit satu key habis, otomatis pakai key berikutnya.
-                </span>
-              </label>
-              <label className="block space-y-1">
-                <span className="text-sm font-semibold">Key Groq <span className="font-normal text-stone-500">(cadangan, opsional)</span></span>
-                <input type="password" value={draft.groq} onChange={(e) => setDraft({ ...draft, groq: e.target.value })} spellCheck={false} placeholder="gsk_..." className={`${input} font-mono text-xs`} />
-                <span className="block text-xs text-stone-500">
-                  Gratis di <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" className="text-sky-700 underline">console.groq.com</a>
-                </span>
-              </label>
-              <label className="block space-y-1">
-                <span className="text-sm font-semibold">Key OpenRouter <span className="font-normal text-stone-500">(cadangan, opsional)</span></span>
-                <input type="password" value={draft.openrouter} onChange={(e) => setDraft({ ...draft, openrouter: e.target.value })} spellCheck={false} placeholder="sk-or-..." className={`${input} font-mono text-xs`} />
-                <span className="block text-xs text-stone-500">
-                  Gratis di <a href="https://openrouter.ai/settings/keys" target="_blank" rel="noreferrer" className="text-sky-700 underline">openrouter.ai</a> (model berakhiran :free)
-                </span>
-              </label>
-              <details className="text-sm">
-                <summary className="cursor-pointer font-semibold text-stone-600">Model (lanjutan)</summary>
-                <p className="text-xs text-stone-500 mt-1">Dicoba berurutan, pisahkan dengan koma. Ganti bila penyedia mengganti nama modelnya.</p>
-                <div className="mt-2 space-y-2">
-                  {(['geminiModels', 'groqModels', 'openrouterModels'] as const).map((k) => (
-                    <label key={k} className="block space-y-1">
-                      <span className="text-xs font-semibold">{k === 'geminiModels' ? 'Gemini' : k === 'groqModels' ? 'Groq' : 'OpenRouter'}</span>
-                      <input value={draft[k]} onChange={(e) => setDraft({ ...draft, [k]: e.target.value })} spellCheck={false} className={`${input} font-mono text-xs`} />
-                    </label>
-                  ))}
-                </div>
-              </details>
-              <div className="flex justify-end gap-2">
-                {hasAnyKey(settings) && (
-                  <button onClick={() => setShowSettings(false)} className="px-3 py-2 rounded-lg text-sm font-semibold text-stone-600 hover:bg-stone-100 cursor-pointer">
-                    Batal
-                  </button>
-                )}
-                <button onClick={saveSettings} disabled={!lines(draft.gemini).length && !draft.groq.trim() && !draft.openrouter.trim()} className="px-4 py-2 rounded-lg bg-stone-900 text-white text-sm font-semibold disabled:opacity-40 cursor-pointer">
-                  Simpan
-                </button>
-              </div>
+          {ready ? (
+            <p className="text-xs text-stone-500">AI siap: {keySummary}.</p>
+          ) : (
+            <section className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-900 space-y-1.5">
+              <p className="font-bold">Key AI belum diatur</p>
+              <p>
+                Isi <code className="px-1 rounded bg-white">VITE_GEMINI_KEYS</code> (boleh beberapa, pisahkan koma) di file <code className="px-1 rounded bg-white">.env</code>, lalu jalankan ulang aplikasi.
+                Contohnya ada di <code className="px-1 rounded bg-white">.env.example</code>. Key gratis dari{' '}
+                <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="underline">aistudio.google.com</a>.
+              </p>
             </section>
-          )}
-
-          {!showSettings && keySummary && (
-            <p className="text-xs text-stone-500">
-              AI siap: {keySummary}.{' '}
-              <button onClick={() => setShowSettings(true)} className="text-sky-700 underline cursor-pointer">Ubah</button>
-            </p>
           )}
 
           {/* Foto */}
@@ -199,7 +121,7 @@ export const PhotoDesignModal: React.FC<Props> = ({ onClose, onOpen }) => {
             <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="mis. ukuran asli 120 × 60 × 75 cm, kaki pakai roda" className={input} />
           </label>
 
-          <button onClick={() => { setTried([]); run([]); }} disabled={!image || busy} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold disabled:opacity-40 cursor-pointer">
+          <button onClick={() => { setTried([]); run([]); }} disabled={!image || busy || !ready} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold disabled:opacity-40 cursor-pointer">
             {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
             {busy ? 'AI sedang melihat foto…' : result ? 'Buat ulang' : 'Buat desain dari foto'}
           </button>
