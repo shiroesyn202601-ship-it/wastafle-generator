@@ -452,3 +452,353 @@ Total: **9 kategori, 84 template**. Semua bawaan rangka hitam #1f2226 + papan ka
 ## 6. Duplikat di katalog lama
 
 Ditangani sesi lain dalam commit c293b4e (rework semua produk lama: sekarang 118 template unik, masing-masing dengan signature). Hasil recheck: tidak ada template baru yang kembar dengan template lama. Kalau ada yang kembar, template baru yang dihapus.
+
+
+---
+
+# Putaran 2 (2026-11-20)
+
+## 1. Kategori baru
+
+| Produk | Nama | Template |
+|---|---|---|
+| alat-gym | Alat & rak gym | 11 |
+| kandang | Kandang hewan | 10 |
+| alat-bermain | Alat bermain anak | 10 |
+| dudukan-toren | Dudukan toren & tangki air | 3 |
+| kursi-tunggu | Kursi tunggu deret | 13 |
+| podium | Podium & mimbar | 8 |
+| stand-motor | Paddock & stand motor | 9 |
+
+Total putaran 2: **7 kategori, 64 template**. Dudukan toren hanya tersisa 3 template setelah recheck, karena bentuk tower kaki 4 dan kaki ganda kembar dengan meja akuarium.
+
+## 2. Template & bentuk rangka
+
+### Alat & rak gym (alat-gym)
+
+| id | Nama | Bentuk rangka |
+|---|---|---|
+| half-rack | Half rack | A 2 tiang tegak di tapak memanjang / B tegak + topang miring ke belakang / C diagonal belakang + palang ikat / D tanpa papan / E diam / F bebas / G J-hook + lengan pengaman kantilever ke depan + pull-up atas |
+| power-tower | Power tower (pull-up + dip) | A 2 tiang di tapak memanjang / B tegak + topang miring depan & belakang / C diagonal ganda + tapak H / D busa sandaran punggung tegak + lengan busa / E diam / F bebas / G pull-up lebar + pegangan dip + sandaran |
+| squat-stand | Squat stand sepasang | A sepasang tiang tunggal lepas / B tegak / C ring tapak persegi + 4 siku miring / D tanpa papan / E lepas/diatur jaraknya / F bebas / G J-hook + pasak plat |
+| rack-lipat | Rack lipat dinding | A tempel dinding + menapak lantai / B tegak / C bingkai samping (tiang tembok + tiang depan + palang atas/bawah + miring) / D tanpa papan / E lipat (engsel di tembok) / F dibaut / G J-hook + pull-up lepas |
+| pullup-dinding | Pull-up dinding + dip | A tempel dinding tanpa kaki lantai / B lengan menjorok / C topang miring / D tanpa papan / E pegangan dip berengsel lipat naik / F dibaut / G palang pull-up di ujung lengan + dip |
+| dip-paralel | Dip paralel sepasang | A sepasang bingkai trapesium lepas / B kaki miring melebar ke bawah / C palang tengah + tapak H / D tanpa papan / E lepas / F bebas / G pegangan memanjang di puncak |
+| bench-datar | Bench datar | A balok tengah tunggal 50x100 / B kaki T (ujung kaki) + kaki V di tapak lebar (ujung kepala) / C tanpa / D jok datar (papan + busa) / E diam / F bebas / G roller penahan kaki rendah |
+| bench-incline | Bench incline (atur sudut) | A balok tengah / B kaki T + kaki V / C tanpa / D jok duduk + sandaran papan miring berengsel 0-80 derajat / E engsel / F bebas / G batang penyangga sudut + roller |
+| bench-situp | Bench sit-up miring | A balok tengah MIRING tetap / B miring satu arah (kepala rendah, kaki tinggi) / C tanpa / D jok miring tetap / E diam / F bebas / G roller penahan kaki di atas ujung tinggi |
+| bench-press | Bench press + tiang | A balok tengah menyatu dengan 2 tiang berlubang / B kaki T + tapak H di kepala / C palang ikat atas tiang / D jok datar / E diam / F bebas / G J-hook + lengan pengaman + roller + pasak |
+| troli-plat | Troli plat beroda | A 2 tiang tengah di tapak persegi beroda / B tegak / C ring bawah + palang tengah / D tanpa papan / E roda / F bebas / G pasak plat bertingkat dua muka + pegangan dorong |
+
+### Kandang hewan (kandang)
+
+| id | Nama | Bentuk rangka |
+|---|---|---|
+| kelinci-panggung | Kandang kelinci panggung | A 4 kaki miring melebar terpisah dari tiang kandang / B melebar / C palang keliling di kaki / D 1 bidang, lantai kawat + baki tarik / E diam / F bebas / G atap miring satu arah berpapan. Model 'panggung'. |
+| baterai-ayam | Baterai ayam kaki A (tangga) | A kaki A di kedua ujung / B miring / C siku dari kaki A ke tiap baris + palang puncak/bawah / D bertangga dua muka, sel bersekat / E diam / F bebas / G lantai kawat miring ke luar + talang telur plat + bibir, pintu engsel tiap sel. Model 'baterai'. |
+| ayam-ark | Kandang ayam rangka A umbaran | A rel lantai (sled) keliling, diteruskan jadi pegangan angkat / B kasau miring bertemu di bubungan / C palang tengah lereng / D tanpa lantai (umbaran), loteng papan di bentang kanan / E bisa diangkat pindah / F bebas / G prisma segitiga berjeruji di kedua lereng & ujung, pintu di ujung segitiga (tanpa engsel 3D). Model 'ark'. |
+| tembok-siku | Kandang tempel tembok | A tempel dinding: tiang tembok + dua siku miring ke tiang depan, tanpa kaki / B - / C rangka lantai & atas / D 1 bidang, lantai kawat + baki / E diam / F dibaut tembok / G jeruji 3 sisi + atap (belakang = tembok), pintu engsel. Model 'tembok'. |
+| sangkar-gantung | Sangkar gantung plafon | A gantung plafon: satu batang dari puncak atap ke plat plafon / B - / C rusuk atap limas 4 sudut / D 1 bidang, lantai kawat + baki / E diam / F di plafon / G atap limas berjeruji memusat, tenggeran, pintu engsel. Model 'gantung'. |
+| sangkar-tiang | Sangkar tiang tunggal | A kaki tunggal: satu tiang 40×40 di kaki silang datar, plat dudukan di pucuk / B tegak / C palang dudukan di atas plat / D 1 bidang / E diam / F bebas / G tenggeran, atap jeruji/papan, pintu engsel. Model 'tiang'. |
+| kambing-panggung | Kandang kambing panggung | A tiang menerus dari tanah ke atap, berderet tiap ±1,6 m / B tegak / C silang X di kolong ujung + penguat miring belakang / D lantai bilah bercelah di kolong tinggi / E diam / F bebas / G atap miring berkasau, tangga naik (ramp) di depan pintu. Model 'ternak-panggung'. |
+| kambing-koloni | Kandang kambing koloni deret | A tiang berplat dibaut lantai di tiap batas sel / B tegak / C rangka bawah & atas per sel / D deret sel bersekat di atas lantai semen (tanpa lantai) / E diam / F dibaut lantai / G jeruji kepala miring di antara palang leher + palung pakan menjulur di depan, pintu engsel tiap sel, atap miring. Model 'koloni'. |
+| anjing-panel | Kandang anjing panel bongkar pasang | A 4 kaki pendek di bawah panel samping / B tegak / C 4 panel dinding berbingkai sendiri (tiang ganda di sudut) + panel atap menumpang / D 1 bidang, lantai jeruji + baki tarik di antara kaki / E bongkar pasang + roda / F bebas / G pintu engsel di panel depan. Model 'anjing'. |
+| umbaran-walkin | Umbaran anjing walk-in | A panel modul berdiri tanpa tiang lepas (tiang ganda di tiap sambungan panel) / B tegak / C rangka bawah/tengah/atas tiap panel, balok atap di tiap sambungan / D tanpa lantai / E bongkar pasang / F bebas / G panel pintu orang (lebar 80, setinggi panel), atap jeruji + papan teduh setengah belakang. Model 'walkin'. |
+
+### Alat bermain anak (alat-bermain)
+
+| id | Nama | Bentuk rangka |
+|---|---|---|
+| piramida | Piramida panjat | A=4 kaki miring dari sudut bertemu satu puncak, B=bersilang ke puncak, C=cincin tapak lantai, D=cincin palang persegi bertingkat mengecil, E=diam, G=pijakan semua muka. Beda dari gantungan:tripod (3 kaki, satu cincin, kait) dan gantungan:menara-4-muka (tiang tegak) di A/D/G. |
+| monkey-a | Monkey bar kaki A | A=rangka A terpancung di dua ujung (berpalang panjat), C=siku miring ke rel, D=tangga mendatar di atas kepala (dua rel + anak tangga), G=pegangan gantung + pijakan. Beda dari rak-baju:rangka-a (satu pipa gantung) di D+G. |
+| busur | Busur panjat | A=dua rel tangga menekuk naik-datar-turun yang sekaligus jadi kaki (busur segi), C=tapak melintang di ujung, D=anak tangga sepanjang busur. Ukuran balita (pikler arch 45 cm) sampai monkey busur 180 cm masuk sizes karena rangkanya sama. |
+| swedia | Tangga Swedia + monkey bar | A=tempel dinding (tangga tegak dibaut tembok) + dua kaki depan, D=tangga tegak + tangga mendatar menjulur dari pucuk, F=dibaut tembok, G=pijakan + pegangan gantung, siku miring di kedua ujung. Bukan tangga bersandar (batasan 4). |
+| perosotan | Perosotan mandiri | A=tangga miring belakang + dua tiang depan, D=panggung kecil + papan luncur miring, G=pagar panggung + pagar luncur + kaki ujung luncur. Tidak ada template lain berpapan luncur. |
+| rumah-panggung | Rumah panggung + perosotan | A=4 tiang menerus sampai atap pelana (kuda-kuda + bubungan), D=lantai panggung tinggi berpagar jeruji + atap, G=tangga belakang + papan luncur depan. Beda dari gerobak-lapak:tenda-pelana (meja jualan, tanpa panggung/luncur) dan dipan:tingkat (dua alas, tanpa atap/luncur) di D+G. |
+| playset | Menara + ayunan + perosotan | A=menara 4 tiang + balok ayunan menjulur ke samping dengan kaki A di ujung (kombinasi), D=panggung berpagar tanpa atap, G=ayunan + perosotan + tangga. Ayunan hanya menumpang di rangka kombinasi (batasan 1); beda dari rumah-panggung di A+G. |
+| jungkit | Jungkat-jungkit | A=poros tengah di dua kaki A pendek bertapak lantai, D=balok tunggal panjang + dua dudukan, E=jungkit berporos, G=pegangan T di kedua ujung. |
+| titian | Titian berpegangan | A=bingkai rel lantai (sled), D=titian rendah di tengah, G=dua pegangan sejajar di tiang (parallel bar anak). Beda dari kursi:bangku (dudukan lebar di 4 kaki) di A+G; balance beam polos tetap dilarang. |
+| komidi | Komidi putar | A=satu poros di plat bundar, D=lantai bundar di atas lengan + cincin segi delapan, E=putar, G=pegangan jari-jari + tiang pegangan. Beda dari meja:bundar (diam, tanpa pegangan) di E+G, dari rak-gondola:rak-putar (nampan 4 muka bertingkat) di D+G. |
+
+### Dudukan toren & tangki air (dudukan-toren)
+
+| id | Nama | Bentuk rangka |
+|---|---|---|
+| tower-3-kaki | Tower toren 3 kaki | A 3 kaki · B melebar ke bawah · C ring segitiga bertingkat + silang X di tiga sisi, balok laba-laba ke tengah · D plat bundar di puncak · E diam · F berdiri bebas · G tangga monyet di satu sisi, pagar segitiga. Sizes: 520 L 2 m, 1000 L 3 m, 520 L 1 m. |
+| atap-miring | Dudukan toren atap miring | A 4 kaki · B beda panjang (belakang pendek) di atas dua rel tapak yang mengikuti kemiringan atap · C ring + X, silang bawah depan + topang samping segitiga · D 1 plat datar · E diam · F dibaut ke kuda-kuda atap · G opsi pagar. Sizes: 520 L atap 20°, 1000 L atap 25°, 2×520 L spandek 15°. |
+| tiang-tunggal | Tower tiang tunggal | A pedestal: satu tiang besar (2,5× pipa) di plat cor 12 mm + sirip dasar · B tegak · C empat topang miring dari tiang ke sudut ring atas, balok kepala silang · D 1 plat atas · E diam · F diangkur ke pondasi cor · G pasak panjat selang-seling di tiang, pagar keliling. Sizes: 520 L 2,5 m, 1000 L 3 m, 550 L 2 m. |
+
+### Kursi tunggu deret (kursi-tunggu)
+
+| id | Nama | Bentuk rangka |
+|---|---|---|
+| kaki-t | Kursi tunggu kaki T | A kaki T terbalik · B tegak · C tanpa · D dudukan terpisah di balok · E diam · F bebas · G sandaran per orang. Tiap penopang berupa satu tiang di tapak melintang dan memikul balok 40x40 bersama. Tiap dudukan punya lengan 20x40 dan satu tiang sandaran miring. Opsi: sandaran tangan, meja kecil di ujung atau tengah, jok papan/plat/busa. |
+| kaki-u | Kursi tunggu kaki U tertutup | A kaki U · B tegak · C rangka tertutup per penopang · D dudukan terpisah · E diam · F bebas · G sandaran. Tiap penopang berupa loop rel lantai depan-belakang, dua tiang, dan palang atas di bawah balok. Kaki U hanya menopang balok bersama, tidak per dudukan. |
+| kaki-x | Kursi tunggu kaki silang X | A kaki X · B bersilang · C palang atas · D dudukan terpisah · E diam · F bebas · G sandaran. Tiap penopang dua kaki bersilang X dilihat dari samping, palang atas memikul balok. |
+| kaki-a | Kursi tunggu kaki A | A kaki A · B melebar · C palang perenggang dekat lantai · D dudukan terpisah · E diam · F bebas · G sandaran. Dari bawah balok turun dua kaki miring ke depan dan ke belakang. |
+| kantilever | Kursi tunggu kantilever belakang | A kantilever · B tegak satu sisi · C tanpa · D dudukan menjulur · E diam · F bebas · G sandaran. Balok di belakang, tiang hanya di belakang dengan tapak menjorok ke depan, tanpa kaki depan. |
+| tiang-plat | Kursi tunggu tiang plat (stasiun) | A pedestal plat · B tegak · C tanpa · D dudukan terpisah · E diam · F dibaut lantai · G sandaran. Tiang tunggal berdiri di plat besi 8 mm yang dibaut ke lantai, satu tiang tiap 2 dudukan. Bawaan jok plat besi. |
+| kaki-tengah | Kursi tunggu kaki tengah | A pedestal tengah · B melebar (4 kaki miring menyebar) · C tanpa · D 2-3 dudukan di balok pendek · E diam · F berdiri bebas · G sandaran. Hanya satu tiang di tengah balok. |
+| tembok-kantilever | Kursi tunggu tempel tembok | A tempel dinding · B - · C tiang tembok + rel atas · D dudukan menjulur · E diam · F dibaut tembok · G sandaran miring bersandar di rel atas. Balok di depan tiang tembok, tanpa kaki lantai (wall: true). |
+| tembok-lipat | Kursi tembok dudukan lipat | A tempel dinding · C tiang tembok + 2 rel sandaran · D dudukan berengsel · E lipat (engsel per lengan dudukan, papan attachTo lengan) · F dibaut tembok · G sandaran berupa papan rata menempel di rel tembok, tanpa tiang sandaran. |
+| punggung | Kursi tunggu punggung-ke-punggung | A kaki T panjang · D dua muka · C satu balok tengah bersama · E diam · F bebas · G dua sandaran saling membelakangi. Lengan dudukan dua deret berangkat dari satu balok tengah, tapak kaki T sepanjang kedua deret. |
+| sudut-l | Kursi tunggu sudut L + meja | A meja sudut 4 kaki + kaki T di ujung luar · D L/sudut · C ring meja atas-bawah · E diam · F bebas · G meja menyatu + sandaran tegak. Dua balok bertemu siku di rangka meja sudut. |
+| pulau | Kursi tunggu pulau 4 muka | A kaki T per deret · D 4 muka berputar (pinwheel) menghadap keluar · C - · E diam · F bebas · G papan ambalan tengah di atas palang sandaran atas. |
+| aula-lipat | Kursi aula dudukan lipat | A panel/rangka samping (rel lantai + tiang belakang & depan + sandaran tangan) di kedua ujung dan tiap 2 dudukan · C rangka samping tertutup · D dudukan berengsel · E lipat · F bebas · G sandaran tangan menyatu di rangka samping + sandaran miring. Celah di rangka samping dilebarkan. |
+
+### Podium & mimbar (podium)
+
+| id | Nama | Bentuk rangka |
+|---|---|---|
+| panel-kotak | Podium panel kotak | A=4 kaki tegak (tiang belakang pendek, depan tinggi) / B=tegak / C=rangka kotak (ring bawah, ring atas, ring rak) / D=papan baca miring di atas seluruh rangka + rak dalam / E=diam / F=berdiri bebas / G=panel depan & samping untuk logo, bibir penahan |
+| tiang-miring | Podium tiang miring | A=kantilever: tiang condong ke depan dari tapak T lantai / B=miring satu arah / C=penguat miring tiang ke tapak / D=kepala papan baca miring menjorok / E=diam / F=bebas / G=bibir |
+| beroda | Podium beroda | A=dua tiang di tapak H / B=tegak / C=palang tapak tengah / D=papan baca miring + rak di antara tiang / E=roda / F=bebas / G=pegangan dorong belakang, panel depan. Beda dari rak-tv:standing (tiang tunggal + braket TV) |
+| podium-meja | Podium meja | A=tanpa kaki, ditaruh di atas meja (rangka baji) / B=- / C=alas keliling bawah / D=papan miring di atas sisi segitiga / E=jinjing / F=di atas meja / G=panel depan logo. Beda dari papan-menu:easel (3 kaki, panel bersandar) |
+| mimbar-tangga | Mimbar bertangga | A=tangga berdiri (anak tangga dari belakang naik ke lantai pijak depan) / B=tegak / C=rel lantai + rangka anak tangga / D=susun bertangga + lantai pijak + papan baca miring di tepi depan / E=diam / F=bebas / G=pegangan miring + pagar jeruji, dudukan khatib di sisi, panel depan |
+| mimbar-atap | Mimbar beratap | Seperti mimbar bertangga, tetapi 4 tiang sudut lantai pijak naik ke ring atap + papan atap datar (C: rangka kotak tinggi, G: atap). Beda 2 sumbu dari mimbar-tangga |
+| mimbar-kotak | Mimbar kotak beroda | A=tangga berdiri / C=sisi kiri & kanan tertutup panel (bertangga mengikuti pegangan) tanpa jeruji / E=roda / G=panel depan selalu, tanpa dudukan. Beda dari mimbar-tangga di C, E, G |
+| panggung-podium | Panggung pijak + podium | A=panggung rendah berkaki pendek (6 kaki bila lebar >100) + podium dua tiang dari lantai di depan tepi panggung / C=ring panggung / D=lantai panggung + 1 anak tangga belakang (opsional) + papan baca miring ditahan siku / E=diam / G=panel depan, rak podium; tanpa pagar & dudukan |
+
+### Paddock & stand motor (stand-motor)
+
+| id | Nama | Bentuk rangka |
+|---|---|---|
+| paddock-belakang | Paddock belakang | A tuas U beroda (berporos di 2 roda depan) · B lengan mendatar + gagang miring ke belakang · C palang belakang + siku miring tiang-lengan · D tanpa papan, kait L berbibir di pucuk 2 tiang pendek · E roda/tuas · F berdiri bebas · G pegangan tuas, kait swing arm. Depan terbuka (ban masuk di antara tiang). |
+| paddock-depan | Paddock depan pin komstir | A tuas U beroda · B tegak tinggi · C bingkai tertutup (palang atas + palang tengah) · D tanpa papan · E roda/tuas · F bebas · G satu pin tegak di tengah palang atas masuk ke komstir. Beda dari paddock belakang di C dan G. |
+| dolly | Dolly geser parkir | A dua palang melintang beroda putar (4 roda) · B rendah rata · C tanpa · D talang panjang (2 bibir + alas papan) untuk kedua roda · E roda · F bebas · G penahan ban U di kedua ujung (depan tinggi, belakang rendah). Bukan troli:platform karena talang + penahan, tanpa pegangan dorong. |
+| meja-lift | Meja lift + ramp lipat | A 6 kaki tegak · B tegak · C palang bawah keliling + melintang · D 1 bidang platform panjang + papan ramp miring · E ramp berengsel dilipat naik · F bebas · G penjepit roda depan (2 tiang + lingkar atas + topang miring + bibir samping). |
+| lift-gunting | Meja lift gunting | A kaki gunting X berporos (naik-turun) di rangka lantai keliling · B bersilang dilihat dari samping · C rangka kotak lantai + poros tengah/atas/bawah · D platform + ramp lepas rata di lantai · E naik-turun (batang pendorong dongkrak + tuas pompa injak) · F bebas · G penjepit roda depan. |
+| ramp-cuci | Ramp cuci tembus | A 4 tiang di bawah jembatan + rel tanjakan menapak lantai di kedua ujung · B tegak + miring dua arah · C palang bawah keliling + silang samping · D lantai jeruji melintang (tanpa papan), naik-datar-turun · E diam · F bebas · G jeruji anti-slip di tanjakan. Rendah 30–50 cm, ditopang tiang (beda dari alat-bermain:busur yang tanpa tiang). |
+| ramp-pikap | Ramp naik pikap lipat | A bersandar ke bak mobil + kaki penopang di tengah · B miring satu arah · C palang engsel + palang kaki · D talang palang pijak berjajar (tanpa papan) · E lipat di tengah (engsel kunci) · F bersandar (tembok = bak/tailgate) · G kait berbibir di ujung atas. Beda dari tangga bersandar di E, G, dan kaki penopang. |
+| penjepit-roda | Penjepit roda depan | A tapak lantai kotak berplat besi 3 mm · B rendah · C rangka kotak tapak · D tanpa papan kayu · E buaian berporos (jungkit) di telinga poros · F bebas · G lingkar penahan ban 2 tiang + palang atas bertopang miring ke depan, bibir pengunci di buaian. Satuan, bukan deret sisir. |
+| stand-mesin | Stand mesin putar | A tiang tunggal di tapak T (palang belakang + tulang depan), 3 roda · B tegak · C topang miring tulang-tiang · D plat putar besi 8 mm · E roda + poros putar 360° · F bebas · G lengan mendatar berporos dengan 4 lengan baut berjari + pen pengunci. Bukan rak-tv:standing (bukan kaki H, ada lengan berporos). |
+
+## 3. Kandidat kategori yang ditolak
+
+| Kandidat | Alasan |
+|---|---|
+| rak-hidroponik (A+B digabung) | Skor 9. Hampir semua DNA-nya sudah dipakai produk lain: NFT rangka A = rak:rangka-a / rak-tanaman:piramida, NFT tangga bersandar = rak:tangga / rak-tanaman:tangga, tower tiang tengah = rak-tanaman:pohon, talang di siku tembok = rak-dinding:siku, gantung plafon = rak-dinding:gantung / jemuran:gantung-plafon, meja DFT bak di kaki tinggi = pembatas:pot-kaki, rak semai = rak:susun. Talang menggantikan papan hanya mengubah sumbu D, jadi variasi aslinya kurang dari 5. |
+| kolam-terpal | Pasarnya kuat (skor pasar 3), tetapi bentuknya kembar: kolam kotak rendah = pembatas:kotak (kotak berangka berdinding papan di lantai), dan kolam panggung = pembatas:pot-kaki. Kolam bulat segi banyak tidak bisa dibuat karena papan hanya bisa diputar rotX. Variasi aslinya kurang dari 8, jadi skor variasi 1. Cadangan untuk putaran berikut kalau generator mendukung dinding poligon. |
+| menara-kucing | Tumpang tindih: papan selang-seling di tiang = rak:tulang / rak-tanaman:pohon, tiang jepit plafon = 4 produk lama, cat shelf dinding = rak-dinding:siku/kisi, tangga bersandar = rak:tangga. Kandang kucing berjeruji sudah masuk kategori kandang. Skor bukan-parameter 1. |
+| panggung & tribun | Deck 4 kaki + palang H = meja:lurus, deck lipat = meja:lipat, deck kaki X = meja:kaki-x, riser bertrap = rak-tanaman:tangga, podium juara = pembatas:kotak. Yang tersisa sebagian besar beda ukuran, jadi skor bukan-parameter 1. |
+| perlengkapan-lapangan | Skor 10, tetapi variasinya sekitar 7. Rak bola = troli:kandang, papan skor = papan-menu:a-frame, gawang U berderet mendekati rak-sepeda:gawang-u, tiang net plat mendekati papan-menu:poster. Cadangan bila slot kategori tersisa. |
+| stand-alat-musik | Stand keyboard kaki X = meja:kaki-x, kaki Z = meja:kaki-z, model 2 tingkat = meja:rak-atas, rak gitar dinding = rak-dinding:rel, stand ampli miring = rak-tv:sandar. Stand partitur dipindah ke podium. Skor bukan-parameter 1. |
+| pergola & teralis | Pergola 4 tiang beratap = gerobak-lapak:kanopi-miring / tenda-pelana / kanopi-kantilever, teralis = rak-tanaman:teralis dan rak-partisi. Bedanya hanya skala (ukuran = sizes). |
+| pagar-pengaman | Panel jeruji berdiri = pembatas:pagar, lipat akordeon = rak-partisi:panel-lipat, playpen = panel berengsel. Variasi kurang dari 6 dan skor bukan-parameter 1. |
+| rak-sampah | Kandang sampah jeruji berkaki tinggi bertutup kembar dengan kategori kandang (panggung jeruji + atap). Dudukan tong di rel lantai = rak-gondola:bak-promo, tiang tunggal keranjang = papan-menu:gantung. Kalau dipilih bersama kandang, keduanya tumpang tindih. |
+| rak-ban | Tingkat dari pasangan rel tanpa papan = rak:susun (beda D saja), rak ban dinding = rak-dinding:rel/siku, putar = rak-gondola:rak-putar, sudut = rak:sudut, plafon = rak-dinding:gantung. Skor bukan-parameter 1. |
+| rak-kayu-bakar | Skor 10, tetapi bingkai tegak + alas = rak-baju:rak-bawah / rak:susun, keranjang beroda = troli, rangka A = rak:rangka-a, beratap miring = gerobak-lapak:lapak-miring. Variasi aslinya kurang dari 6. |
+| cockpit-gaming | Variasi terbatas (kurang dari 8). Stand setir kaki X = meja:kaki-x, rak konsol + monitor = rak-tv:bingkai/menara, riser monitor = meja kecil. Pasarnya niche, skor pasar 1. |
+| kuda-kuda las / stand pipa | Kaki A dengan V di pucuk = meja:trestle / gantungan:tripod. Variasinya sangat sempit, jadi tidak dimasukkan ke stand-motor. |
+| tiang infus beroda | Tiang tunggal di kaki beroda = rak-tv:standing / gantungan:tiang-helm. Variasi lemah. |
+| rak buku anak miring + bak | Kembar dengan rak-gondola:bak-promo dan troli:buku. |
+| nakas, meja-rias, meja-kapster, ayunan (tunggal), meja-bengkel, tangga-kerja, stand whiteboard, meja-prasmanan, meja-laundry, meja-dapur-usaha, rak-sepatu, ranjang-susun | Ditolak di putaran 1 dan tidak ada alasan baru yang kuat. Catatan: ayunan hanya boleh muncul sebagai bagian rangka kombinasi di alat-bermain, tangga hanya sebagai elemen G pada dudukan-toren, dan rak dumbel/plat tidak boleh meniru rak:sepatu-miring. |
+
+## 4. Dieliminasi saat recheck lintas kategori
+
+| Kelompok kembar | Dipertahankan | Tindakan |
+|---|---|---|
+| meja/akuarium-kotak (LAMA) / rak/susun (LAMA) / alat-gym/power-rack | meja/akuarium-kotak | Hapus alat-gym/power-rack. Di kode rangkanya sama persis dengan meja akuarium kotak: tapak keliling di lantai, 4 tiang, dan ring atas keliling. Yang berbeda hanya tambahan di sumbu G (J-hook, bar pengaman, lengan pull-up, pasak) ditambah papan lantai. |
+| rak-gondola/display-miring (LAMA) / alat-gym/rak-dumbel | rak-gondola/display-miring | Hapus alat-gym/rak-dumbel. Keduanya rangka samping dengan tiang belakang tinggi, tapak lantai, topang miring, dan tingkat bertangga. Bedanya hanya isi tingkat (rel pelana dibanding nampan papan berbibir), jadi hanya beda di sumbu G. |
+| rak/susun beroda (LAMA) / troli/kandang (LAMA) / kandang/kucing-tingkat | rak/susun | Hapus kandang/kucing-tingkat. Rangkanya 4 tiang menerus beroda dengan ring dan lantai di tiap tingkat, sama dengan rak susun beroda. Jeruji, pintu, dan lubang loncat hanya isi bidang dan tambahan di sumbu G. Group 'kecil' tidak kosong karena masih ada kelinci-panggung. |
+| rak-kamar-mandi/sudut-segitiga (LAMA) / kandang/pojok-segitiga | rak-kamar-mandi/sudut-segitiga | Hapus kandang/pojok-segitiga. Keduanya 3 tiang di pojok, denah segitiga bertingkat, dengan palang diagonal di muka. Bedanya hanya jeruji dan pintu, yaitu sumbu G. |
+| papan-menu/a-frame (LAMA) / alat-bermain/pikler | papan-menu/a-frame | Hapus alat-bermain/pikler. Keduanya dua bingkai miring yang bertemu di puncak dan bisa dilipat di engsel puncak. Anak tangga di pikler dan panel di papan menu hanya beda isi muka (sumbu G). |
+| rak-baju/rangka-a (LAMA) / alat-bermain/dinding-panjat | rak-baju/rangka-a | Hapus alat-bermain/dinding-panjat. Rangkanya kaki A tetap di kedua ujung dengan palang puncak. Papan panjat dan anak tangga di lereng hanya isi muka. Ini sama dengan preseden jemuran/tenda-a yang dulu dihapus karena kembar dengan rak-baju/rangka-a. |
+| gantungan-berdiri/menara-4-muka (LAMA) / rak/susun (LAMA) / alat-bermain/jungle-gym | gantungan-berdiri/menara-4-muka | Hapus alat-bermain/jungle-gym. Keduanya 4 tiang tegak dengan cincin palang bertingkat di keempat sisi. Kisi atas, lantai setengah, dan pijakan hanya isi atau tambahan (sumbu G). |
+| meja/akuarium-silang (LAMA) / dudukan-toren/tower-4-kaki | meja/akuarium-silang | Hapus dudukan-toren/tower-4-kaki. Bawaannya kaki tegak (lebarKaki 0) dengan 4 tiang, ring atas-bawah, silang X di sisi, dan plat atas, sama dengan meja akuarium bersilang. Jumlah tingkat silang termasuk sizes, sedangkan tangga monyet dan pagar adalah sumbu G (sebagian ukurannya bahkan tanpa tangga). |
+| meja/akuarium-silang 6 kaki (LAMA) / dudukan-toren/tower-ganda | meja/akuarium-silang | Hapus dudukan-toren/tower-ganda. Varian rata (selisih 0) adalah rangka akuarium bersilang dua bentang dengan 6 kaki dan tiang tengah bersama. Varian beda tinggi hanya beda di sumbu D, ditambah tangga (G). Group 'tower-ganda' jadi kosong dan ikut dihapus. |
+| meja/sled (LAMA) / dudukan-toren/rel-dak | meja/sled | Hapus dudukan-toren/rel-dak. Keduanya 4 kaki tegak di dua rel lantai (kaki U/sled) dengan satu bidang di atas. Bedanya hanya penguat (silang X dan topang dari ujung rel), jadi beda satu sumbu C. Ini sama dengan preseden gantungan-berdiri/pasak-dinding. Group 'dudukan-khusus' diganti nama dan deskripsinya (kata 'dak' dibuang). |
+| meja/lurus melebar + rak bawah (LAMA) / podium/kaki-meruncing | meja/lurus | Hapus podium/kaki-meruncing. Keduanya 4 kaki melebar ke bawah dengan palang dan rak bawah. Bedanya hanya bidang atas yang miring (sumbu D) dan bibir kecil. |
+| papan-menu/poster (LAMA) / meja/bundar (LAMA) / podium/tiang-plat | papan-menu/poster | Hapus podium/tiang-plat. Keduanya satu tiang tegak di plat besi dengan bidang di pucuk. Bedanya hanya bidang miring dibanding panel tegak (sumbu D). |
+| meja/trestle (LAMA) / podium/kaki-a | meja/trestle | Hapus podium/kaki-a. Keduanya kaki A di kiri dan kanan dengan palang penghubung. Bedanya hanya papan miring dibanding datar (sumbu D). Laporan desainer sendiri hanya menyebut beda D. |
+| meja/pedestal-bintang (LAMA) / podium/stand-partitur | meja/pedestal-bintang | Hapus podium/stand-partitur. Keduanya tiang tunggal di tengah dengan kaki miring menyebar ke lantai. Jumlah kaki 3 atau 4 hanya detail, dan papan miring di pucuk adalah sumbu D saja. Ragu, jadi dibuang. |
+| rak-dapur/piring-lipat-x (LAMA) / podium/rehal-lipat | rak-dapur/piring-lipat-x | Hapus podium/rehal-lipat. Keduanya kaki silang X berporos baut di kedua ujung, bisa dilipat, dengan palang penghubung. Papan miring dibanding jeruji dan nampan hanya isi (sumbu G). Group 'stand-baca' jadi kosong dan ikut dihapus. |
+| rak-baju/rangka-a (LAMA) / stand-motor/stand-body | rak-baju/rangka-a | Hapus stand-motor/stand-body. Keduanya kaki A di dua ujung dengan palang puncak. Palang berpasak bertingkat di lereng dan nampan bawah hanya tambahan, sama dengan preseden jemuran/tenda-a. |
+| alat-gym/squat-stand / stand-motor/stand-velg | alat-gym/squat-stand | Hapus stand-motor/stand-velg. Keduanya produk baru. Tiap unitnya satu tiang tegak di tapak persegi dengan 4 siku miring. J-hook dibanding garpu U hanya sumbu G, dan as roda yang berputar adalah benda kerja, bukan rangka. 'Squat stand/rack' lebih banyak dicari orang awam. Group 'stand-komponen' tetap ada karena masih ada stand-mesin. |
+
+## 5. Kandidat dibuang oleh desainer
+
+<details><summary>alat-gym (22 kandidat)</summary>
+
+| Kandidat | Alasan |
+|---|---|
+| Pull-up berdiri gawang (2 tiang di kaki melintang + palang atas) | Rangkanya sama dengan rak-baju:rak-bawah (rak baju gawang). |
+| Pull-up / ayunan rangka A polos | Sama dengan rak-baju:rangka-a, yang juga dilarang untuk alat-bermain. |
+| Pull-up gantung plafon (2 batang turun + palang) | Tumpang tindih dengan rak-sepeda:plafon, jemuran:gantung-plafon dan rak-dinding:gantung. |
+| Dip tembok siku segitiga tanpa pull-up | Sama dengan meja-dinding:siku dan rak-sepeda:lengan-dinding. Dip hanya dipertahankan di dalam template pull-up-dinding, yang punya palang ujung dan engsel lipat. |
+| Plate tree tiang tunggal berpasak | Dilarang batasan (3) karena sama dengan gantungan-berdiri:tiang-helm. |
+| Rak plat rangka A dengan pasak di kedua muka | Bentuk itu milik kategori stand-motor (stand body rangka A berpasak). Diganti dengan troli-plat. |
+| Rak dumbel nampan miring berbibir | Dilarang batasan (2) karena sama dengan rak-gondola:display-miring. |
+| Rak dumbel menara tiang tunggal | Variasi tiang tunggal berlengan, tumpang tindih dengan gantungan:tiang-helm. Ragu, jadi dibuang. |
+| Rak barbel tegak (kotak tabung + tiang belakang bersisir) | Kotak wadah + tiang belakang hampir sama dengan gantungan-berdiri:tiang-payung. Ragu, jadi dibuang. |
+| Rak barbel mendatar (gun rack) lantai/dinding | Tiang + lengan pendek bertingkat sama dengan rak:kantilever, rak-dinding:siku dan rak-sepeda:lengan-dinding. |
+| Bench datar 4 kaki + palang H | Dilarang batasan (1) karena sama dengan kursi:bangku. |
+| Bench lipat (kaki T berengsel) | Hanya beda sumbu E dari bench-datar, sedangkan aturannya butuh beda minimal 2 sumbu. Lagi pula mirip meja:lipat. |
+| Hyperextension / roman chair 45 derajat | Balok miring di tapak T terlalu dekat dengan bench-situp (beda hanya di bantalan). Ragu, jadi dibuang. |
+| Preacher curl (tiang tunggal + bantalan miring di pucuk) | Papan miring di tiang tunggal adalah bentuk inti kategori podium. |
+| Squat stand tiang tunggal di kaki H beroda | Dilarang batasan (5) karena sama dengan rak-tv:standing. |
+| Monkey bar / tangga mendatar | Dilarang batasan (4) karena milik alat-bermain. |
+| Tiang jepit lantai-plafon dengan lengan pull-up | Dilarang batasan (6) karena sudah ada di 4 produk. |
+| Parallettes rendah / parallel bar anak | Dilarang batasan (7) karena masuk alat-bermain. |
+| Rak kettlebell / rak matras papan bertingkat | Sama dengan rak:susun. |
+| Power rack 6 tiang / rack ekstensi | Hanya lebih panjang, jadi masuk sizes, bukan template baru. |
+| Lat pulldown / cable tower / smith / leg press | Butuh katrol, rel luncur atau tuas yang tidak bisa dibuat generator. |
+| Landmine (tabung berporos di plat lantai) | Terlalu kecil dan rangkanya minim. Tidak ada struktur yang layak dijadikan template. |
+
+</details>
+
+<details><summary>kandang (15 kandidat)</summary>
+
+| Kandidat | Alasan |
+|---|---|
+| Baterai susun lurus 4 tiang (lantai miring, sel berderet) | Sumbu A dan D sama dengan kucing-tingkat (4 tiang + susun rata). Bedanya hanya lantai dan sekat, jadi sumbu A tetap sama; kurang dari 2 sumbu berbeda. Dipilih baterai kaki A. |
+| Kandang kambing dua muka + lorong pakan tengah | Hanya cermin dua baris kambing-panggung/koloni. Beda satu sumbu (D dua muka), sedangkan atap pelana tergolong tambahan. Ragu, jadi dibuang. |
+| Kandang lipat koper (wire crate lipat) | Rangkanya kotak di rel lantai, mirip anjing-panel, dan beda hanya cara lipat. Engsel lipat dinding tidak bisa dibuat bersih: carry ikut menyeret panel lain dan atap, sehingga muncul batang yang melintasi garis engsel. |
+| Kandang sel bersekat beroda pet shop (grid 2×3) | Sama dengan kucing-tingkat ditambah sekat tegak, beda satu sumbu. Bisa jadi sizes (pintu 2). |
+| Kandang ayam panggung + umbaran berjeruji di kolong (coop) | Rangkanya kambing-panggung dengan kolong ditutup jeruji. Ragu, jadi dibuang. |
+| Aviary pelana beroda 4 tiang | Akan menjadi template ke-5 bersumbu A '4 tiang' (melanggar batas ≤4), dan 1 tingkatnya sama dengan kucing-tingkat. |
+| Kandang modular kubus tumpuk | Sama dengan rak-partisi:kubus-tumpuk. |
+| Kandang di atas kaki silang X | Kotak di atas meja:kaki-x, tidak lazim di pasar. Ragu, jadi dibuang. |
+| Kandang anjing + rumah berdinding papan | Dinding papan melanggar syarat wajib tertutup jeruji di semua sisi dinding. |
+| Sangkar burung tempel tembok berlengan siku | Sumbu A dan F sama dengan tembok-siku, beda hanya ukuran. Dimasukkan ke sizes tembok-siku ('Burung kicau'). |
+| Sangkar kubah / bundar | Bentuk lengkung tidak bisa dibuat generator. Disederhanakan menjadi atap limas di sangkar-gantung. |
+| Keranjang / kandang angkut ayam di boncengan motor | Penopang rel lantai sama dengan ark, dan tidak punya pintu engsel yang jelas. Ragu, jadi dibuang. |
+| Kandang kucing kantilever / balkon menjorok | Tidak masuk akal secara konstruksi untuk beban hewan, dan terlalu dekat dengan tembok-siku. |
+| Ramp miring di dalam kandang kucing bertingkat | rotX hanya bisa miring depan–belakang. Kedalaman 50 cm membuatnya terlalu curam, jadi diganti lubang naik + papan loncat (bukan template terpisah). |
+| Menara kucing (cat tree) / playpen panel tanpa atap / sarang ayam kotak terbuka / keranjang di rel tembok / bak kisi tanpa atap | Dilarang oleh batasan kategori (masing-masing = cat tree ditolak, pembatas:pagar, rak:susun / rak-partisi:kubus-tumpuk, rak-dapur:bumbu-rel, rak-gondola:bak-promo). |
+
+</details>
+
+<details><summary>alat-bermain (21 kandidat)</summary>
+
+| Kandidat | Alasan |
+|---|---|
+| Ayunan rangka A polos | Batasan 1: sama dengan rak-baju:rangka-a. Ayunan hanya ada di template playset. |
+| Monkey bar dengan gawang tegak di kedua ujung | Hanya sumbu A yang beda dari monkey-a, bentuknya hampir sama (ragu = buang). |
+| Monkey bar gantung plafon | Rangkanya sama dengan jemuran:gantung-plafon (rel plafon, 4 batang turun, bingkai palang mendatar). |
+| Busur pikler (rocker) balita | Rangkanya sama dengan busur panjat. Dijadikan ukuran 'Busur balita' di template busur. |
+| Perosotan lipat | Hanya beda kecil dari perosotan mandiri, jadi ukuran saja. |
+| Kubus pikler balita | Rangkanya sama dengan jungle gym. Dijadikan ukuran 'Kubus balita'. |
+| Balance beam / balok rendah di kaki | Batasan 2: sama dengan kursi:bangku. Diganti titian berpegangan. |
+| Parallel bar polos tanpa titian | Sama dengan dua rak-baju:gawang yang dirangkai. Hanya versi titian berpegangan yang dipakai. |
+| Terowongan bingkai kotak berderet | Batasan 3: sama dengan rak-sepeda:gawang-u. |
+| Kotak pasir beratap / meja main pasir | Batasan 5: sama dengan gerobak-lapak:kanopi-miring / pembatas:pot-kaki. |
+| Dinding panjat / tangga bersandar tembok, papan panjat lipat dari tembok | Batasan 4: sama dengan rak:tangga / gantungan:tangga-bersandar. Versi lipat dinding juga diragukan. |
+| Jungkat-jungkit 4 dudukan (balok bersilang) | Satu poros dengan jungkit biasa. Variasinya diragukan, pasarnya kecil. |
+| Menara tripod panjat 3 kaki | Sama dengan gantungan-berdiri:tripod. |
+| Tiang panjat tunggal di plat | Sama dengan gantungan-berdiri:tiang-plat. |
+| Learning tower (bangku panggung balita berpagar) | Lebih dekat ke kursi bar berkaki melebar + pagar. Bukan alat bermain, jadi dibuang. |
+| Ring basket anak / gawang bola mini | Tumpang tindih dengan papan-menu:poster. Juga di luar groups yang ditetapkan. |
+| Rumah-rumahan berdinding papan | Kotak tertutup + atap sama dengan gerobak-lapak:etalase / booth-kotak. |
+| Jembatan tangga di antara dua segitiga pikler | Gabungan dua template yang sudah ada, bukan rangka baru. |
+| Easel lukis anak, meja main lego | Sama dengan papan-menu:easel dan meja. |
+| Pull-up anak, dip station, rak berlubang J-hook | Batasan 7: milik alat-gym. |
+| Kubah panjat (dome), kuda goyang, perahu goyang, jaring/tangga tali, trapeze | Butuh bentuk lengkung atau tali, di luar kemampuan generator. |
+
+</details>
+
+<details><summary>dudukan-toren (15 kandidat)</summary>
+
+| Kandidat | Alasan |
+|---|---|
+| Tower 4 kaki melebar sebagai template terpisah | Hanya beda sumbu B dari tower 4 kaki tegak. Melebar = lebarKaki > 0, jadi masuk sizes tower-4-kaki. |
+| Tower bertingkat dengan tingkat pompa/filter | Hanya beda jumlah tingkat/papan. Jadi toggle 'pompa' di tower-4-kaki dan tower-ganda. |
+| Tower ganda rata (6 kaki) dan tower bertangga beda tinggi sebagai dua template | Selisih 0 menghasilkan rangka yang sama dengan versi bertangga. Digabung jadi satu template tower-ganda dengan param selisih di sizes. |
+| Tower 2 toren 4 kaki plat memanjang | Hanya lebih panjang (batasan 4), jadi masuk sizes tower-4-kaki dan rel-dak (jumlah = 2). |
+| Tower tempel tembok (2 kaki depan + angkur tembok) | Ragu: terlalu dekat dengan rak-kamar-mandi:kaki-depan dan meja:konsol. |
+| Portal dua tiang di plat cor + lengan + siku | Ragu: mirip meja:tiang-ganda (dua tiang + lengan T) dan rak-kamar-mandi:kaki-t. |
+| Dudukan kantilever (deck menjorok dari 2 tiang belakang) | Konstruksinya meragukan untuk beban 1–2 ton, dan bentuknya mirip gerobak-lapak:kanopi-kantilever. |
+| Balok jembatan di antara dua tembok (di atas gang) | Generator hanya menampilkan satu tembok (z = 0). Ragu. |
+| Variasi penguat K / diagonal tunggal | Hanya beda sumbu C, jadi tidak dibuat template sendiri. |
+| Tower bongkar pasang bersegmen flens | Hanya beda sumbu E dari tower 4 kaki. |
+| Tower dengan tangga miring ber-railing | Hanya beda sumbu G. |
+| Tower kaki X (silang di elevasi) | Sama dengan meja:kaki-x / kursi:bangku-silang. |
+| Tower segi delapan 8 kaki | Ragu: pada dasarnya tower ring + X dengan kaki lebih banyak. |
+| Tower beratap peneduh UV | Mendekati gerobak-lapak (tiang + atap), dan hanya menambah elemen G. |
+| Dudukan rendah rangka kotak / konsol dua siku / kaki A tangki tidur / rak pompa tanpa toren / tangga kerja | Dilarang di batasan kategori (= meja:akuarium-kotak, meja-dinding:siku, meja:trestle / rak-dapur:galon-x, rak:susun, tangga-kerja). |
+
+</details>
+
+<details><summary>kursi-tunggu (25 kandidat)</summary>
+
+| Kandidat | Alasan |
+|---|---|
+| Kaki trapesium tertutup per penopang | Hanya beda sumbu B dari kaki-u, dan rangkanya sama dengan meja:trapesium. |
+| Kaki Z per penopang | Rangka sampingnya sama dengan meja:kaki-z. |
+| Kaki Π (2 kaki depan-belakang tanpa rel lantai) | Hanya beda sumbu C dari kaki-u. |
+| Kaki V hairpin per penopang | Mirip kaki-a dan meja:hairpin. |
+| Tribun deret bertingkat (2 lapis di rangka samping bertangga) | Rangka samping bertangga sama dengan rak-tanaman:tangga. Ragu, jadi dibuang. |
+| Deret beroda (kaki T + roda) | Hanya beda sumbu E, cukup jadi opsi. Kursi tunggu beroda juga jarang dicari. |
+| Deret kaki T lipat (kaki dilipat ke bawah balok) | Hanya beda sumbu E dari kaki-t. |
+| Deret + meja kecil di sela | Hanya beda sumbu G, jadi param `meja` (ujung/tengah) di template satu deret. |
+| Deret + sandaran tangan | Tambahan kecil, jadi param `lengan`. |
+| Deret tanpa sandaran | Batasan (2): hanya boleh sebagai ukuran. Masuk sizes kantilever (sandaran:false) dan toggle `sandaran`. |
+| Satu papan duduk menerus | Batasan (1): itu kursi:bangku / bangku-sandar. |
+| 4 kaki per dudukan / kaki U sled per dudukan | Batasan wajib dan (4): itu kursi:kursi-sled. |
+| Deret tinggi di kaki T + pijakan | Batasan (5): itu meja-bar:jendela. |
+| Bidang rendah berpunggung tinggi menempel tembok | Batasan (3): itu booth:tunggal. |
+| Tiang lantai menempel tembok + lengan | Sudah ada di meja-dinding:tiang dan gantungan-berdiri:tiang-tembok. |
+| Deret tembok di siku segitiga | Siku segitiga sama dengan meja-dinding:siku dan rak-dinding:backbar. |
+| Deret tembok lipat berkaki depan | Sama dengan meja-dinding:kaki-depan. |
+| Deret di atas rel lantai menerus memanjang | Mirip meja-piknik:kotak dan kaki-u. |
+| Deret di rangka kotak samping + rak bawah dudukan | Sama dengan kursi:bangku-rak. |
+| Deret di atas kotak loker / rak sepatu | Sama dengan rak:bangku-gantung dan kursi:bangku-rak. |
+| Balok jembatan di antara dua kotak pot | Ujungnya sama dengan pembatas:kotak. Ragu, jadi dibuang. |
+| Deret melingkar segi banyak | Papan sandaran tidak bisa dimiringkan di sumbu selain x, konstruksi rumit. Ragu, jadi dibuang. |
+| Deret gantung plafon | Tidak masuk akal untuk tempat duduk. |
+| Deret + meja tulis lipat per dudukan (kuliah) | Hanya beda sumbu G dan engsel kecil, bukan struktur baru. |
+| Punggung-ke-punggung + pot tengah | Mirip pembatas:layar. Inti tengah sudah diwakili ambalan di template pulau. |
+
+</details>
+
+<details><summary>podium (16 kandidat)</summary>
+
+| Kandidat | Alasan |
+|---|---|
+| Podium tiang tunggal kaki bintang / kaki silang | Hanya beda geometri kaki (sumbu B) dari podium tiang plat; dibuang, cukup satu template tiang tunggal |
+| Podium panel kotak beroda | Sama dengan panel-kotak + roda; diganti template beroda yang strukturnya lain (dua tiang di tapak H) |
+| Podium panel samping trapesium | Tumpang tindih dengan kaki meruncing (B melebar) dan panel kotak (panel); ragu, dibuang |
+| Podium tempel dinding siku miring | Rangkanya sama dengan meja-dinding:siku / rak-dinding:backbar, hanya papannya miring; pasarnya juga kecil |
+| Podium tempel dinding lipat (daun di rel tembok) | Dilarang batasan (5), sama dengan meja-dinding:lipat |
+| Podium tiang ganda di tapak melintang (diam) | Sama dengan rak-baju:rak-bawah / gantungan:panel-kait ditambah papan miring; hanya versi beroda + pegangan yang dipertahankan |
+| Podium kaki U / sled dan kaki Z | Sama dengan meja:sled / meja:kaki-z, hanya papannya miring; ragu, dibuang |
+| Podium + sayap meja laptop menyatu | Hanya tambahan papan samping di template yang sudah ada, bukan struktur baru |
+| Stand baca kaki C samping sofa/ranjang | Rangkanya sama dengan meja:samping-c, ditambah papan miring; mirip juga dengan podium tiang miring |
+| Rehal kaki X sebagai template terpisah dari podium lipat X | Strukturnya sama; digabung jadi satu template rehal-lipat, dengan ukuran 'Podium lipat' sebagai size |
+| Mimbar tangga samping (bentuk L) vs tangga belakang | Hanya beda arah tangga, rangkanya sama; ragu, dibuang |
+| Mimbar gaya Nabawi (tangga dari depan, dudukan di puncak) | Papan baca di depan khatib akan menutup jalan tangga, jadi tidak bisa memenuhi aturan wajib papan baca di pucuk |
+| Rak Quran bertingkat miring | Dilarang batasan (4), sama dengan rak-gondola:display-miring / rak:sepatu-miring |
+| Stand papan tegak berbingkai di tiang plat | Dilarang batasan (1), sama dengan papan-menu:poster |
+| Stand easel 3 kaki dengan papan bersandar | Dilarang batasan (3), sama dengan papan-menu:easel |
+| Meja ngaji rendah bidang datar | Dilarang batasan (7), masuk produk meja |
+
+</details>
+
+<details><summary>stand-motor (18 kandidat)</summary>
+
+| Kandidat | Alasan |
+|---|---|
+| Dongkrak gunting kecil (jack matic) | Rangkanya sama dengan meja lift gunting, hanya lebih kecil. Seharusnya masuk sizes, jadi digabung dan tidak dibuat template sendiri. |
+| Meja lift tiang tengah (pedestal) | Tidak masuk akal secara konstruksi untuk platform 200 cm, dan mirip meja:pedestal. |
+| Ramp cuci tanjakan segitiga (rangka samping segitiga + talang miring) | Bentuknya netral sama dengan rak-gondola:display-miring (rangka samping segitiga + bidang miring) dan alat-gym:bench-situp. |
+| Ramp cuci satu arah (naik-datar) | Hanya ramp-cuci tembus tanpa tanjakan turun, jadi beda ukuran saja, bukan template. |
+| Ramp naik trotoar / baji garasi | Sama dengan podium:podium-meja (rangka baji bersisi segitiga tanpa kaki). |
+| Stand velg dua rangka A (balancing) | Ujung A + as di puncak sama dengan meja:trestle / rak-baju:rangka-a. |
+| Stand velg dua tiang di kaki melintang | Siluetnya sama dengan rak-baju:rak-bawah (gawang 2 tiang + pipa atas). |
+| Stand balancing velg tiang tunggal as menjulur | Sama dengan jemuran:handuk-kantilever (tiang di kaki T, batang menjulur satu sisi). |
+| Stand trail/MX kaki tiga melebar + plat atas | Sama dengan dudukan-toren:tower-3-kaki dan gantungan:tripod. |
+| Stand trail/MX 4 kaki + plat (box stand) | Sama dengan kursi:bar / stool 4 kaki + pijakan. Versi tuas cam belum jelas strukturnya, jadi dibuang (ragu = buang). |
+| Paddock depan pengait garpu bawah (L-pad) | Strukturnya sama dengan paddock belakang (tuas U + 2 tiang berkait), jadi cukup lewat parameter lebar/tinggi. |
+| Paddock swing arm tunggal (pin samping) | Pasarnya terlalu sempit, dan rangkanya hampir sama dengan paddock depan berpin. |
+| Lift dongkrak tuas lantai (dongkrak buaya) | Strukturnya tumpang tindih dengan paddock (tuas berporos) dan lift gunting. Ragu, jadi dibuang. |
+| Display motor putar showroom (cincin rendah + plat bundar) | Niche, dan hanya berbeda dari rak-gondola:rak-putar / meja:bundar secara samar. |
+| Rak gantung motor dinding, rak knalpot, rak helm | Dilarang batasan (rak-dinding:rel / gantungan:tiang-tembok / tiang-helm). |
+| Deret slot roda lantai | Dilarang batasan (5), karena itu rak-sepeda:sisir. |
+| Stand body rangka A polos tanpa pasak | Dilarang batasan (6), karena itu rak-baju:rangka-a. |
+| Meja bengkel datar + plat, kuda-kuda las, rak ban | Sudah ditolak di putaran 1 dan masuk batasan (7) dan (8). |
+
+</details>
+
+## 6. Catatan auditor: kemiripan di template lama (belum diubah)
+
+: template lama yang sudah hampir kembar lintas produk (perlu dicek fase recheck, belum diubah): - Tiang jepit lantai-plafon muncul di 4 produk: rak-sepeda:lantai-plafon (2 tiang, lengan dua muka) dan rak-kamar-mandi:lantai-plafon (2 tiang, lengan satu muka) hanya beda sumbu D. Lalu gantungan-berdiri:jepit-plafon dan rak-partisi:jepit-plafon. - Tiang lantai menempel tembok + lengan menjorok: meja-dinding:tiang, rak-dinding:tiang, gantungan-berdiri:tiang-tembok. - Gantung plafon + bidang mendatar: rak-dinding:gantung (papan) dan jemuran:gantung-plafon (bingkai palang) beda di sumbu D saja. - Bingkai kotak samping + rel lantai: kursi:stool-kotak, kursi:bangku-rak, rak-kamar-mandi:bingkai-samping. - Tiang tengah di tapak + lengan depan-belakang: rak:kantilever, rak-kamar-mandi:kaki-t, rak-gondola:gondola-tengah (yang terakhir punya papan punggung). - Loop trapesium samping: meja:trapesium dan jemuran:handuk-trapesium. - V miring: meja:hairpin dan dipan:kaki-v. - Bersandar tembok miring: rak:tangga, rak-tv:sandar, gantungan:tangga-bersandar. - Siku pojok tiga tiang: rak:sudut, gantungan:siku-pojok, rak-kamar-mandi:sudut-segitiga. - Kisi tegak di rel/roda: rak-gondola:bak-promo dan troli:kandang.

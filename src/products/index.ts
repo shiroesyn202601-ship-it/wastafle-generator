@@ -21,6 +21,13 @@ import { RAK_SEPEDA } from './rakSepeda';
 import { JEMURAN } from './jemuran';
 import { RAK_KAMAR_MANDI } from './rakKamarMandi';
 import { RAK_DAPUR } from './rakDapur';
+import { ALAT_GYM } from './alatGym';
+import { KANDANG } from './kandang';
+import { ALAT_BERMAIN } from './alatBermain';
+import { DUDUKAN_TOREN } from './dudukanToren';
+import { KURSI_TUNGGU } from './kursiTunggu';
+import { PODIUM } from './podium';
+import { STAND_MOTOR } from './standMotor';
 import { FurnitureDesign, Params, ProductDef, ProductId } from './types';
 import { DEFAULT_KITCHEN_CONFIG } from '../types/kitchen';
 
@@ -48,8 +55,15 @@ export const PRODUCTS: Record<ProductId, ProductDef> = {
   'jemuran': JEMURAN,
   'rak-kamar-mandi': RAK_KAMAR_MANDI,
   'rak-dapur': RAK_DAPUR,
+  'alat-gym': ALAT_GYM,
+  kandang: KANDANG,
+  'alat-bermain': ALAT_BERMAIN,
+  'dudukan-toren': DUDUKAN_TOREN,
+  'kursi-tunggu': KURSI_TUNGGU,
+  podium: PODIUM,
+  'stand-motor': STAND_MOTOR,
 };
-export const PRODUCT_LIST: ProductDef[] = [MEJA, KURSI, RAK, RAK_TANAMAN, TROLI, MEJA_PIKNIK, MEJA_DINDING, MEJA_BAR, BOOTH, RAK_DINDING, PAPAN_MENU, PEMBATAS, RAK_BAJU, DIPAN, RAK_TV, RAK_PARTISI, GANTUNGAN_BERDIRI, RAK_GONDOLA, GEROBAK_LAPAK, RAK_SEPEDA, JEMURAN, RAK_KAMAR_MANDI, RAK_DAPUR];
+export const PRODUCT_LIST: ProductDef[] = [MEJA, KURSI, RAK, RAK_TANAMAN, TROLI, MEJA_PIKNIK, MEJA_DINDING, MEJA_BAR, BOOTH, RAK_DINDING, PAPAN_MENU, PEMBATAS, RAK_BAJU, DIPAN, RAK_TV, RAK_PARTISI, GANTUNGAN_BERDIRI, RAK_GONDOLA, GEROBAK_LAPAK, RAK_SEPEDA, JEMURAN, RAK_KAMAR_MANDI, RAK_DAPUR, ALAT_GYM, KANDANG, ALAT_BERMAIN, DUDUKAN_TOREN, KURSI_TUNGGU, PODIUM, STAND_MOTOR];
 
 /** Kategori di Beranda: produk atau jalan pintas ke contoh jadi tertentu */
 export interface CategoryItem {
@@ -153,6 +167,33 @@ export const CATEGORIES: { title: string; items: CategoryItem[] }[] = [
       { product: 'gerobak-lapak', preset: 'angkringan', title: 'Gerobak angkringan', subtitle: '2 roda besar · atap · rak bawah' },
       { product: 'gerobak-lapak', group: 'warung-tenda', title: 'Tenda / kanopi warung', subtitle: 'pelana · miring · kantilever' },
       { product: 'rak-sepeda', title: 'Rak sepeda & parkir', subtitle: 'lantai · dinding · plafon garasi' },
+      { product: 'stand-motor', title: 'Paddock & stand motor', subtitle: 'paddock · lift servis · ramp cuci' },
+    ],
+  },
+  {
+    title: 'Olahraga & bermain',
+    items: [
+      { product: 'alat-gym', title: 'Alat & rak gym', subtitle: 'half rack · pull-up · bench · dip' },
+      { product: 'alat-gym', group: 'bangku-latihan', title: 'Bench latihan', subtitle: 'datar · incline · sit-up · press' },
+      { product: 'alat-bermain', title: 'Alat bermain anak', subtitle: 'panjat · perosotan · jungkat-jungkit' },
+      { product: 'alat-bermain', preset: 'perosotan', title: 'Perosotan anak', subtitle: 'rumah · PAUD · taman' },
+    ],
+  },
+  {
+    title: 'Kantor, sekolah & ibadah',
+    items: [
+      { product: 'kursi-tunggu', title: 'Kursi tunggu deret', subtitle: 'klinik · bank · sekolah · bengkel' },
+      { product: 'kursi-tunggu', group: 'deret-tembok', title: 'Kursi tunggu menempel tembok', subtitle: 'kantilever · lipat' },
+      { product: 'podium', title: 'Podium pidato', subtitle: 'panel kotak · tiang miring · beroda' },
+      { product: 'podium', group: 'mimbar', title: 'Mimbar masjid', subtitle: 'bertangga · beratap · kotak' },
+    ],
+  },
+  {
+    title: 'Hewan, kebun & utilitas',
+    items: [
+      { product: 'kandang', title: 'Kandang hewan', subtitle: 'kelinci · ayam · burung · kambing · anjing' },
+      { product: 'kandang', group: 'unggas', title: 'Kandang ayam & burung', subtitle: 'baterai · ark · sangkar gantung' },
+      { product: 'dudukan-toren', title: 'Dudukan toren', subtitle: 'tower 3 kaki · atap miring · tiang tunggal' },
     ],
   },
 ];

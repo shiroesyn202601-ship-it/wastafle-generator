@@ -24,7 +24,14 @@ export type ProductId =
   | 'rak-sepeda'
   | 'jemuran'
   | 'rak-kamar-mandi'
-  | 'rak-dapur';
+  | 'rak-dapur'
+  | 'alat-gym'
+  | 'kandang'
+  | 'alat-bermain'
+  | 'dudukan-toren'
+  | 'kursi-tunggu'
+  | 'podium'
+  | 'stand-motor';
 export type ParamValue = number | boolean | string;
 export type Params = Record<string, ParamValue>;
 
