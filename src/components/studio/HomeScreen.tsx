@@ -267,8 +267,8 @@ export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImpor
   return (
     <div className="min-h-[100dvh] w-full bg-stone-100 text-stone-900">
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-stone-200">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-stone-900 text-amber-400 flex items-center justify-center">
+        <div className="max-w-6xl mx-auto px-4 h-12 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-stone-900 text-amber-400 flex items-center justify-center">
             <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true">
               <path d="M4 20V6h16v14M4 11h16M9 6v14M15 6v14" fill="none" stroke="currentColor" strokeWidth={2} />
             </svg>
@@ -285,35 +285,41 @@ export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImpor
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-5 sm:py-8 space-y-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
-        <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-bold">Mau bikin apa?</h1>
-          <p className="text-stone-600">
-            {designs.length} desain siap pakai. Pilih yang paling mirip, semua ukuran bisa diubah nanti.
-          </p>
+      <main className="max-w-6xl mx-auto px-4 py-4 sm:py-5 space-y-3 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+          <h1 className="text-xl sm:text-2xl font-bold">Mau bikin apa?</h1>
+          <p className="text-sm text-stone-500">{designs.length} desain siap pakai · semua ukuran bisa diubah nanti</p>
         </div>
 
-        <button onClick={onPhoto} className="w-full flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-sky-600 to-sky-500 text-white text-left cursor-pointer hover:from-sky-500 hover:to-sky-400 shadow-sm">
-          <span className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-            <Camera className="w-5 h-5" />
-          </span>
-          <span className="flex-1 min-w-0">
-            <span className="block font-bold">Punya foto furnitur? Buat desain dari foto</span>
-            <span className="block text-sm text-white/80">Upload gambar meja / kursi / rak, AI membuatkan desain yang mirip</span>
-          </span>
-          <ArrowRight className="w-5 h-5 shrink-0" />
-        </button>
-
-        {resume && (
-          <button onClick={resume.onClick} className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-stone-200 hover:border-sky-500 text-left cursor-pointer">
-            <History className="w-5 h-5 text-sky-600 shrink-0" />
-            <span className="flex-1 min-w-0">
-              <span className="block font-semibold">Lanjutkan: {resume.title}</span>
-              <span className="block text-sm text-stone-500 truncate">{resume.subtitle}</span>
+        {/* Aksi cepat: buat dari foto + lanjutkan desain terakhir, bersebelahan di layar lebar */}
+        <div className={`grid gap-2 ${resume ? 'sm:grid-cols-2' : ''}`}>
+          <button
+            onClick={onPhoto}
+            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-sky-500 text-white text-left cursor-pointer hover:from-sky-500 hover:to-sky-400 shadow-sm"
+          >
+            <span className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+              <Camera className="w-4 h-4" />
             </span>
-            <ArrowRight className="w-5 h-5 text-stone-400" />
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm font-bold truncate">Buat desain dari foto</span>
+              <span className="block text-xs text-white/80 truncate">Upload foto meja / kursi / rak, AI buatkan yang mirip</span>
+            </span>
+            <ArrowRight className="w-4 h-4 shrink-0" />
           </button>
-        )}
+
+          {resume && (
+            <button onClick={resume.onClick} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white border border-stone-200 hover:border-sky-500 text-left cursor-pointer">
+              <span className="w-8 h-8 rounded-lg bg-sky-50 flex items-center justify-center shrink-0">
+                <History className="w-4 h-4 text-sky-600" />
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm font-semibold truncate">Lanjutkan: {resume.title}</span>
+                <span className="block text-xs text-stone-500 truncate">{resume.subtitle}</span>
+              </span>
+              <ArrowRight className="w-4 h-4 text-stone-400 shrink-0" />
+            </button>
+          )}
+        </div>
 
         {/* Cari + pengaturan tampilan */}
         <div className="flex flex-wrap items-center gap-2">
