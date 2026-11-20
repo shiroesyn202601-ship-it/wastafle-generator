@@ -238,6 +238,7 @@ export function generateAutoFrameMembers(config: KitchenConfig): FrameMember[] {
 /** Daftar batang rangka yang berlaku (manual jika sudah diedit, otomatis jika belum) */
 export function getFrameMembers(config: KitchenConfig): FrameMember[] {
   if (config.frame?.customLayout && config.frame.members) return config.frame.members;
+  if (config.frame?.autoMembers) return config.frame.autoMembers;
   return generateAutoFrameMembers(config);
 }
 

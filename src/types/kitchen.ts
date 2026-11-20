@@ -390,6 +390,7 @@ export interface FrameConfig {
   customLayout?: boolean; // true = rangka diedit manual lewat Editor Rangka 2D
   members?: FrameMember[]; // dipakai saat customLayout = true
   hinges?: FrameHinge[]; // engsel lipat pada batang rangka
+  autoMembers?: FrameMember[]; // rangka otomatis dari produk lain (meja/rak/troli); dipakai bila belum diedit manual
 }
 
 export type HandleStyle = 

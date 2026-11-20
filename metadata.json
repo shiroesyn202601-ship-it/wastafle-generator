@@ -1,6 +1,6 @@
 {
-  "name": "KitchenCraft 3D - Desain Meja Wastafel, Kompor & Laci Kustom",
-  "description": "Aplikasi desain meja dapur, wastafel cuci piring, kompor tanam, dan kabinet laci kustom dengan visualisasi 3D interaktif, cetak blueprint 2D, dan estimasi biaya bahan.",
+  "name": "Studio Rangka - Rancang Furnitur Rangka Besi",
+  "description": "Rancang meja, rak, troli dan meja dapur rangka besi hollow dengan 3D interaktif, daftar potongan besi, dan perkiraan biaya bahan.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
