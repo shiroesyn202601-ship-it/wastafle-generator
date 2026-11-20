@@ -113,6 +113,11 @@ export interface ProductDef {
   defaults: Params;
   presets: Preset[];
   groups?: PresetGroup[]; // sub-kategori; template-nya ada di `presets` dengan `group` yang sama
+  /**
+   * Sidik rangka: string yang sama = struktur rangka yang sama (abaikan ukuran, jumlah tingkat, warna, papan,
+   * tambahan kecil). Tiap template dalam satu produk WAJIB punya sidik berbeda; variasi ukuran masuk `sizes`.
+   */
+  signature?: (p: Params) => string;
   build: (p: Params) => ProductBuild;
   checks: (p: Params, b: ProductBuild) => ProductCheck[];
   summary: (p: Params) => string; // mis. "120 × 75 × 75 cm · 4 tingkat"
