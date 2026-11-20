@@ -353,6 +353,10 @@ export interface FrameMember {
   // mm, sisi kedua pipa persegi panjang (mis. 20×40): tinggi penampang untuk batang mendatar,
   // tebal ke arah depan-belakang untuk tiang. Kosong = kotak (sama dengan tubeSize)
   tubeH?: number;
+  // Batang miring: titik akhir as (cm). Bila ada, (x,y,z) = titik awal, `axis` = sumbu yang paling dominan
+  // dan `length` = jarak kedua titik. Penampang: tubeSize = sisi ke samping (tegak lurus bidang miring),
+  // tubeH = sisi di bidang miring.
+  end?: { x: number; y: number; z: number };
 }
 
 // Engsel pada batang rangka: batang dibelah di titik `pos`, potongan di sisi `side` bisa ditekuk

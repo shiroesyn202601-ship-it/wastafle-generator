@@ -264,12 +264,41 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
         const sx = (b.box.max[0] - b.box.min[0]) / 100;
         const sy = (b.box.max[1] - b.box.min[1]) / 100;
         const sz = (b.box.max[2] - b.box.min[2]) / 100;
-        const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), boardMat);
+        const m =
+          b.shape === 'round'
+            ? new THREE.Mesh(new THREE.CylinderGeometry(Math.min(sx, sz) / 2, Math.min(sx, sz) / 2, sy, 48), boardMat)
+            : new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), boardMat);
         m.position.set(leftX + (b.box.min[0] / 100 + sx / 2), b.box.min[1] / 100 + sy / 2, backZ + b.box.min[2] / 100 + sz / 2);
+        if (b.rotX) m.rotation.x = (b.rotX * Math.PI) / 180;
+        if (b.attachTo) m.userData.attachTo = b.attachTo;
         m.castShadow = true;
         m.receiveShadow = true;
         group.add(m);
       });
+    }
+
+    // Papan yang menempel ke batang berengsel ikut pivotnya (diukur saat semua engsel posisi diam;
+    // loop animasi mengembalikan sudut engsel di frame berikutnya)
+    const attachables = group.children.filter((o) => o.userData.attachTo);
+    if (attachables.length) {
+      hingePartsRef.current.forEach((h) => h.pivot.quaternion.identity());
+      group.updateMatrixWorld(true);
+      attachables.forEach((boardMesh) => {
+        let target: THREE.Object3D | null = null;
+        group.traverse((o) => {
+          if (!target && o !== boardMesh && o.userData.memberId === boardMesh.userData.attachTo) target = o;
+        });
+        const parent = (target as THREE.Object3D | null)?.parent;
+        if (parent && parent !== group) parent.attach(boardMesh);
+      });
+    }
+
+    // Tembok di belakang untuk produk yang dibaut ke dinding
+    if (build.wall) {
+      const wall = new THREE.Mesh(new THREE.PlaneGeometry(Math.max(2.4, W + 1.2), 2.6), new THREE.MeshStandardMaterial({ color: 0xb9ad99, roughness: 0.95 }));
+      wall.position.set(0, 1.3, backZ - 0.002);
+      wall.receiveShadow = true;
+      group.add(wall);
     }
 
     // Roda

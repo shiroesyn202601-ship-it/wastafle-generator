@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowRight, FolderOpen, History } from 'lucide-react';
-import { PRODUCT_LIST, ProductId } from '../../products';
+import { CATEGORIES, PRODUCTS, ProductId } from '../../products';
 import { Role } from './MemberSheet';
 
 const ROLES: [Role, string][] = [
@@ -27,8 +27,7 @@ const Icon: React.FC<{ d: string }> = ({ d }) => (
 
 /** Beranda: "Mau bikin apa?" → pilih produk → pilih contoh jadi */
 export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImport, role, onRole }) => {
-  const [open, setOpen] = useState<ProductId | null>(null);
-  const picked = PRODUCT_LIST.find((p) => p.id === open);
+  const [open, setOpen] = useState<{ cat: number; id: ProductId } | null>(null);
 
   return (
     <div className="min-h-[100dvh] w-full overflow-y-auto bg-stone-100 text-stone-900">
@@ -85,59 +84,73 @@ export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImpor
           </button>
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {PRODUCT_LIST.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setOpen(open === p.id ? null : p.id)}
-              aria-expanded={open === p.id}
-              className={`p-3 rounded-2xl border text-left cursor-pointer transition ${
-                open === p.id ? 'bg-sky-50 border-sky-600 ring-1 ring-sky-600' : 'bg-white border-stone-200 hover:border-stone-400'
-              }`}
-            >
-              <div className="h-20 rounded-xl bg-stone-100 text-stone-700 p-3 mb-2">
-                <Icon d={p.icon} />
+        {CATEGORIES.map((cat, ci) => {
+          const openHere = open && open.cat === ci ? PRODUCTS[open.id] : null;
+          return (
+            <section key={cat.title} className="space-y-2.5">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-stone-500">{cat.title}</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {cat.items.map((it) => {
+                  const def = PRODUCTS[it.product];
+                  const isOpen = !it.preset && open?.cat === ci && open.id === it.product;
+                  return (
+                    <button
+                      key={`${it.product}-${it.preset || ''}`}
+                      onClick={() => (it.preset ? onPick(it.product, it.preset) : setOpen(isOpen ? null : { cat: ci, id: it.product }))}
+                      aria-expanded={it.preset ? undefined : isOpen}
+                      className={`p-3 rounded-2xl border text-left cursor-pointer transition ${
+                        isOpen ? 'bg-sky-50 border-sky-600 ring-1 ring-sky-600' : 'bg-white border-stone-200 hover:border-stone-400'
+                      }`}
+                    >
+                      <div className="h-20 rounded-xl bg-stone-100 text-stone-700 p-3 mb-2">
+                        <Icon d={it.icon || def.icon} />
+                      </div>
+                      <div className="font-bold">{it.title}</div>
+                      <div className="text-xs text-stone-500">{it.subtitle}</div>
+                    </button>
+                  );
+                })}
+                {ci === CATEGORIES.length - 1 && (
+                  <button onClick={onKitchen} className="p-3 rounded-2xl border bg-white border-stone-200 hover:border-stone-400 text-left cursor-pointer">
+                    <div className="h-20 rounded-xl bg-stone-100 text-stone-700 p-3 mb-2">
+                      <Icon d={KITCHEN_ICON} />
+                    </div>
+                    <div className="font-bold">Meja dapur</div>
+                    <div className="text-xs text-stone-500">wastafel · kompor · laci</div>
+                  </button>
+                )}
               </div>
-              <div className="font-bold">{p.name}</div>
-              <div className="text-xs text-stone-500">{p.tagline}</div>
-            </button>
-          ))}
-          <button onClick={onKitchen} className="p-3 rounded-2xl border bg-white border-stone-200 hover:border-stone-400 text-left cursor-pointer">
-            <div className="h-20 rounded-xl bg-stone-100 text-stone-700 p-3 mb-2">
-              <Icon d={KITCHEN_ICON} />
-            </div>
-            <div className="font-bold">Meja dapur</div>
-            <div className="text-xs text-stone-500">wastafel · kompor · laci</div>
-          </button>
-        </div>
 
-        {picked && (
-          <section className="p-4 rounded-2xl bg-white border border-stone-200 space-y-3">
-            <div className="flex items-baseline justify-between gap-2">
-              <h2 className="text-lg font-bold">Contoh {picked.name.toLowerCase()}</h2>
-              <button onClick={() => onPick(picked.id)} className="text-sm font-semibold text-sky-700 hover:underline cursor-pointer">
-                Mulai dari ukuran standar →
-              </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {picked.presets.map((pr) => (
-                <button
-                  key={pr.id}
-                  onClick={() => onPick(picked.id, pr.id)}
-                  className="flex items-center gap-3 p-3 rounded-xl border border-stone-200 hover:border-sky-600 hover:bg-sky-50 text-left cursor-pointer"
-                >
-                  <span className="w-12 h-9 shrink-0 text-stone-600">
-                    <Icon d={picked.icon} />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block font-semibold text-sm">{pr.name}</span>
-                    <span className="block text-xs text-stone-500">{pr.desc}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
+              {openHere && (
+                <div className="p-4 rounded-2xl bg-white border border-stone-200 space-y-3">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <h3 className="text-lg font-bold">Contoh {openHere.name.toLowerCase()}</h3>
+                    <button onClick={() => onPick(openHere.id)} className="text-sm font-semibold text-sky-700 hover:underline cursor-pointer">
+                      Mulai dari ukuran standar →
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {openHere.presets.map((pr) => (
+                      <button
+                        key={pr.id}
+                        onClick={() => onPick(openHere.id, pr.id)}
+                        className="flex items-center gap-3 p-3 rounded-xl border border-stone-200 hover:border-sky-600 hover:bg-sky-50 text-left cursor-pointer"
+                      >
+                        <span className="w-12 h-9 shrink-0 text-stone-600">
+                          <Icon d={openHere.icon} />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block font-semibold text-sm">{pr.name}</span>
+                          <span className="block text-xs text-stone-500">{pr.desc}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+          );
+        })}
 
         <p className="text-xs text-stone-500">
           Desain tersimpan otomatis di browser ini. Simpan file desain untuk dipindah ke HP / komputer lain.

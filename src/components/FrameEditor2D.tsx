@@ -41,6 +41,10 @@ import {
   FrameView,
   VIEW_LABELS,
   VIEW_DEFS,
+  memberCorners,
+  memberEndPoint,
+  memberFromPoints,
+  memberTiltDeg,
 } from '../utils/frameLayout';
 import {
   Plus,
@@ -258,7 +262,22 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
     };
   };
 
-  const projected = (v: View) => members.map((m) => ({ m, p: projBox(v, memberBox(m, memberSectionCm(m, config))) }));
+  /** Titik 3D (cm) → koordinat layar tampak v (h, v ke atas) */
+  const projPt = (v: View, pt: number[]) => {
+    const d = VIEW_DEFS[v];
+    return { h: mapAxis(d.h, d.hFlip, pt[AXIS_INDEX[d.h]]), v: mapAxis(d.v, d.vFlip, pt[AXIS_INDEX[d.v]]) };
+  };
+  const projected = (v: View) =>
+    members.map((m) => {
+      const sec = memberSectionCm(m, config);
+      const p = projBox(v, memberBox(m, sec));
+      if (!m.end) return { m, p, poly: null as null | { h: number; v: number }[], seg: null as null | { a: { h: number; v: number }; b: { h: number; v: number } } };
+      const hull = convexHull(memberCorners(m, sec).map((c) => {
+        const q = projPt(v, c);
+        return { x: q.h, y: q.v };
+      })).map((q) => ({ h: q.x, v: q.y }));
+      return { m, p, poly: hull, seg: { a: projPt(v, [m.x, m.y, m.z]), b: projPt(v, memberEndPoint(m)) } };
+    });
 
   const spans = (v: View) => ({ hs: axisSpan(VIEW_DEFS[v].h), vs: axisSpan(VIEW_DEFS[v].v) });
   const { hs: mainH, vs: mainV } = spans(view);
@@ -307,6 +326,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
         n[axis] = snapV(orig[axis] + delta);
       }
     });
+    if (orig.end) n.end = { ...orig.end, [def.h]: r1(orig.end[def.h] + n[def.h] - orig[def.h]), [def.v]: r1(orig.end[def.v] + n[def.v] - orig[def.v]) };
     return { m: n, g };
   };
 
@@ -315,6 +335,22 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
 
   /** Tarik ujung batang; dengan magnet, ujung menempel ke sisi/as batang lain (mis. muka tiang) */
   const applyResize = (orig: FrameMember, end: 'start' | 'end', h: number, v: number): { m: FrameMember; g: Guide[] } => {
+    if (orig.end) {
+      const targets = magnet ? getSnapTargets(config, baseMembers, orig.id) : null;
+      const g: Guide[] = [];
+      const a = [orig.x, orig.y, orig.z];
+      const b = memberEndPoint(orig);
+      const pt = end === 'start' ? a : b;
+      ([def.h, def.v] as FrameAxis[]).forEach((axis) => {
+        const raw = axisCoord(axis, h, v);
+        const ai = AXIS_INDEX[axis];
+        const s = targets ? findSnap([raw], targets[ai], magnetThreshold) : null;
+        pt[ai] = s ? r1(s.target) : snapV(raw);
+        if (s) g.push({ axis, value: s.target });
+      });
+      const { id, role, label, tubeSize, tubeH } = orig;
+      return { m: { ...memberFromPoints({ id, role, label, tubeSize, tubeH }, a as [number, number, number], b as [number, number, number]) }, g };
+    }
     const raw = axisCoord(orig.axis, h, v);
     const ai = AXIS_INDEX[orig.axis];
     const s = magnet ? findSnap([raw], getSnapTargets(config, baseMembers, orig.id)[ai], magnetThreshold) : null;
@@ -335,7 +371,16 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
     const pt = toCm(e);
     const tol = e.pointerType === 'touch' ? fs * 1.2 : fs * 0.5;
     const candidates = projected(view)
-      .filter(({ p }) => pt.h >= p.h0 - tol && pt.h <= p.h1 + tol && pt.v >= p.v0 - tol && pt.v <= p.v1 + tol)
+      .filter(({ m, p, seg }) => {
+        if (!(pt.h >= p.h0 - tol && pt.h <= p.h1 + tol && pt.v >= p.v0 - tol && pt.v <= p.v1 + tol)) return false;
+        if (!seg) return true;
+        const dx = seg.b.h - seg.a.h;
+        const dy = seg.b.v - seg.a.v;
+        const l2 = dx * dx + dy * dy || 1;
+        const t = Math.max(0, Math.min(1, ((pt.h - seg.a.h) * dx + (pt.v - seg.a.v) * dy) / l2));
+        const dist = Math.hypot(pt.h - (seg.a.h + t * dx), pt.v - (seg.a.v + t * dy));
+        return dist <= Math.max(...memberSectionCm(m, config)) / 2 + tol;
+      })
       .sort((a, b) => a.p.depth - b.p.depth)
       .map(({ m }) => m.id);
 
@@ -420,6 +465,22 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
     addMember({ axis: 'y', role: 'post', label: 'Tiang Tambahan', x: xSide, y: r1(postBottom), z: zSide, length: r1(frameH - postBottom) });
   const addRailX = () =>
     addMember({ axis: 'x', role: 'custom', label: 'Palang Memanjang Tambahan', x: r1(W / 2 - 30), y: view === 'top' ? topY : midY, z: zSide, length: 60 });
+  /** Batang miring baru di bidang tampak aktif: dari bawah kiri ke atas (bisa ditarik ujungnya) */
+  const addAngled = () => {
+    const hs = axisSpan(def.h);
+    const vsp = axisSpan(def.v);
+    const toPt = (hh: number, vv: number) => {
+      const p = [0, 0, 0];
+      p[AXIS_INDEX[def.h]] = mapAxis(def.h, def.hFlip, hh);
+      p[AXIS_INDEX[def.v]] = mapAxis(def.v, def.vFlip, vv);
+      p[AXIS_INDEX[def.d]] = def.d === 'x' ? xSide : def.d === 'z' ? zSide : topY;
+      return p as [number, number, number];
+    };
+    const m = memberFromPoints({ id: '', role: 'custom', label: 'Batang Miring' }, toPt(hs * 0.3, vsp * 0.1), toPt(hs * 0.45, vsp * 0.6));
+    const { id: _omit, ...rest } = m;
+    void _omit;
+    addMember(rest);
+  };
   const addRailZ = () =>
     addMember({ axis: 'z', role: 'custom', label: 'Palang Kedalaman Tambahan', x: xSide, y: view === 'top' ? topY : midY, z: r1(tube), length: r1(carcaseD - 2 * tube) });
 
@@ -463,6 +524,16 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
   const duplicateSelected = (mirror?: 'x' | 'z') => {
     if (!selected) return;
     const copy: Omit<FrameMember, 'id'> = { ...selected, label: `${selected.label || FRAME_ROLE_LABELS[selected.role]} (salinan)` };
+    if (selected.end) {
+      const a = [selected.x, selected.y, selected.z];
+      const b = memberEndPoint(selected);
+      const f = (pt: number[]) =>
+        (mirror === 'x' ? [W - pt[0], pt[1], pt[2]] : mirror === 'z' ? [pt[0], pt[1], carcaseD - pt[2]] : pt.map((v, i) => (i === AXIS_INDEX[def.h] ? v + (def.h === 'x' ? 10 : 5) : v))) as [number, number, number];
+      const { id: _o, ...rest } = memberFromPoints({ id: '', role: copy.role, label: copy.label, tubeSize: copy.tubeSize, tubeH: copy.tubeH }, f(a), f(b));
+      void _o;
+      addMember(rest);
+      return;
+    }
     if (mirror === 'x') copy.x = r1(selected.axis === 'x' ? W - selected.x - selected.length : W - selected.x);
     else if (mirror === 'z') copy.z = r1(selected.axis === 'z' ? carcaseD - selected.z - selected.length : carcaseD - selected.z);
     else copy[def.h] = r1(selected[def.h] + (def.h === 'x' ? 10 : 5));
@@ -571,7 +642,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
         })}
 
         {/* Batang rangka */}
-        {items.map(({ m, p }) => {
+        {items.map(({ m, p, poly }) => {
           const isSel = m.id === selectedId;
           const isWarn = warnIds.has(m.id);
           const color = ROLE_COLORS[m.role];
@@ -583,18 +654,28 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
           return (
             <g key={m.id} opacity={opacity} style={interactive ? { cursor: 'move' } : undefined}>
               <title>{`${m.label || FRAME_ROLE_LABELS[m.role]} · ${AXIS_LABELS[m.axis]} · ${m.length} cm`}</title>
-              <rect
-                x={x}
-                y={y}
-                width={w}
-                height={h}
-                fill={color}
-                fillOpacity={isSel ? 0.9 : 0.55}
-                stroke={isSel ? '#fbbf24' : isWarn ? '#f43f5e' : '#0f172a'}
-                strokeWidth={isSel ? sw * 2.2 : isWarn ? sw * 1.8 : sw}
-                strokeDasharray={isWarn && !isSel ? `${fsz * 0.4} ${fsz * 0.25}` : undefined}
-              />
-              {m.axis === d.d && (
+              {poly ? (
+                <polygon
+                  points={poly.map((q) => `${q.h},${vs - q.v}`).join(' ')}
+                  fill={color}
+                  fillOpacity={isSel ? 0.9 : 0.55}
+                  stroke={isSel ? '#fbbf24' : isWarn ? '#f43f5e' : '#0f172a'}
+                  strokeWidth={isSel ? sw * 2.2 : isWarn ? sw * 1.8 : sw}
+                />
+              ) : (
+                <rect
+                  x={x}
+                  y={y}
+                  width={w}
+                  height={h}
+                  fill={color}
+                  fillOpacity={isSel ? 0.9 : 0.55}
+                  stroke={isSel ? '#fbbf24' : isWarn ? '#f43f5e' : '#0f172a'}
+                  strokeWidth={isSel ? sw * 2.2 : isWarn ? sw * 1.8 : sw}
+                  strokeDasharray={isWarn && !isSel ? `${fsz * 0.4} ${fsz * 0.25}` : undefined}
+                />
+              )}
+              {!poly && m.axis === d.d && (
                 <g stroke="#0f172a" strokeWidth={sw}>
                   <line x1={x} y1={y} x2={x + w} y2={y + h} />
                   <line x1={x + w} y1={y} x2={x} y2={y + h} />
@@ -693,7 +774,16 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
     }
 
     // Ukuran batang terpilih
-    if (selected) {
+    if (selected && selected.end) {
+      const a = projPt(view, [selected.x, selected.y, selected.z]);
+      const b = projPt(view, memberEndPoint(selected));
+      els.push(
+        <text key="sel-ang" x={(a.h + b.h) / 2 + fs * 1.2} y={mainV - (a.v + b.v) / 2} fontSize={fs * 0.85} fill="#fbbf24" fontWeight="bold">
+          {`${selected.length} cm · miring ${memberTiltDeg(selected)}°`}
+        </text>
+      );
+    }
+    if (selected && !selected.end) {
       const p = projBox(view, memberBox(selected, memberSectionCm(selected, config)));
       const amber = '#fbbf24';
       const ch = r1((p.h0 + p.h1) / 2);
@@ -752,9 +842,15 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
     });
 
     // Handle ubah panjang (batang yang sejajar bidang gambar)
-    if (selected && selected.axis !== def.d) {
+    const endsVisible = selected && (selected.end ? (() => {
+      const a = projPt(view, [selected.x, selected.y, selected.z]);
+      const b = projPt(view, memberEndPoint(selected));
+      return Math.hypot(a.h - b.h, a.v - b.v) > 0.5;
+    })() : selected.axis !== def.d);
+    if (selected && endsVisible) {
       const s3 = { x: selected.x, y: selected.y, z: selected.z };
-      const e3 = { ...s3, [selected.axis]: s3[selected.axis] + selected.length };
+      const ep = memberEndPoint(selected);
+      const e3 = { x: ep[0], y: ep[1], z: ep[2] };
       const hsz = fs * 1.3;
       [
         { pt: s3, end: 'start' as const },
@@ -773,7 +869,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
             fill="#fbbf24"
             stroke="#0f172a"
             strokeWidth={fs * 0.1}
-            style={{ cursor: selected.axis === def.v ? 'ns-resize' : 'ew-resize' }}
+            style={{ cursor: selected.end ? 'move' : selected.axis === def.v ? 'ns-resize' : 'ew-resize' }}
             onPointerDown={(e) => onHandleDown(e, end)}
           />
         );
@@ -818,7 +914,10 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
   /** Geser batang terpilih di satu sumbu sejauh `shift` cm */
   const shiftSelected = (axis: FrameAxis, shift: number) => {
     if (!selected || Math.abs(shift) < 0.05) return;
-    updateMember(selected.id, { [axis]: r1(selected[axis] + shift) });
+    updateMember(selected.id, {
+      [axis]: r1(selected[axis] + shift),
+      ...(selected.end ? { end: { ...selected.end, [axis]: r1(selected.end[axis] + shift) } } : {}),
+    });
   };
 
   /** Batang terdekat searah sumbu (dir -1 = sisi min, +1 = sisi max) yang bertumpang-tindih di dua sumbu lainnya */
@@ -877,6 +976,9 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
           </button>
           <button onClick={addRailZ} className={`${btn} bg-emerald-600/60 hover:bg-emerald-500 text-white`}>
             <Plus className="w-3.5 h-3.5" /> Palang depan–belakang
+          </button>
+          <button onClick={addAngled} className={`${btn} bg-emerald-600/45 hover:bg-emerald-500 text-white`} title="Batang miring: tarik kedua ujungnya ke posisi yang diinginkan">
+            <Plus className="w-3.5 h-3.5" /> Batang miring
           </button>
           <button
             onClick={() => setMagnet(!magnet)}
@@ -1003,7 +1105,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                 ))}
               </select>
 
-              {selected.axis === 'y' &&
+              {!selected.end && selected.axis === 'y' &&
                 (() => {
                   const cy = r1(Math.min(Math.max(connectY ?? midY, selected.y), selected.y + selected.length));
                   const dirs: { axis: 'x' | 'z'; dir: -1 | 1; label: string }[] = [
@@ -1043,7 +1145,46 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                   );
                 })()}
 
-              {(['y', 'z', 'x'] as FrameAxis[]).map((axis) => {
+              {selected.end && (
+                <div className="p-2 rounded-lg bg-black/25 border border-white/[0.06] space-y-2">
+                  <div className="flex items-center justify-between text-[10px] font-semibold text-neutral-300">
+                    <span>Batang miring</span>
+                    <span className="font-mono text-amber-300">
+                      {selected.length} cm · {memberTiltDeg(selected)}°
+                    </span>
+                  </div>
+                  {(['awal', 'akhir'] as const).map((which) => {
+                    const a: [number, number, number] = [selected.x, selected.y, selected.z];
+                    const b = memberEndPoint(selected) as [number, number, number];
+                    const pt = which === 'awal' ? a : b;
+                    return (
+                      <div key={which} className="space-y-1">
+                        <div className="text-[10px] text-neutral-400">Titik {which} (as pipa, cm)</div>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {(['x', 'y', 'z'] as FrameAxis[]).map((ax, i) => (
+                            <NumField
+                              key={ax}
+                              label={ax === 'x' ? 'Dari kiri' : ax === 'y' ? 'Tinggi' : 'Dari blkg'}
+                              value={r1(pt[i])}
+                              onCommit={(v) => {
+                                pt[i] = v;
+                                const { id: _i, ...rest } = memberFromPoints({ id: selected.id, role: selected.role, label: selected.label, tubeSize: selected.tubeSize, tubeH: selected.tubeH }, a, b);
+                                void _i;
+                                updateMember(selected.id, { ...rest, end: rest.end });
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <p className="text-[10px] text-neutral-500 leading-snug">
+                    Tarik kotak kuning di ujung batang untuk mengubah arah & panjang. Kedua ujung dipotong miring sesuai sudutnya (tertulis di daftar
+                    potongan).
+                  </p>
+                </div>
+              )}
+              {!selected.end && (['y', 'z', 'x'] as FrameAxis[]).map((axis) => {
                 const info = AXIS_POS[axis];
                 const i = AXIS_INDEX[axis];
                 const sb = memberBox(selected, memberSectionCm(selected, config));
@@ -1136,6 +1277,12 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
               </label>
 
               {/* Engsel lipat */}
+              {selected.end ? (
+                <p className="p-2 rounded-lg bg-amber-500/[0.05] border border-amber-500/25 text-[10px] text-amber-200/80">
+                  Engsel lipat belum bisa dipasang di batang miring. Pasang di batang lurus yang tersambung, lalu centang &quot;Bawa batang yang
+                  tersambung&quot; supaya batang miring ikut terlipat.
+                </p>
+              ) : (
               <div className="p-2 rounded-lg bg-amber-500/[0.05] border border-amber-500/25 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-semibold text-amber-300">Engsel Lipat</span>
@@ -1429,6 +1576,9 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                                 ? `Berhenti tepat saat menyentuh ${lim.blockedBy.name}. Supaya bisa lebih jauh: geser garis engsel, pendekkan bagian yang ditekuk, atau beri jarak ke batang itu.`
                                 : `Bebas sampai batas engsel (${lim.typeMax}°).`}
                             </div>
+                            {lim.liftFromFloor && (
+                              <div className="text-sky-300/90 leading-snug">Bagian ini menapak lantai: angkat atau balik meja saat melipatnya.</div>
+                            )}
                             {lim.attached.length > 0 && (
                               <div className="text-rose-300/90 leading-snug">
                                 Menempel di potongan yang ditekuk (diabaikan): {lim.attached.slice(0, 3).join(', ')}
@@ -1460,12 +1610,13 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                   })()
                 )}
               </div>
+              )}
 
               <div className="grid grid-cols-2 gap-1.5 pt-1">
                 <button onClick={() => duplicateSelected()} className="flex items-center justify-center gap-1 py-1.5 rounded-md bg-white/5 hover:bg-white/10 text-[11px] text-neutral-200 cursor-pointer">
                   <Copy className="w-3 h-3" /> Duplikat
                 </button>
-                <button onClick={fitSelected} className="flex items-center justify-center gap-1 py-1.5 rounded-md bg-white/5 hover:bg-white/10 text-[11px] text-neutral-200 cursor-pointer" title="Rentangkan penuh sesuai ukuran rangka">
+                <button onClick={fitSelected} disabled={!!selected.end} className="flex items-center justify-center gap-1 py-1.5 rounded-md bg-white/5 hover:bg-white/10 text-[11px] text-neutral-200 cursor-pointer disabled:opacity-30" title="Rentangkan penuh sesuai ukuran rangka">
                   <Maximize2 className="w-3 h-3" /> Rentang Penuh
                 </button>
                 <button onClick={() => duplicateSelected('x')} className="flex items-center justify-center gap-1 py-1.5 rounded-md bg-white/5 hover:bg-white/10 text-[11px] text-neutral-200 cursor-pointer" title="Salin ke posisi cermin kiri ⇄ kanan">

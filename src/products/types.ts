@@ -1,7 +1,7 @@
-import { FrameConfig, FrameMember } from '../types/kitchen';
+import { FrameConfig, FrameHinge, FrameMember } from '../types/kitchen';
 import { Box3 } from '../utils/frameLayout';
 
-export type ProductId = 'meja' | 'kursi' | 'rak' | 'rak-tanaman' | 'troli';
+export type ProductId = 'meja' | 'kursi' | 'rak' | 'rak-tanaman' | 'troli' | 'meja-piknik' | 'meja-dinding';
 export type ParamValue = number | boolean | string;
 export type Params = Record<string, ParamValue>;
 
@@ -39,7 +39,10 @@ export interface Preset {
 export interface Board {
   id: string;
   label: string;
-  box: Box3;
+  box: Box3; // kotak papan sebelum diputar
+  shape?: 'round'; // bundar: diameter = sisi terpendek kotak (dilihat dari atas)
+  rotX?: number; // derajat, putar di sekitar sumbu kiri–kanan lewat titik tengah kotak (sandaran miring)
+  attachTo?: string; // id batang: papan ikut bergerak bila batang itu terlipat engsel (mis. daun meja dinding)
 }
 
 /** Roda di bawah tiang: (x, z) titik tengah, topY = tinggi pelat roda dari lantai */
@@ -60,6 +63,8 @@ export interface ProductBuild {
   D: number;
   H: number; // tinggi keseluruhan termasuk papan/pegangan
   boardThick: number; // cm, 0 bila tanpa daun meja
+  hinges?: FrameHinge[]; // engsel bawaan produk (meja lipat, meja dinding); dipakai bila pengguna belum mengubahnya
+  wall?: boolean; // produk menempel tembok: tampilkan tembok di belakang (z = 0) pada 3D
 }
 
 /** Peringatan dalam bahasa awam, dengan perbaikan satu ketuk */

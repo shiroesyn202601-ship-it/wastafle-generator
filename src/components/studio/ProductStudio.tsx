@@ -96,7 +96,7 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
   const applyPreset = (id: string) => {
     const preset = def.presets.find((p) => p.id === id);
     if (!preset) return;
-    commit({ ...design, presetId: id, params: { ...def.defaults, ...preset.params }, frame: { ...design.frame, customLayout: false, members: undefined, hinges: [] } });
+    commit({ ...design, presetId: id, params: { ...def.defaults, ...preset.params }, frame: { ...design.frame, customLayout: false, members: undefined, hinges: undefined } });
     onToast(`Contoh "${preset.name}" dipakai. Tekan Undo untuk kembali.`);
   };
 

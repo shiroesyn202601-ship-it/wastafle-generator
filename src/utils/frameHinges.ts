@@ -109,7 +109,8 @@ export function newHingeId(): string {
 
 /** Engsel yang batangnya masih ada (maksimal satu engsel per batang) */
 export function getValidHinges(config: KitchenConfig, members: FrameMember[]): FrameHinge[] {
-  const ids = new Set(members.map((m) => m.id));
+  // Batang miring belum bisa diberi engsel
+  const ids = new Set(members.filter((m) => !m.end).map((m) => m.id));
   const used = new Set<string>();
   return (config.frame?.hinges || []).filter((h) => {
     if (!ids.has(h.memberId) || used.has(h.memberId)) return false;
@@ -151,7 +152,7 @@ export interface EdgePartner {
  * tegak lurus dan saling menutupi di sumbu tegak lurus lainnya.
  */
 export function edgePartnerInfo(config: KitchenConfig, member: FrameMember, partner: FrameMember): EdgePartner | null {
-  if (partner.id === member.id || partner.axis !== member.axis) return null;
+  if (partner.id === member.id || partner.axis !== member.axis || member.end || partner.end) return null;
   const A = memberBox(member, memberSectionCm(member, config));
   const B = memberBox(partner, memberSectionCm(partner, config));
   const overlap = (i: number) => Math.min(A.max[i], B.max[i]) - Math.max(A.min[i], B.min[i]);
@@ -189,7 +190,7 @@ export function axleOptions(m: FrameMember): { axis: FrameAxis; sign: 1 | -1; la
 /** Batang sejajar yang segaris dengan sumbu poros (mis. kaki kiri ↔ kaki kanan untuk poros sumbu X) */
 export function axlePartners(config: KitchenConfig, members: FrameMember[], member: FrameMember, rotAxis: FrameAxis): FrameMember[] {
   const other = AXES.find((a) => a !== member.axis && a !== rotAxis)!;
-  return members.filter((m) => m.id !== member.id && m.axis === member.axis && Math.abs(m[other] - member[other]) <= 0.5);
+  return members.filter((m) => m.id !== member.id && !m.end && m.axis === member.axis && Math.abs(m[other] - member[other]) <= 0.5);
 }
 
 export function hingeGeometry(config: KitchenConfig, member: FrameMember, hinge: FrameHinge, partner?: FrameMember): HingeGeometry {
@@ -366,6 +367,7 @@ export interface HingeLimit {
   attached: string[]; // batang yang menempel di potongan bergerak (tidak ikut diperhitungkan)
   leafIds: string[]; // batang lain yang ikut berputar (daun lipat, bila carry aktif)
   bridges: { id: string; name: string; splittable: boolean }[]; // batang yang melintasi garis engsel
+  liftFromFloor?: boolean; // bagian yang dilipat menapak lantai: dihitung dengan meja diangkat
 }
 
 const memberName = (m: FrameMember) => m.label || FRAME_ROLE_LABELS[m.role];
@@ -482,7 +484,9 @@ export function computeHingeLimit(config: KitchenConfig, members: FrameMember[],
     .filter((m) => m.id !== member.id && !leafIds.has(m.id))
     .map((m) => ({ id: m.id, name: memberName(m), box: memberBox(m, memberSectionCm(m, config)) }));
   if (g.fixedBox) all.push({ id: member.id, name: g.axle ? memberName(member) : `${memberName(member)} (potongan tetap)`, box: g.fixedBox });
-  all.push({ id: 'floor', name: 'Lantai', box: { min: [-1e4, -1e4, -1e4], max: [1e4, 0, 1e4] } });
+  const leafBoxesForFloor = members.filter((m) => leafIds.has(m.id)).map((m) => memberBox(m, memberSectionCm(m, config)));
+  const restOnFloor = [g.axle ? null : g.movingBox, ...leafBoxesForFloor].some((b) => b && b.min[1] <= 0.3);
+  if (!restOnFloor) all.push({ id: 'floor', name: 'Lantai', box: { min: [-1e4, -1e4, -1e4], max: [1e4, 0, 1e4] } });
 
   const leafBoxes = members.filter((m) => leafIds.has(m.id)).map((m) => memberBox(m, memberSectionCm(m, config)));
   const bodies: Box3[] = g.axle ? leafBoxes : [g.movingBox, ...leafBoxes];
@@ -498,7 +502,7 @@ export function computeHingeLimit(config: KitchenConfig, members: FrameMember[],
     const obbs = bodies.map((b) => boxObb(g, b, deg));
     return obstacles.find((ob) => obbs.some((o) => obbHitsBox(o, ob.box, CONTACT_EPS))) || null;
   };
-  const out = { ...base, attached: attached.map((o) => o.name), leafIds: [...leafIds], bridges };
+  const out = { ...base, attached: attached.map((o) => o.name), leafIds: [...leafIds], bridges, liftFromFloor: restOnFloor };
   // Batang penghubung dilas ke kedua sisi garis engsel: daun terkunci sampai batang itu dipotong
   if (bridges.length > 0) {
     const b = bridges[0];

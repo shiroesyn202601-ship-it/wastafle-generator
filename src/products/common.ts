@@ -1,5 +1,5 @@
 import { DEFAULT_KITCHEN_CONFIG, FrameAxis, FrameConfig, FrameMember, FrameMemberRole, KitchenConfig } from '../types/kitchen';
-import { boxesTouch, memberBox, memberSectionCm, getFrameMembers } from '../utils/frameLayout';
+import { boxesTouch, memberBox, memberSectionCm, getFrameMembers, memberFromPoints } from '../utils/frameLayout';
 import { Board, Caster, FurnitureDesign, ParamDef, Params, ProductBuild } from './types';
 import { DEFAULT_PRICES, PriceSettings } from './pricing';
 import { CutPiece, ProfilePlan, barsNeeded, planCuts } from './cutting';
@@ -38,10 +38,15 @@ export function memberFactory() {
       tubeH: tube[1] !== tube[0] ? tube[1] : undefined,
     });
   };
-  return { list, add };
+  /** Batang dari titik a ke titik b (cm, as pipa); miring bila tidak segaris sumbu */
+  const line = (id: string, a: [number, number, number], b: [number, number, number], role: FrameMemberRole, label: string, tube: [number, number]) => {
+    if (Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]) < 0.5) return;
+    list.push(memberFromPoints({ id, role, label, tubeSize: tube[0], tubeH: tube[1] !== tube[0] ? tube[1] : undefined }, a, b));
+  };
+  return { list, add, line };
 }
 
-export const board = (id: string, label: string, x0: number, x1: number, y0: number, y1: number, z0: number, z1: number): Board => ({
+export const board =(id: string, label: string, x0: number, x1: number, y0: number, y1: number, z0: number, z1: number): Board => ({
   id,
   label,
   box: { min: [r1(x0), r1(y0), r1(z0)], max: [r1(x1), r1(y1), r1(z1)] },
@@ -123,6 +128,7 @@ export function toFrameHost(design: FurnitureDesign, build: ProductBuild): Kitch
     frame: {
       ...DEFAULT_KITCHEN_CONFIG.frame,
       ...design.frame,
+      hinges: design.frame.hinges ?? build.hinges ?? [],
       tubeSize: pipe,
       paintColor: String(design.params.warna || '#1f2226'),
       autoMembers: build.members,
@@ -202,7 +208,7 @@ export function estimateCost(host: KitchenConfig, design: FurnitureDesign, build
   if (build.boards.length && papan !== 'none') {
     const area = build.boards.reduce((s, b) => {
       const d = [0, 1, 2].map((i) => b.box.max[i] - b.box.min[i]).sort((a, c) => c - a);
-      return s + (d[0] * d[1]) / 10000; // dua sisi terbesar = muka papan
+      return s + ((d[0] * d[1]) / 10000) * (b.shape === 'round' ? Math.PI / 4 : 1); // dua sisi terbesar = muka papan
     }, 0);
     const m2 = Math.round(area * 1.3 * 100) / 100;
     const sheets = Math.ceil(m2 / 2.9768);

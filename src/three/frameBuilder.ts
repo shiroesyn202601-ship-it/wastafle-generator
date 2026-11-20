@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { KitchenConfig } from '../types/kitchen';
-import { getFrameMembers, getFootMembers, memberTubeCm, memberSectionCm, memberBox, Box3 as FrameBox } from '../utils/frameLayout';
+import { getFrameMembers, getFootMembers, memberTubeCm, memberSectionCm, memberBox, memberCorners, Box3 as FrameBox } from '../utils/frameLayout';
+import { FrameMember } from '../types/kitchen';
 import { getValidHinges, computeHingeLimit, HINGE_TYPES, HingeLimit } from '../utils/frameHinges';
 
 /** Bagian rangka yang bisa ditekuk (pivot engsel) + status animasinya */
@@ -38,6 +39,40 @@ export function buildFrameGroup(
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(size[0], size[1], size[2]), mat);
     const c = toWorld([0, 1, 2].map((i) => (b.min[i] + b.max[i]) / 2));
     mesh.position.copy(origin ? c.sub(origin) : c);
+    mesh.castShadow = true;
+    return mesh;
+  };
+  /** Mesh satu batang utuh (lurus atau miring); origin = titik pivot bila menjadi anak pivot engsel */
+  const memberMesh = (m: FrameMember, origin?: THREE.Vector3) => {
+    const sec = memberSectionCm(m, cfg);
+    if (!m.end) return boxMesh(memberBox(m, sec), origin);
+    // Prisma 8 sudut (ujung dipotong miring) dalam koordinat dunia relatif ke origin
+    const cs = memberCorners(m, sec).map((p) => {
+      const w = toWorld(p);
+      return origin ? w.sub(origin) : w;
+    });
+    const center = cs.reduce((acc, v) => acc.add(v), new THREE.Vector3()).multiplyScalar(1 / 8);
+    // indeks sudut: i (sepanjang batang) * 4 + j (samping) * 2 + k (bidang miring)
+    const faces = [
+      [0, 1, 3, 2],
+      [4, 6, 7, 5],
+      [0, 4, 5, 1],
+      [2, 3, 7, 6],
+      [0, 2, 6, 4],
+      [1, 5, 7, 3],
+    ];
+    const pos: number[] = [];
+    faces.forEach((f) => {
+      let [a, b, c, d] = f.map((i) => cs[i]);
+      const fc = a.clone().add(b).add(c).add(d).multiplyScalar(0.25);
+      const nrm = new THREE.Vector3().subVectors(b, a).cross(new THREE.Vector3().subVectors(c, a));
+      if (nrm.dot(fc.clone().sub(center)) < 0) [b, d] = [d, b]; // pastikan menghadap keluar
+      [a, b, c, a, c, d].forEach((v) => pos.push(v.x, v.y, v.z));
+    });
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.computeVertexNormals();
+    const mesh = new THREE.Mesh(geo, mat);
     mesh.castShadow = true;
     return mesh;
   };
@@ -195,18 +230,7 @@ export function buildFrameGroup(
     }
     if (leafOwner.has(m.id)) return; // digambar sebagai anak pivot engselnya (di bawah)
 
-    const [sx, sy, sz] = memberSectionCm(m, cfg).map((v) => v / 100);
-    const len = Math.max(0.005, m.length / 100);
-    const geo = new THREE.BoxGeometry(m.axis === 'x' ? len : sx, m.axis === 'y' ? len : sy, m.axis === 'z' ? len : sz);
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(
-      leftX + m.x / 100 + (m.axis === 'x' ? len / 2 : 0),
-      m.y / 100 + (m.axis === 'y' ? len / 2 : 0),
-      backZ + m.z / 100 + (m.axis === 'z' ? len / 2 : 0)
-    );
-    mesh.castShadow = true;
-    mesh.userData.memberId = m.id;
-    frameGroup.add(mesh);
+    frameGroup.add(tag(memberMesh(m), m.id));
   });
 
   // Daun lipat: batang yang ikut berputar bersama engsel pemiliknya
@@ -224,9 +248,8 @@ export function buildFrameGroup(
     }
     const mm = members.find((x) => x.id === id);
     if (!mm) return;
-    const box = memberBox(mm, memberSectionCm(mm, cfg));
-    if (pv) pv.pivot.add(tag(boxMesh(box, pv.pivotW), id));
-    else frameGroup.add(tag(boxMesh(box), id));
+    if (pv) pv.pivot.add(tag(memberMesh(mm, pv.pivotW), id));
+    else frameGroup.add(tag(memberMesh(mm), id));
   });
 
   const feet = getFootMembers(cfg, members).filter((m) => !leafOwner.has(m.id));

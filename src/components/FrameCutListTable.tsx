@@ -80,6 +80,7 @@ const PositionThumb: React.FC<{
   const toPx = ([px, py]: [number, number]): [number, number] => [pad + (px - minX) * s, pad + (py - minY) * s];
 
   const seg = (m: FrameMember) => {
+    if (m.end) return [toPx(project(m.x, m.y, m.z, carcaseD)), toPx(project(m.end.x, m.end.y, m.end.z, carcaseD))];
     const b = memberBox(m, memberSectionCm(m, config));
     const c = [(b.min[0] + b.max[0]) / 2, (b.min[1] + b.max[1]) / 2, (b.min[2] + b.max[2]) / 2];
     const a0 = [...c];
@@ -131,21 +132,29 @@ const CutShape: React.FC<{ piece: HollowCutPiece; color: string; theme?: Theme; 
   const [pw, ph] = profile.split('×').map(Number);
   const secW = (h * pw) / Math.max(pw, ph);
   const secH = (h * ph) / Math.max(pw, ph);
+  // Ujung miring digambar sejajar (jajaran genjang); sudut sketsa dibatasi supaya tetap terbaca
+  const ang = piece.cutAngleDeg || 0;
+  const sk = Math.min(h * 1.2, Math.tan((Math.min(ang, 60) * Math.PI) / 180) * h);
+  const endLabel = ang ? `◿ ${ang}°` : '90°';
 
   return (
     <svg x={x} y={y} width={CUT_W} height={CUT_H} viewBox={`0 0 ${CUT_W} ${CUT_H}`} className="block font-mono" fontFamily="Consolas, monospace">
-      <rect x={x0} y={y0} width={x1 - x0} height={h} fill={`${color}22`} stroke={color} strokeWidth="1.5" />
+      {ang ? (
+        <polygon points={`${x0 + sk},${y0} ${x1},${y0} ${x1 - sk},${y1} ${x0},${y1}`} fill={`${color}22`} stroke={color} strokeWidth="1.5" />
+      ) : (
+        <rect x={x0} y={y0} width={x1 - x0} height={h} fill={`${color}22`} stroke={color} strokeWidth="1.5" />
+      )}
       {/* Garis tepi dalam pipa hollow (tebal dinding) */}
       <line x1={x0 + 2} y1={y0 + 3} x2={x1 - 2} y2={y0 + 3} stroke={color} strokeWidth="0.5" strokeDasharray="3,2" opacity="0.6" />
       <line x1={x0 + 2} y1={y1 - 3} x2={x1 - 2} y2={y1 - 3} stroke={color} strokeWidth="0.5" strokeDasharray="3,2" opacity="0.6" />
       <text x={(x0 + x1) / 2} y={y0 + h / 2 + 3} fill={theme.text} fontSize="8.5" textAnchor="middle">
         □ {profile}
       </text>
-      <text x={x0 + 2} y={y0 - 5} fill={theme.muted} fontSize="8.5" fontWeight="bold">
-        90°
+      <text x={x0 + 2} y={y0 - 5} fill={ang ? color : theme.muted} fontSize="8.5" fontWeight="bold">
+        {endLabel}
       </text>
-      <text x={x1 - 2} y={y0 - 5} fill={theme.muted} fontSize="8.5" fontWeight="bold" textAnchor="end">
-        90°
+      <text x={x1 - 2} y={y0 - 5} fill={ang ? color : theme.muted} fontSize="8.5" fontWeight="bold" textAnchor="end">
+        {endLabel}
       </text>
       {/* Garis ukur panjang */}
       <line x1={x0} y1={y1 + 6} x2={x0} y2={y1 + 14} stroke={theme.dim} strokeWidth="0.7" />

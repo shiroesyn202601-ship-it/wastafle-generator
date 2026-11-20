@@ -1,5 +1,5 @@
 import { KitchenConfig, FrameMember, FrameMemberRole, SECTION_KIND_LABELS } from '../types/kitchen';
-import { getFrameMembers, getFootMembers, memberProfileLabel, FRAME_ROLE_LABELS, AXIS_LABELS } from './frameLayout';
+import { getFrameMembers, getFootMembers, memberProfileLabel, memberTiltDeg, FRAME_ROLE_LABELS, AXIS_LABELS } from './frameLayout';
 import { splitMembersAtHinges, getValidHinges, HINGE_TYPES } from './frameHinges';
 import { describeCountertop, describeCabinetFinish, describeFrame } from './finishes';
 
@@ -13,6 +13,7 @@ export interface HollowCutPiece {
   notes: string;
   weldPosition?: string;
   memberIds?: string[]; // id batang rangka dalam kelompok ini (untuk gambar posisi)
+  cutAngleDeg?: number; // batang miring: sudut potong ujung dari potongan lurus (0 = lurus 90°)
 }
 
 export interface PanelCutPiece {
@@ -61,7 +62,7 @@ export function calculateFabricationCutList(config: KitchenConfig): CutListRepor
   const pieces = splitMembersAtHinges(config, members);
   const groups = new Map<string, FrameMember[]>();
   pieces.forEach((m) => {
-    const key = `${m.role}|${m.axis}|${m.length.toFixed(1)}|${memberProfileLabel(m, config)}`;
+    const key = `${m.role}|${m.axis}|${m.length.toFixed(1)}|${memberProfileLabel(m, config)}|${memberTiltDeg(m)}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(m);
   });
@@ -85,18 +86,20 @@ export function calculateFabricationCutList(config: KitchenConfig): CutListRepor
     })
     .forEach(([key, list], idx) => {
       const first = list[0];
+      const tilt = memberTiltDeg(first);
       const names = [...new Set(list.map((m) => m.label).filter(Boolean))];
       const positions = list.slice(0, 6).map(fmtPos).join('; ') + (list.length > 6 ? ` … (+${list.length - 6})` : '');
       hollowPieces.push({
         id: `grp-${idx}-${key}`,
         category: categoryOf[first.role],
-        label: `${FRAME_ROLE_LABELS[first.role]} – ${AXIS_LABELS[first.axis]}`,
+        label: `${FRAME_ROLE_LABELS[first.role]} – ${tilt ? `miring ${tilt}°` : AXIS_LABELS[first.axis]}`,
         qty: list.length,
         lengthCm: Number(first.length.toFixed(1)),
         profile: memberProfileLabel(first, config),
-        notes: `${names.length > 0 ? names.slice(0, 4).join(', ') + (names.length > 4 ? ', …' : '') + '. ' : ''}Pipa ${memberProfileLabel(first, config)} mm. Ujung potong lurus 90°.`,
+        notes: `${names.length > 0 ? names.slice(0, 4).join(', ') + (names.length > 4 ? ', …' : '') + '. ' : ''}Pipa ${memberProfileLabel(first, config)} mm. ${tilt ? `Kedua ujung dipotong miring ${tilt}° (sejajar lantai / bidang sambungan), panjang diukur di as.` : 'Ujung potong lurus 90°.'}`,
         weldPosition: `Titik awal as (cm, X dari kiri, Y dari lantai, Z dari belakang): ${positions}`,
         memberIds: list.map((m) => m.id),
+        cutAngleDeg: tilt || undefined,
       });
     });
 

@@ -264,6 +264,7 @@ export function memberTubeCm(m: FrameMember, config: KitchenConfig): number {
 export function memberSectionCm(m: FrameMember, config: KitchenConfig): [number, number, number] {
   const w = memberTubeCm(m, config);
   const h = m.tubeH ? m.tubeH / 10 : w;
+  if (m.end) return [w, h, w]; // batang miring: [sisi samping, sisi di bidang miring, -]
   return m.axis === 'y' ? [w, w, h] : [w, h, w];
 }
 
@@ -273,9 +274,119 @@ export function memberProfileLabel(m: FrameMember, config: KitchenConfig): strin
   return `${w}×${m.tubeH || w}`;
 }
 
-/** Kotak 3D (cm) yang ditempati satu batang */
+// ---------- Batang miring ----------
+
+export type V3 = [number, number, number];
+const AX: FrameAxis[] = ['x', 'y', 'z'];
+
+export const isAngled = (m: FrameMember) => !!m.end;
+export const memberStart = (m: FrameMember): V3 => [m.x, m.y, m.z];
+export function memberEndPoint(m: FrameMember): V3 {
+  if (m.end) return [m.end.x, m.end.y, m.end.z];
+  const e: V3 = [m.x, m.y, m.z];
+  e[AX.indexOf(m.axis)] += m.length;
+  return e;
+}
+
+/**
+ * Sumbu normal bidang potong ujung batang miring: batang yang cukup tegak (kaki, tiang sandaran) dipotong
+ * rata lantai (horizontal); batang lain dipotong tegak lurus sumbu dominannya.
+ */
+export function cutAxisIndex(m: FrameMember): number {
+  if (!m.end) return AX.indexOf(m.axis);
+  const a = memberStart(m);
+  const b = memberEndPoint(m);
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]) || 1;
+  return Math.abs(b[1] - a[1]) / len >= 0.35 ? 1 : AX.indexOf(m.axis);
+}
+
+/** Sudut potong ujung batang miring (derajat dari potongan lurus 90°); 0 = batang lurus */
+export function memberTiltDeg(m: FrameMember): number {
+  if (!m.end) return 0;
+  const a = memberStart(m);
+  const b = memberEndPoint(m);
+  const d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  const len = Math.hypot(d[0], d[1], d[2]) || 1;
+  const dom = Math.abs(d[cutAxisIndex(m)]) / len;
+  return Math.round(((Math.acos(Math.min(1, dom)) * 180) / Math.PI) * 10) / 10;
+}
+
+/**
+ * Batang dari dua titik as (cm). Bila kedua titik segaris sumbu → batang lurus biasa (tanpa `end`),
+ * selain itu batang miring dengan sumbu dominan & panjang dihitung otomatis.
+ */
+export function memberFromPoints(base: Omit<FrameMember, 'axis' | 'x' | 'y' | 'z' | 'length' | 'end'>, a: V3, b: V3): FrameMember {
+  const r = (v: number) => Math.round(v * 10) / 10;
+  const d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  const nonZero = d.map((v) => Math.abs(v) > 0.05);
+  const domI = [0, 1, 2].reduce((best, i) => (Math.abs(d[i]) > Math.abs(d[best]) ? i : best), 0);
+  const len = r(Math.hypot(d[0], d[1], d[2]));
+  if (nonZero.filter(Boolean).length <= 1) {
+    const lo = d[domI] >= 0 ? a : b;
+    return { ...base, axis: AX[domI], x: r(lo[0]), y: r(lo[1]), z: r(lo[2]), length: len };
+  }
+  return { ...base, axis: AX[domI], x: r(a[0]), y: r(a[1]), z: r(a[2]), length: len, end: { x: r(b[0]), y: r(b[1]), z: r(b[2]) } };
+}
+
+/** Arah & penampang batang miring: u = arah batang, wd = arah sisi `a` (samping), hd = arah sisi `b` */
+export function angledFrame(m: FrameMember, a: number, b: number) {
+  const s = memberStart(m);
+  const e = memberEndPoint(m);
+  const d = [e[0] - s[0], e[1] - s[1], e[2] - s[2]];
+  const len = Math.hypot(d[0], d[1], d[2]) || 1;
+  const u: V3 = [d[0] / len, d[1] / len, d[2] / len];
+  // sisi samping: sumbu dunia yang paling tegak lurus terhadap batang, diproyeksikan ke bidang penampang
+  const k = [0, 1, 2].filter((i) => i !== AX.indexOf(m.axis)).reduce((best, i) => (Math.abs(u[i]) < Math.abs(u[best]) ? i : best));
+  const ek: V3 = [0, 0, 0];
+  ek[k] = 1;
+  const dot = u[k];
+  const w0: V3 = [ek[0] - dot * u[0], ek[1] - dot * u[1], ek[2] - dot * u[2]];
+  const wl = Math.hypot(w0[0], w0[1], w0[2]) || 1;
+  const wd: V3 = [w0[0] / wl, w0[1] / wl, w0[2] / wl];
+  const hd: V3 = [u[1] * wd[2] - u[2] * wd[1], u[2] * wd[0] - u[0] * wd[2], u[0] * wd[1] - u[1] * wd[0]];
+  const c: V3 = [(s[0] + e[0]) / 2, (s[1] + e[1]) / 2, (s[2] + e[2]) / 2];
+  return { c, u, wd, hd, len, a, b };
+}
+
+/** 8 titik sudut batang (cm), untuk batang lurus maupun miring */
+export function memberCorners(m: FrameMember, section: [number, number, number]): V3[] {
+  if (!m.end) {
+    const bx = memberBox(m, section);
+    const out: V3[] = [];
+    [0, 1].forEach((i) => [0, 1].forEach((j) => [0, 1].forEach((k) => out.push([i ? bx.max[0] : bx.min[0], j ? bx.max[1] : bx.min[1], k ? bx.max[2] : bx.min[2]]))));
+    return out;
+  }
+  // Ujung dipotong miring: sudut-sudut ujung berada di bidang yang tegak lurus sumbu dominan lewat titik ujung
+  // (kaki rata lantai, ujung atas rata dengan palang), sesuai catatan potong di daftar potongan.
+  const f = angledFrame(m, section[0], section[1]);
+  const di = cutAxisIndex(m);
+  const un = f.u[di] || 1e-6; // komponen arah batang pada sumbu dominan
+  const out: V3[] = [];
+  [-1, 1].forEach((i) =>
+    [-1, 1].forEach((j) =>
+      [-1, 1].forEach((k) => {
+        const off: V3 = [0, 0, 0];
+        for (let q = 0; q < 3; q++) off[q] = f.wd[q] * (j * f.a) / 2 + f.hd[q] * (k * f.b) / 2;
+        const t = -off[di] / un; // geser sepanjang batang supaya sudut jatuh di bidang potong
+        const p: V3 = [0, 0, 0];
+        for (let q = 0; q < 3; q++) p[q] = f.c[q] + f.u[q] * ((i * f.len) / 2 + t) + off[q];
+        out.push(p);
+      })
+    )
+  );
+  return out;
+}
+
+/** Kotak 3D (cm) yang ditempati satu batang (batang miring: kotak pembungkus 8 sudutnya) */
 export function memberBox(m: FrameMember, section: number | [number, number, number]): Box3 {
   const s = typeof section === 'number' ? [section, section, section] : section;
+  if (m.end) {
+    const cs = memberCorners(m, s as [number, number, number]);
+    const min: [number, number, number] = [Infinity, Infinity, Infinity];
+    const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
+    cs.forEach((p) => p.forEach((v, i) => ((min[i] = Math.min(min[i], v)), (max[i] = Math.max(max[i], v)))));
+    return { min, max };
+  }
   const min: [number, number, number] = [m.x - s[0] / 2, m.y - s[1] / 2, m.z - s[2] / 2];
   const max: [number, number, number] = [m.x + s[0] / 2, m.y + s[1] / 2, m.z + s[2] / 2];
   const i = m.axis === 'x' ? 0 : m.axis === 'y' ? 1 : 2;
