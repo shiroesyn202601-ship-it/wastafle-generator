@@ -81,21 +81,21 @@ export const ExportDocModal: React.FC<Props> = ({ isOpen, onClose, config }) => 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative flex flex-col w-full max-w-4xl max-h-[92vh] bg-neutral-900 border border-neutral-700 rounded-2xl shadow-2xl overflow-hidden text-neutral-100">
+      <div className="relative flex flex-col w-full max-w-4xl max-h-[92vh] bg-white border border-stone-300 rounded-2xl shadow-2xl overflow-hidden text-stone-900">
         {/* MODAL HEADER */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800 bg-neutral-950/70">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 bg-stone-100">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400">
+            <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-600">
               <FileText className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
+              <h2 className="text-base font-bold text-stone-900 flex items-center gap-2">
                 Surat Perintah Kerja (SPK) & Manual Fabrikasi
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-700 border border-blue-500/30">
                   Export to .DOC
                 </span>
               </h2>
-              <p className="text-xs text-neutral-400">
+              <p className="text-xs text-stone-500">
                 Panduan rinci ukuran potongan besi hollow & coakan untuk pembuat wastafel
               </p>
             </div>
@@ -104,16 +104,16 @@ export const ExportDocModal: React.FC<Props> = ({ isOpen, onClose, config }) => 
           <div className="flex items-center gap-2">
             <button
               onClick={handleCopySummary}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium border border-neutral-700 transition"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-medium border border-stone-300 transition"
               title="Salin ringkasan ke WhatsApp"
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copied ? 'Tersalin!' : 'Salin WhatsApp'}</span>
             </button>
 
             <button
               onClick={handlePrint}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium border border-neutral-700 transition"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-medium border border-stone-300 transition"
               title="Cetak langsung ke printer atau simpan PDF"
             >
               <Printer className="w-3.5 h-3.5" />
@@ -130,7 +130,7 @@ export const ExportDocModal: React.FC<Props> = ({ isOpen, onClose, config }) => 
 
             <button
               onClick={onClose}
-              className="p-1.5 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition ml-1"
+              className="p-1.5 rounded-xl text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition ml-1"
             >
               <X className="w-5 h-5" />
             </button>
@@ -138,13 +138,13 @@ export const ExportDocModal: React.FC<Props> = ({ isOpen, onClose, config }) => 
         </div>
 
         {/* NAVIGATION TABS */}
-        <div className="flex items-center px-6 border-b border-neutral-800 bg-neutral-950/40 gap-2 overflow-x-auto py-2">
+        <div className="flex items-center px-6 border-b border-stone-200 bg-stone-50 gap-2 overflow-x-auto py-2">
           <button
             onClick={() => setActiveTab('preview')}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
               activeTab === 'preview'
-                ? 'bg-neutral-800 text-blue-400 border border-blue-500/40 shadow-sm'
-                : 'text-neutral-400 hover:text-neutral-200'
+                ? 'bg-stone-100 text-blue-600 border border-blue-500/40 shadow-sm'
+                : 'text-stone-500 hover:text-stone-800'
             }`}
           >
             Semua Rincian (SPK Lengkap)
@@ -153,33 +153,33 @@ export const ExportDocModal: React.FC<Props> = ({ isOpen, onClose, config }) => 
             onClick={() => setActiveTab('steel')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
               activeTab === 'steel'
-                ? 'bg-neutral-800 text-amber-400 border border-amber-500/40 shadow-sm'
-                : 'text-neutral-400 hover:text-neutral-200'
+                ? 'bg-stone-100 text-amber-600 border border-amber-500/40 shadow-sm'
+                : 'text-stone-500 hover:text-stone-800'
             }`}
           >
-            <Wrench className="w-3.5 h-3.5 text-amber-400" />
+            <Wrench className="w-3.5 h-3.5 text-amber-600" />
             <span>Potongan Besi Hollow ({cutList.hollowPieces.length} bagian)</span>
           </button>
           <button
             onClick={() => setActiveTab('panels')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
               activeTab === 'panels'
-                ? 'bg-neutral-800 text-emerald-400 border border-emerald-500/40 shadow-sm'
-                : 'text-neutral-400 hover:text-neutral-200'
+                ? 'bg-stone-100 text-emerald-600 border border-emerald-500/40 shadow-sm'
+                : 'text-stone-500 hover:text-stone-800'
             }`}
           >
-            <Layers className="w-3.5 h-3.5 text-emerald-400" />
+            <Layers className="w-3.5 h-3.5 text-emerald-600" />
             <span>Coakan & Panel Laci</span>
           </button>
           <button
             onClick={() => setActiveTab('sop')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
               activeTab === 'sop'
-                ? 'bg-neutral-800 text-purple-400 border border-purple-500/40 shadow-sm'
-                : 'text-neutral-400 hover:text-neutral-200'
+                ? 'bg-stone-100 text-purple-600 border border-purple-500/40 shadow-sm'
+                : 'text-stone-500 hover:text-stone-800'
             }`}
           >
-            <FileCheck className="w-3.5 h-3.5 text-purple-400" />
+            <FileCheck className="w-3.5 h-3.5 text-purple-600" />
             <span>Panduan SOP Perakitan</span>
           </button>
         </div>
@@ -191,45 +191,45 @@ export const ExportDocModal: React.FC<Props> = ({ isOpen, onClose, config }) => 
             <div className="space-y-6">
               {/* Highlight Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="p-3.5 bg-neutral-950/80 rounded-xl border border-neutral-800">
-                  <span className="text-[11px] text-neutral-400 block">Dimensi Meja (P×L×T)</span>
-                  <span className="text-base font-bold text-white font-mono">
-                    {W}×{D}×{H} <span className="text-xs font-normal text-neutral-400">cm</span>
+                <div className="p-3.5 bg-stone-100 rounded-xl border border-stone-200">
+                  <span className="text-[11px] text-stone-500 block">Dimensi Meja (P×L×T)</span>
+                  <span className="text-base font-bold text-stone-900 font-mono">
+                    {W}×{D}×{H} <span className="text-xs font-normal text-stone-500">cm</span>
                   </span>
                 </div>
 
-                <div className="p-3.5 bg-neutral-950/80 rounded-xl border border-neutral-800">
-                  <span className="text-[11px] text-neutral-400 block">Profil Besi Hollow</span>
-                  <span className="text-base font-bold text-amber-400 font-mono">
-                    {tubeMm}×{tubeMm} <span className="text-xs font-normal text-neutral-400">mm</span>
+                <div className="p-3.5 bg-stone-100 rounded-xl border border-stone-200">
+                  <span className="text-[11px] text-stone-500 block">Profil Besi Hollow</span>
+                  <span className="text-base font-bold text-amber-600 font-mono">
+                    {tubeMm}×{tubeMm} <span className="text-xs font-normal text-stone-500">mm</span>
                   </span>
                 </div>
 
-                <div className="p-3.5 bg-neutral-950/80 rounded-xl border border-neutral-800">
-                  <span className="text-[11px] text-neutral-400 block">Kebutuhan Besi</span>
-                  <span className="text-base font-bold text-blue-400 font-mono">
-                    {cutList.standard6mBarsNeeded} <span className="text-xs font-normal text-neutral-400">btg (6m)</span>
+                <div className="p-3.5 bg-stone-100 rounded-xl border border-stone-200">
+                  <span className="text-[11px] text-stone-500 block">Kebutuhan Besi</span>
+                  <span className="text-base font-bold text-blue-600 font-mono">
+                    {cutList.standard6mBarsNeeded} <span className="text-xs font-normal text-stone-500">btg (6m)</span>
                   </span>
                 </div>
 
-                <div className="p-3.5 bg-neutral-950/80 rounded-xl border border-neutral-800">
-                  <span className="text-[11px] text-neutral-400 block">Leveling Feet Kaki</span>
-                  <span className="text-base font-bold text-emerald-400 font-mono">
-                    {cutList.levelingFeetCount} <span className="text-xs font-normal text-neutral-400">titik</span>
+                <div className="p-3.5 bg-stone-100 rounded-xl border border-stone-200">
+                  <span className="text-[11px] text-stone-500 block">Leveling Feet Kaki</span>
+                  <span className="text-base font-bold text-emerald-600 font-mono">
+                    {cutList.levelingFeetCount} <span className="text-xs font-normal text-stone-500">titik</span>
                   </span>
                 </div>
               </div>
 
               {/* Rincian Potongan Besi Hollow */}
-              <div className="p-4 bg-neutral-950/70 border border-neutral-800 rounded-xl space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
+              <div className="p-4 bg-stone-100 border border-stone-200 rounded-xl space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-stone-200">
                   <div className="flex items-center gap-2">
-                    <Wrench className="w-4 h-4 text-amber-400" />
-                    <h3 className="font-semibold text-sm text-neutral-100">
+                    <Wrench className="w-4 h-4 text-amber-600" />
+                    <h3 className="font-semibold text-sm text-stone-900">
                       1. Daftar Potongan Besi Hollow ({tubeMm}×{tubeMm} mm)
                     </h3>
                   </div>
-                  <span className="text-xs font-mono text-amber-400 font-bold">
+                  <span className="text-xs font-mono text-amber-600 font-bold">
                     Total: {cutList.totalSteelLengthM} m
                   </span>
                 </div>
@@ -237,7 +237,7 @@ export const ExportDocModal: React.FC<Props> = ({ isOpen, onClose, config }) => 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr className="border-b border-neutral-800 text-neutral-400 font-semibold bg-neutral-900/50">
+                      <tr className="border-b border-stone-200 text-stone-500 font-semibold bg-stone-50">
                         <th className="py-2 px-2.5">No</th>
                         <th className="py-2 px-2.5">Nama Komponen</th>
                         <th className="py-2 px-2.5 text-center">Qty</th>
@@ -245,23 +245,23 @@ export const ExportDocModal: React.FC<Props> = ({ isOpen, onClose, config }) => 
                         <th className="py-2 px-2.5">Posisi Pemasangan & Las</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-neutral-800/60">
+                    <tbody className="divide-y divide-stone-200">
                       ${cutList.hollowPieces.map((p, idx) => (
                         <tr
                           key={p.id}
                           className={
                             p.category.startsWith('penyangga')
-                              ? 'bg-amber-500/10 text-amber-200'
-                              : 'hover:bg-neutral-900/40'
+                              ? 'bg-amber-500/10 text-amber-800'
+                              : 'hover:bg-stone-50'
                           }
                         >
-                          <td className="py-2 px-2.5 text-neutral-500 font-mono">{idx + 1}</td>
+                          <td className="py-2 px-2.5 text-stone-500 font-mono">{idx + 1}</td>
                           <td className="py-2 px-2.5 font-medium">{p.label}</td>
                           <td className="py-2 px-2.5 text-center font-bold font-mono">{p.qty} pcs</td>
-                          <td className="py-2 px-2.5 text-right font-bold font-mono text-amber-300">
+                          <td className="py-2 px-2.5 text-right font-bold font-mono text-amber-700">
                             {p.lengthCm} cm
                           </td>
-                          <td className="py-2 px-2.5 text-neutral-400">{p.notes}</td>
+                          <td className="py-2 px-2.5 text-stone-500">{p.notes}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -270,10 +270,10 @@ export const ExportDocModal: React.FC<Props> = ({ isOpen, onClose, config }) => 
               </div>
 
               {/* Rincian Coakan Wastafel & Kompor */}
-              <div className="p-4 bg-neutral-950/70 border border-neutral-800 rounded-xl space-y-3">
-                <div className="flex items-center gap-2 pb-2 border-b border-neutral-800">
-                  <Droplets className="w-4 h-4 text-blue-400" />
-                  <h3 className="font-semibold text-sm text-neutral-100">
+              <div className="p-4 bg-stone-100 border border-stone-200 rounded-xl space-y-3">
+                <div className="flex items-center gap-2 pb-2 border-b border-stone-200">
+                  <Droplets className="w-4 h-4 text-blue-600" />
+                  <h3 className="font-semibold text-sm text-stone-900">
                     2. Spesifikasi Coakan Meja (Wastafel & Kompor)
                   </h3>
                 </div>
@@ -281,41 +281,41 @@ export const ExportDocModal: React.FC<Props> = ({ isOpen, onClose, config }) => 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Card Wastafel */}
                   {config.sink.enabled ? (
-                    <div className="p-3.5 bg-neutral-900/80 rounded-xl border border-blue-900/40 space-y-2">
-                      <div className="flex items-center justify-between text-blue-400 font-semibold text-xs">
+                    <div className="p-3.5 bg-white rounded-xl border border-blue-200 space-y-2">
+                      <div className="flex items-center justify-between text-blue-600 font-semibold text-xs">
                         <span>Wastafel Cuci Piring ({config.sink.mounting.toUpperCase()})</span>
                         <span className="font-mono">{config.sink.model}</span>
                       </div>
-                      <div className="space-y-1 text-xs text-neutral-300">
+                      <div className="space-y-1 text-xs text-stone-700">
                         <div className="flex justify-between">
-                          <span className="text-neutral-400">Ukuran Lubang:</span>
-                          <span className="font-mono font-bold text-white">
+                          <span className="text-stone-500">Ukuran Lubang:</span>
+                          <span className="font-mono font-bold text-stone-900">
                             {config.sink.width} × {config.sink.length} cm
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-neutral-400">Kedalaman Bak:</span>
-                          <span className="font-mono font-bold text-emerald-400">
+                          <span className="text-stone-500">Kedalaman Bak:</span>
+                          <span className="font-mono font-bold text-emerald-600">
                             {config.sink.bowlDepth} cm (Cekung ke bawah)
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-neutral-400">Jarak As Dari Kiri:</span>
-                          <span className="font-mono font-bold text-blue-400">{config.sink.posX} cm</span>
+                          <span className="text-stone-500">Jarak As Dari Kiri:</span>
+                          <span className="font-mono font-bold text-blue-600">{config.sink.posX} cm</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-neutral-400">Bibir Kiri Lubang:</span>
-                          <span className="font-mono text-neutral-300">
+                          <span className="text-stone-500">Bibir Kiri Lubang:</span>
+                          <span className="font-mono text-stone-700">
                             {Math.round(config.sink.posX - config.sink.width / 2)} cm dari tepi kiri
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-neutral-400">Jarak Dari Depan:</span>
-                          <span className="font-mono text-neutral-300">{config.sink.posY} cm</span>
+                          <span className="text-stone-500">Jarak Dari Depan:</span>
+                          <span className="font-mono text-stone-700">{config.sink.posY} cm</span>
                         </div>
-                        <div className="pt-1.5 border-t border-neutral-800 text-[11px] text-neutral-400">
+                        <div className="pt-1.5 border-t border-stone-200 text-[11px] text-stone-500">
                           Besi Penyangga Wastafel:{' '}
-                          <span className="text-amber-400 font-medium">
+                          <span className="text-amber-600 font-medium">
                             Dipasang pada Y ={' '}
                             {Number((H - config.sink.bowlDepth - tubeMm / 10 - 0.5).toFixed(1))} cm
                           </span>
@@ -323,48 +323,48 @@ export const ExportDocModal: React.FC<Props> = ({ isOpen, onClose, config }) => 
                       </div>
                     </div>
                   ) : (
-                    <div className="p-3 bg-neutral-900 rounded-xl border border-neutral-800 text-xs text-neutral-500">
+                    <div className="p-3 bg-white rounded-xl border border-stone-200 text-xs text-stone-500">
                       Wastafel tidak diaktifkan.
                     </div>
                   )}
 
                   {/* Card Kompor */}
                   {config.stove.enabled ? (
-                    <div className="p-3.5 bg-neutral-900/80 rounded-xl border border-amber-900/40 space-y-2">
-                      <div className="flex items-center justify-between text-amber-400 font-semibold text-xs">
+                    <div className="p-3.5 bg-white rounded-xl border border-amber-200 space-y-2">
+                      <div className="flex items-center justify-between text-amber-600 font-semibold text-xs">
                         <span>Kompor Tanam (Cooktop)</span>
                         <span className="font-mono">{config.stove.type}</span>
                       </div>
-                      <div className="space-y-1 text-xs text-neutral-300">
+                      <div className="space-y-1 text-xs text-stone-700">
                         <div className="flex justify-between">
-                          <span className="text-neutral-400">Ukuran Coakan:</span>
-                          <span className="font-mono font-bold text-white">
+                          <span className="text-stone-500">Ukuran Coakan:</span>
+                          <span className="font-mono font-bold text-stone-900">
                             {config.stove.width} × {config.stove.length} cm
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-neutral-400">Tebal Mesin Tanam:</span>
-                          <span className="font-mono font-bold text-amber-400">
+                          <span className="text-stone-500">Tebal Mesin Tanam:</span>
+                          <span className="font-mono font-bold text-amber-600">
                             {config.stove.recessDepth} cm
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-neutral-400">Jarak As Dari Kiri:</span>
-                          <span className="font-mono font-bold text-amber-400">{config.stove.posX} cm</span>
+                          <span className="text-stone-500">Jarak As Dari Kiri:</span>
+                          <span className="font-mono font-bold text-amber-600">{config.stove.posX} cm</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-neutral-400">Bibir Kiri Lubang:</span>
-                          <span className="font-mono text-neutral-300">
+                          <span className="text-stone-500">Bibir Kiri Lubang:</span>
+                          <span className="font-mono text-stone-700">
                             {Math.round(config.stove.posX - config.stove.width / 2)} cm dari tepi kiri
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-neutral-400">Jarak Dari Depan:</span>
-                          <span className="font-mono text-neutral-300">{config.stove.posY} cm</span>
+                          <span className="text-stone-500">Jarak Dari Depan:</span>
+                          <span className="font-mono text-stone-700">{config.stove.posY} cm</span>
                         </div>
-                        <div className="pt-1.5 border-t border-neutral-800 text-[11px] text-neutral-400">
+                        <div className="pt-1.5 border-t border-stone-200 text-[11px] text-stone-500">
                           Besi Penyangga Kompor:{' '}
-                          <span className="text-amber-400 font-medium">
+                          <span className="text-amber-600 font-medium">
                             Dipasang pada Y ={' '}
                             {Number((H - config.stove.recessDepth - tubeMm / 10 - 1).toFixed(1))} cm
                           </span>
@@ -372,17 +372,17 @@ export const ExportDocModal: React.FC<Props> = ({ isOpen, onClose, config }) => 
                       </div>
                     </div>
                   ) : (
-                    <div className="p-3 bg-neutral-900 rounded-xl border border-neutral-800 text-xs text-neutral-500">
+                    <div className="p-3 bg-white rounded-xl border border-stone-200 text-xs text-stone-500">
                       Kompor tidak diaktifkan.
                     </div>
                   )}
                 </div>
 
-                <div className="p-2.5 bg-neutral-900 rounded-xl border border-neutral-800 text-xs flex items-center justify-between">
-                  <span className="text-neutral-400">
+                <div className="p-2.5 bg-white rounded-xl border border-stone-200 text-xs flex items-center justify-between">
+                  <span className="text-stone-500">
                     Jarak Aman Wastafel ke Kompor (Clearance):
                   </span>
-                  <span className="font-mono font-bold text-emerald-400">
+                  <span className="font-mono font-bold text-emerald-600">
                     {clearanceGap} cm (Memenuhi standar ergonomis K3 dapur)
                   </span>
                 </div>
@@ -393,7 +393,7 @@ export const ExportDocModal: React.FC<Props> = ({ isOpen, onClose, config }) => 
           {/* TAB 2: KHUSUS BESI HOLLOW */}
           {activeTab === 'steel' && (
             <div className="space-y-4">
-              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-200">
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-800">
                 ⚠️ <strong>Perhatian Kepala Bengkel Las:</strong> Potong besi hollow sesuai daftar berikut
                 menggunakan mesin cutting miter cut presisi. Pastikan setiap titik sambungan dilas penuh (full-weld)
                 dan di-gerinda rata agar marmer tidak terganjal.
@@ -402,7 +402,7 @@ export const ExportDocModal: React.FC<Props> = ({ isOpen, onClose, config }) => 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="border-b border-neutral-700 text-neutral-300 font-semibold bg-neutral-950">
+                    <tr className="border-b border-stone-300 text-stone-700 font-semibold bg-stone-100">
                       <th className="py-2.5 px-3">No</th>
                       <th className="py-2.5 px-3">Bagian / Nama Potongan</th>
                       <th className="py-2.5 px-3 text-center">Jumlah (Pcs)</th>
@@ -411,50 +411,50 @@ export const ExportDocModal: React.FC<Props> = ({ isOpen, onClose, config }) => 
                       <th className="py-2.5 px-3">Instruksi Posisi & Keterangan</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-neutral-800">
+                  <tbody className="divide-y divide-stone-200">
                     {cutList.hollowPieces.map((p, idx) => (
                       <tr
                         key={p.id}
                         className={
                           p.category.startsWith('penyangga')
-                            ? 'bg-amber-950/20 text-amber-100 font-medium'
-                            : 'hover:bg-neutral-800/30'
+                            ? 'bg-amber-50 text-amber-800 font-medium'
+                            : 'hover:bg-stone-50'
                         }
                       >
-                        <td className="py-2.5 px-3 text-neutral-400 font-mono">{idx + 1}</td>
+                        <td className="py-2.5 px-3 text-stone-500 font-mono">{idx + 1}</td>
                         <td className="py-2.5 px-3">
                           <span className="font-semibold">{p.label}</span>
                           {p.category.startsWith('penyangga') && (
-                            <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-700 border border-amber-500/30">
                               Bracing Beban
                             </span>
                           )}
                         </td>
-                        <td className="py-2.5 px-3 text-center font-bold font-mono text-white">
+                        <td className="py-2.5 px-3 text-center font-bold font-mono text-stone-900">
                           {p.qty} pcs
                         </td>
-                        <td className="py-2.5 px-3 text-right font-bold font-mono text-amber-400">
+                        <td className="py-2.5 px-3 text-right font-bold font-mono text-amber-600">
                           {p.lengthCm} cm
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono text-neutral-400">
+                        <td className="py-2.5 px-3 text-right font-mono text-stone-500">
                           {p.lengthCm * 10} mm
                         </td>
-                        <td className="py-2.5 px-3 text-neutral-400">{p.notes}</td>
+                        <td className="py-2.5 px-3 text-stone-500">{p.notes}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr className="bg-neutral-950 font-bold border-t border-neutral-700">
-                      <td colSpan={2} className="py-3 px-3 text-right text-neutral-300">
+                    <tr className="bg-stone-100 font-bold border-t border-stone-300">
+                      <td colSpan={2} className="py-3 px-3 text-right text-stone-700">
                         TOTAL ESTIMASI:
                       </td>
-                      <td className="py-3 px-3 text-center font-mono text-white">
+                      <td className="py-3 px-3 text-center font-mono text-stone-900">
                         {cutList.hollowPieces.reduce((s, p) => s + p.qty, 0)} potong
                       </td>
-                      <td className="py-3 px-3 text-right font-mono text-amber-400">
+                      <td className="py-3 px-3 text-right font-mono text-amber-600">
                         {cutList.totalSteelLengthM} m
                       </td>
-                      <td colSpan={2} className="py-3 px-3 text-blue-400">
+                      <td colSpan={2} className="py-3 px-3 text-blue-600">
                         Beli: <strong>{cutList.standard6mBarsNeeded} Batang</strong> (panjang 6m) +{' '}
                         <strong>{cutList.levelingFeetCount} Kaki Adjuster</strong>
                       </td>
@@ -468,14 +468,14 @@ export const ExportDocModal: React.FC<Props> = ({ isOpen, onClose, config }) => 
           {/* TAB 3: COAKAN & PANEL LACI */}
           {activeTab === 'panels' && (
             <div className="space-y-4">
-              <div className="p-3 bg-neutral-950 border border-neutral-800 rounded-xl text-xs text-neutral-300">
+              <div className="p-3 bg-stone-100 border border-stone-200 rounded-xl text-xs text-stone-700">
                 Berikut adalah daftar pemotongan lembaran plywood 18mm untuk tukang kayu / workshop interior:
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="border-b border-neutral-700 text-neutral-300 font-semibold bg-neutral-950">
+                    <tr className="border-b border-stone-300 text-stone-700 font-semibold bg-stone-100">
                       <th className="py-2.5 px-3">No</th>
                       <th className="py-2.5 px-3">Nama Panel Kayu</th>
                       <th className="py-2.5 px-3 text-center">Qty</th>
@@ -483,19 +483,19 @@ export const ExportDocModal: React.FC<Props> = ({ isOpen, onClose, config }) => 
                       <th className="py-2.5 px-3">Spesifikasi Bahan & Edging</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-neutral-800">
+                  <tbody className="divide-y divide-stone-200">
                     {cutList.panelPieces.map((p, idx) => (
-                      <tr key={p.id} className="hover:bg-neutral-800/30">
-                        <td className="py-2.5 px-3 text-neutral-400 font-mono">{idx + 1}</td>
-                        <td className="py-2.5 px-3 font-semibold text-neutral-200">{p.name}</td>
-                        <td className="py-2.5 px-3 text-center font-bold font-mono text-white">
+                      <tr key={p.id} className="hover:bg-stone-50">
+                        <td className="py-2.5 px-3 text-stone-500 font-mono">{idx + 1}</td>
+                        <td className="py-2.5 px-3 font-semibold text-stone-800">{p.name}</td>
+                        <td className="py-2.5 px-3 text-center font-bold font-mono text-stone-900">
                           {p.qty} pcs
                         </td>
-                        <td className="py-2.5 px-3 text-right font-bold font-mono text-emerald-400">
+                        <td className="py-2.5 px-3 text-right font-bold font-mono text-emerald-600">
                           {p.widthCm} × {p.heightCm} cm
                         </td>
-                        <td className="py-2.5 px-3 text-neutral-400">
-                          {p.material} — <span className="text-neutral-500">{p.notes}</span>
+                        <td className="py-2.5 px-3 text-stone-500">
+                          {p.material} — <span className="text-stone-500">{p.notes}</span>
                         </td>
                       </tr>
                     ))}
@@ -508,12 +508,12 @@ export const ExportDocModal: React.FC<Props> = ({ isOpen, onClose, config }) => 
           {/* TAB 4: SOP PERAKITAN */}
           {activeTab === 'sop' && (
             <div className="space-y-4">
-              <div className="p-4 bg-neutral-950 rounded-xl border border-neutral-800 space-y-3">
-                <h4 className="font-bold text-sm text-amber-300">
+              <div className="p-4 bg-stone-100 rounded-xl border border-stone-200 space-y-3">
+                <h4 className="font-bold text-sm text-amber-700">
                   Langkah-Langkah Fabrikasi & Perakitan (SOP Standar Bengkel)
                 </h4>
 
-                <ol className="list-decimal pl-5 space-y-2.5 text-xs text-neutral-300 leading-relaxed">
+                <ol className="list-decimal pl-5 space-y-2.5 text-xs text-stone-700 leading-relaxed">
                   <li>
                     <strong>Pemotongan Besi Hollow:</strong> Potong seluruh tiang vertikal ({cutList.hollowPieces.find(p=>p.category==='tiang-vertikal')?.lengthCm ?? '-'} cm) dan gelagar memanjang ({cutList.hollowPieces.find(p=>p.category==='gelagar-panjang')?.lengthCm ?? '-'} cm) sesuai tabel potongan. Gunakan mata potong gergaji miter cold-saw agar sudut siku rata.
                   </li>
@@ -553,16 +553,16 @@ export const ExportDocModal: React.FC<Props> = ({ isOpen, onClose, config }) => 
         </div>
 
         {/* MODAL FOOTER */}
-        <div className="flex items-center justify-between px-6 py-3.5 border-t border-neutral-800 bg-neutral-950/90 text-xs">
-          <div className="text-neutral-400">
-            Format file didukung: <span className="text-neutral-200 font-medium">Microsoft Word (.doc)</span>,{' '}
-            <span className="text-neutral-200 font-medium">Google Docs</span>, & Cetak Langsung.
+        <div className="flex items-center justify-between px-6 py-3.5 border-t border-stone-200 bg-stone-100 text-xs">
+          <div className="text-stone-500">
+            Format file didukung: <span className="text-stone-800 font-medium">Microsoft Word (.doc)</span>,{' '}
+            <span className="text-stone-800 font-medium">Google Docs</span>, & Cetak Langsung.
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-medium transition"
+              className="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 font-medium transition"
             >
               Tutup
             </button>

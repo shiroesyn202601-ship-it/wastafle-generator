@@ -170,15 +170,15 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
   ];
 
   return (
-    <div className="space-y-4 text-neutral-200 select-none">
+    <div className="space-y-4 text-stone-800 select-none">
       {/* 1. UKURAN UTAMA MEJA DAPUR */}
-      <div className="p-3.5 bg-[#12151c]/90 border border-white/[0.08] rounded-xl space-y-3">
-        <div className="flex items-center justify-between pb-2 border-b border-white/[0.08]">
+      <div className="p-3.5 bg-white border border-stone-200 rounded-xl space-y-3">
+        <div className="flex items-center justify-between pb-2 border-b border-stone-200">
           <div className="flex items-center gap-2">
-            <Maximize2 className="w-4 h-4 text-blue-400" />
-            <h3 className="font-semibold text-xs text-white">Dimensi Meja Utama (cm)</h3>
+            <Maximize2 className="w-4 h-4 text-blue-600" />
+            <h3 className="font-semibold text-xs text-stone-900">Dimensi Meja Utama (cm)</h3>
           </div>
-          <span className="text-[11px] font-mono text-neutral-400">
+          <span className="text-[11px] font-mono text-stone-500">
             {totalWidth} × {totalDepth} × {totalHeight} cm
           </span>
         </div>
@@ -196,8 +196,8 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
                 }}
                 className={`py-1.5 px-2 rounded-lg text-[11px] font-medium border text-center transition cursor-pointer ${
                   isMatch
-                    ? 'bg-blue-950/40 border-blue-500/80 text-white font-bold ring-1 ring-blue-500/30'
-                    : 'bg-black/30 border-white/[0.06] text-neutral-400 hover:text-white'
+                    ? 'bg-blue-50 border-blue-500/80 text-stone-900 font-bold ring-1 ring-blue-500/30'
+                    : 'bg-stone-50 border-stone-200 text-stone-500 hover:text-stone-900'
                 }`}
               >
                 {preset.label}
@@ -208,10 +208,10 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
 
         <div className="grid grid-cols-2 gap-2.5 pt-1">
           {/* Panjang Meja */}
-          <div className="bg-black/20 p-2.5 rounded-lg border border-white/5 space-y-1.5">
+          <div className="bg-stone-50 p-2.5 rounded-lg border border-stone-200 space-y-1.5">
             <div className="flex justify-between items-center text-xs">
-              <span className="text-neutral-300 text-[11px]">Panjang Total (P)</span>
-              <span className="font-mono font-bold text-blue-400">{totalWidth} cm</span>
+              <span className="text-stone-700 text-[11px]">Panjang Total (P)</span>
+              <span className="font-mono font-bold text-blue-600">{totalWidth} cm</span>
             </div>
             <input
               type="range"
@@ -220,15 +220,15 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
               step={5}
               value={totalWidth}
               onChange={(e) => handleTotalWidthChange(parseInt(e.target.value))}
-              className="w-full accent-blue-500 cursor-pointer h-1.5 bg-neutral-800 rounded-full"
+              className="w-full accent-blue-500 cursor-pointer h-1.5 bg-stone-100 rounded-full"
             />
           </div>
 
           {/* Kedalaman Meja */}
-          <div className="bg-black/20 p-2.5 rounded-lg border border-white/5 space-y-1.5">
+          <div className="bg-stone-50 p-2.5 rounded-lg border border-stone-200 space-y-1.5">
             <div className="flex justify-between items-center text-xs">
-              <span className="text-neutral-300 text-[11px]">Kedalaman (L)</span>
-              <span className="font-mono font-bold text-blue-400">{totalDepth} cm</span>
+              <span className="text-stone-700 text-[11px]">Kedalaman (L)</span>
+              <span className="font-mono font-bold text-blue-600">{totalDepth} cm</span>
             </div>
             <input
               type="range"
@@ -237,15 +237,15 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
               step={2}
               value={totalDepth}
               onChange={(e) => onChange({ totalDepth: parseInt(e.target.value) })}
-              className="w-full accent-blue-500 cursor-pointer h-1.5 bg-neutral-800 rounded-full"
+              className="w-full accent-blue-500 cursor-pointer h-1.5 bg-stone-100 rounded-full"
             />
           </div>
 
           {/* Tinggi Meja */}
-          <div className="bg-black/20 p-2.5 rounded-lg border border-white/5 space-y-1.5">
+          <div className="bg-stone-50 p-2.5 rounded-lg border border-stone-200 space-y-1.5">
             <div className="flex justify-between items-center text-xs">
-              <span className="text-neutral-300 text-[11px]">Tinggi Finish (T)</span>
-              <span className="font-mono font-bold text-blue-400">{totalHeight} cm</span>
+              <span className="text-stone-700 text-[11px]">Tinggi Finish (T)</span>
+              <span className="font-mono font-bold text-blue-600">{totalHeight} cm</span>
             </div>
             <input
               type="range"
@@ -254,15 +254,15 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
               step={1}
               value={totalHeight}
               onChange={(e) => onChange({ totalHeight: parseInt(e.target.value) })}
-              className="w-full accent-blue-500 cursor-pointer h-1.5 bg-neutral-800 rounded-full"
+              className="w-full accent-blue-500 cursor-pointer h-1.5 bg-stone-100 rounded-full"
             />
           </div>
 
           {/* Tebal Top Table */}
-          <div className="bg-black/20 p-2.5 rounded-lg border border-white/5 space-y-1.5">
+          <div className="bg-stone-50 p-2.5 rounded-lg border border-stone-200 space-y-1.5">
             <div className="flex justify-between items-center text-xs">
-              <span className="text-neutral-300 text-[11px]">Tebal Marmer</span>
-              <span className="font-mono font-bold text-blue-400">{countertopThickness} cm</span>
+              <span className="text-stone-700 text-[11px]">Tebal Marmer</span>
+              <span className="font-mono font-bold text-blue-600">{countertopThickness} cm</span>
             </div>
             <input
               type="range"
@@ -271,15 +271,15 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
               step={1}
               value={countertopThickness}
               onChange={(e) => onChange({ countertopThickness: parseInt(e.target.value) })}
-              className="w-full accent-blue-500 cursor-pointer h-1.5 bg-neutral-800 rounded-full"
+              className="w-full accent-blue-500 cursor-pointer h-1.5 bg-stone-100 rounded-full"
             />
           </div>
 
           {/* Kaki / Plinth */}
-          <div className="col-span-2 bg-black/20 p-2.5 rounded-lg border border-white/5 space-y-2">
+          <div className="col-span-2 bg-stone-50 p-2.5 rounded-lg border border-stone-200 space-y-2">
             <div className="flex justify-between items-center text-xs">
-              <span className="text-neutral-300 text-[11px]">Tinggi Kaki / Plinth</span>
-              <span className="font-mono font-bold text-blue-400">
+              <span className="text-stone-700 text-[11px]">Tinggi Kaki / Plinth</span>
+              <span className="font-mono font-bold text-blue-600">
                 {plinthHeight > 0 ? `${plinthHeight} cm` : 'TANPA KAKI'}
               </span>
             </div>
@@ -291,11 +291,11 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
                 step={1}
                 value={plinthHeight}
                 onChange={(e) => onChange({ plinthHeight: parseInt(e.target.value) })}
-                className="flex-1 accent-blue-500 cursor-pointer h-1.5 bg-neutral-800 rounded-full"
+                className="flex-1 accent-blue-500 cursor-pointer h-1.5 bg-stone-100 rounded-full"
               />
               <button
                 onClick={() => onChange({ plinthHeight: 0 })}
-                className="px-2 py-0.5 text-[10px] rounded bg-white/5 border border-white/10 text-neutral-300 hover:text-white cursor-pointer"
+                className="px-2 py-0.5 text-[10px] rounded bg-stone-50 border border-stone-200 text-stone-700 hover:text-stone-900 cursor-pointer"
                 title="Hilangkan kaki (kabinet langsung di lantai)"
               >
                 0 cm
@@ -313,15 +313,15 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
                   title={opt.hint}
                   className={`py-1.5 px-1 rounded-md text-[10px] font-medium border transition cursor-pointer ${
                     legType === opt.id
-                      ? 'bg-blue-950/50 border-blue-500/80 text-white'
-                      : 'bg-black/30 border-white/[0.06] text-neutral-400 hover:text-white'
+                      ? 'bg-blue-50 border-blue-500/80 text-stone-900'
+                      : 'bg-stone-50 border-stone-200 text-stone-500 hover:text-stone-900'
                   }`}
                 >
                   {opt.label}
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-neutral-500 leading-snug">
+            <p className="text-[10px] text-stone-500 leading-snug">
               {plinthHeight === 0
                 ? 'Kabinet & rangka langsung menapak di lantai.'
                 : legType === 'frame'
@@ -333,10 +333,10 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
           </div>
 
           {/* Backsplash */}
-          <div className="bg-black/20 p-2.5 rounded-lg border border-white/5 space-y-1.5">
+          <div className="bg-stone-50 p-2.5 rounded-lg border border-stone-200 space-y-1.5">
             <div className="flex justify-between items-center text-xs">
-              <span className="text-neutral-300 text-[11px]">Backsplash Dinding</span>
-              <span className="font-mono font-bold text-blue-400">
+              <span className="text-stone-700 text-[11px]">Backsplash Dinding</span>
+              <span className="font-mono font-bold text-blue-600">
                 {backsplashEnabled ? `${backsplashHeight} cm` : 'OFF'}
               </span>
             </div>
@@ -355,31 +355,31 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
                 step={5}
                 value={backsplashHeight}
                 onChange={(e) => onChange({ backsplashHeight: parseInt(e.target.value) })}
-                className="w-full accent-blue-500 disabled:opacity-30 cursor-pointer h-1.5 bg-neutral-800 rounded-full"
+                className="w-full accent-blue-500 disabled:opacity-30 cursor-pointer h-1.5 bg-stone-100 rounded-full"
               />
             </div>
           </div>
         </div>
 
-        <div className="p-2 bg-black/40 rounded-lg border border-white/5 text-[11px] text-neutral-400 flex items-center justify-between font-mono">
+        <div className="p-2 bg-white rounded-lg border border-stone-200 text-[11px] text-stone-500 flex items-center justify-between font-mono">
           <span>Tinggi Efektif Kabinet:</span>
-          <span className="text-emerald-400 font-bold">{usableHeight} cm (T - Top - Plinth)</span>
+          <span className="text-emerald-600 font-bold">{usableHeight} cm (T - Top - Plinth)</span>
         </div>
       </div>
 
       {/* 2. PENGATURAN KOLOM KABINET */}
-      <div className="p-3.5 bg-[#12151c]/90 border border-white/[0.08] rounded-xl space-y-3">
-        <div className="flex items-center justify-between pb-2 border-b border-white/[0.08]">
+      <div className="p-3.5 bg-white border border-stone-200 rounded-xl space-y-3">
+        <div className="flex items-center justify-between pb-2 border-b border-stone-200">
           <div className="flex items-center gap-2">
-            <Columns className="w-4 h-4 text-emerald-400" />
-            <h3 className="font-semibold text-xs text-white">
+            <Columns className="w-4 h-4 text-emerald-600" />
+            <h3 className="font-semibold text-xs text-stone-900">
               Modul Kabinet ({columns.length} Kolom)
             </h3>
           </div>
           <div className="flex items-center gap-1.5">
             <button
               onClick={handleEqualizeColumns}
-              className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-neutral-300 text-[11px] rounded-md border border-white/10 transition cursor-pointer"
+              className="px-2.5 py-1 bg-stone-50 hover:bg-stone-100 text-stone-700 text-[11px] rounded-md border border-stone-200 transition cursor-pointer"
             >
               Bagi Rata
             </button>
@@ -402,14 +402,14 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
           {columns.map((col, cIdx) => (
             <div
               key={col.id || cIdx}
-              className="p-3 bg-black/30 border border-white/[0.06] hover:border-white/20 rounded-lg space-y-2.5 transition"
+              className="p-3 bg-stone-50 border border-stone-200 hover:border-stone-300 rounded-lg space-y-2.5 transition"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="w-5 h-5 rounded bg-blue-500/20 text-blue-400 text-xs font-bold flex items-center justify-center font-mono">
+                  <span className="w-5 h-5 rounded bg-blue-500/20 text-blue-600 text-xs font-bold flex items-center justify-center font-mono">
                     {cIdx + 1}
                   </span>
-                  <span className="text-xs font-semibold text-white">
+                  <span className="text-xs font-semibold text-stone-900">
                     Modul {cIdx + 1}
                   </span>
                 </div>
@@ -418,7 +418,7 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
                   <button
                     onClick={() => onChange(reorderColumns(config, cIdx, cIdx - 1))}
                     disabled={cIdx === 0}
-                    className="px-1.5 py-0.5 rounded text-[11px] text-neutral-400 hover:text-white hover:bg-white/10 disabled:opacity-20 cursor-pointer"
+                    className="px-1.5 py-0.5 rounded text-[11px] text-stone-500 hover:text-stone-900 hover:bg-stone-100 disabled:opacity-20 cursor-pointer"
                     title="Pindah ke kiri"
                   >
                     ◀
@@ -426,7 +426,7 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
                   <button
                     onClick={() => onChange(reorderColumns(config, cIdx, cIdx + 1))}
                     disabled={cIdx === columns.length - 1}
-                    className="px-1.5 py-0.5 rounded text-[11px] text-neutral-400 hover:text-white hover:bg-white/10 disabled:opacity-20 cursor-pointer"
+                    className="px-1.5 py-0.5 rounded text-[11px] text-stone-500 hover:text-stone-900 hover:bg-stone-100 disabled:opacity-20 cursor-pointer"
                     title="Pindah ke kanan"
                   >
                     ▶
@@ -435,7 +435,7 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
                 <button
                   onClick={() => handleRemoveColumn(col.id)}
                   disabled={columns.length <= 1}
-                  className="p-1 text-neutral-500 hover:text-rose-400 disabled:opacity-20 transition cursor-pointer"
+                  className="p-1 text-stone-500 hover:text-rose-600 disabled:opacity-20 transition cursor-pointer"
                   title="Hapus Kolom"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -445,9 +445,9 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
               {/* Column Width & Type */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <div className="flex justify-between text-[11px] text-neutral-400">
+                  <div className="flex justify-between text-[11px] text-stone-500">
                     <span>Lebar Modul</span>
-                    <span className="font-mono font-bold text-emerald-400">{col.width} cm</span>
+                    <span className="font-mono font-bold text-emerald-600">{col.width} cm</span>
                   </div>
                   <input
                     type="range"
@@ -456,12 +456,12 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
                     step={1}
                     value={col.width}
                     onChange={(e) => handleColumnChange(cIdx, { width: parseInt(e.target.value) })}
-                    className="w-full accent-emerald-500 cursor-pointer h-1.5 bg-neutral-800 rounded-full"
+                    className="w-full accent-emerald-500 cursor-pointer h-1.5 bg-stone-100 rounded-full"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] text-neutral-400 block">Tipe Modul Kabinet</label>
+                  <label className="text-[10px] text-stone-500 block">Tipe Modul Kabinet</label>
                   <select
                     value={col.type}
                     onChange={(e) => {
@@ -480,7 +480,7 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
                         handleColumnChange(cIdx, { type: newType });
                       }
                     }}
-                    className="w-full px-2 py-1.5 bg-black/40 border border-white/10 rounded-md text-xs text-neutral-200 focus:outline-none focus:border-blue-500 cursor-pointer"
+                    className="w-full px-2 py-1.5 bg-white border border-stone-200 rounded-md text-xs text-stone-800 focus:outline-none focus:border-blue-500 cursor-pointer"
                   >
                     <option value="drawers">Susunan Bebas (Laci / Pintu / Kosong)</option>
                     <option value="sink-cabinet">Kabinet Wastafel (Panel Sifon & Pintu)</option>
@@ -499,20 +499,20 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
                 const sumH = col.drawers.reduce((s, d) => s + d.height, 0);
                 const mismatch = Math.round(sumH - usableHeight);
                 return (
-                  <div className="space-y-2 pt-2 border-t border-white/5">
-                    <div className="flex items-center justify-between text-[11px] text-neutral-400">
+                  <div className="space-y-2 pt-2 border-t border-stone-200">
+                    <div className="flex items-center justify-between text-[11px] text-stone-500">
                       <span className="flex items-center gap-1">
-                        <SplitSquareVertical className="w-3.5 h-3.5 text-amber-400" />
+                        <SplitSquareVertical className="w-3.5 h-3.5 text-amber-600" />
                         Susunan dari atas ke bawah ({col.drawers.length} baris)
                       </span>
-                      <span className={`font-mono text-[10px] ${mismatch === 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      <span className={`font-mono text-[10px] ${mismatch === 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
                         {Math.round(sumH)} / {Math.round(usableHeight)} cm
                       </span>
                     </div>
 
                     {/* Mini preview tampak depan kolom */}
                     <div className="flex gap-2">
-                      <div className="w-10 shrink-0 flex flex-col gap-px rounded overflow-hidden border border-white/10 bg-black/40" style={{ height: 84 }}>
+                      <div className="w-10 shrink-0 flex flex-col gap-px rounded overflow-hidden border border-stone-200 bg-white" style={{ height: 84 }}>
                         {col.drawers.map((s, i) => {
                           const k = s.kind || 'drawer';
                           return (
@@ -521,12 +521,12 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
                               style={{ flexGrow: s.height }}
                               className={`flex items-center justify-center text-[7px] font-bold ${
                                 k === 'drawer'
-                                  ? 'bg-amber-500/30 text-amber-200'
+                                  ? 'bg-amber-500/30 text-amber-800'
                                   : k.startsWith('door')
-                                  ? 'bg-sky-500/25 text-sky-200'
+                                  ? 'bg-sky-500/25 text-sky-800'
                                   : k === 'false-panel'
-                                  ? 'bg-neutral-500/30 text-neutral-200'
-                                  : 'bg-transparent text-neutral-500 border border-dashed border-white/15'
+                                  ? 'bg-stone-300 text-stone-800'
+                                  : 'bg-transparent text-stone-500 border border-dashed border-stone-300'
                               }`}
                             >
                               {k === 'drawer' ? 'L' : k === 'door-double' ? 'P2' : k.startsWith('door') ? 'P' : k === 'open' ? 'R' : k === 'empty' ? '—' : 'M'}
@@ -537,12 +537,12 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
 
                       <div className="flex-1 space-y-1.5">
                         {col.drawers.map((section, sIdx) => (
-                          <div key={section.id || sIdx} className="p-1.5 bg-black/30 rounded-md border border-white/5 space-y-1">
+                          <div key={section.id || sIdx} className="p-1.5 bg-stone-50 rounded-md border border-stone-200 space-y-1">
                             <div className="flex items-center gap-1">
                               <select
                                 value={section.kind || 'drawer'}
                                 onChange={(e) => handleSectionChange(cIdx, sIdx, { kind: e.target.value as SectionKind })}
-                                className="flex-1 min-w-0 px-1 py-0.5 bg-black/40 border border-white/10 rounded text-[10px] text-neutral-200 cursor-pointer"
+                                className="flex-1 min-w-0 px-1 py-0.5 bg-white border border-stone-200 rounded text-[10px] text-stone-800 cursor-pointer"
                               >
                                 {(Object.keys(SECTION_KIND_LABELS) as SectionKind[]).map((k) => (
                                   <option key={k} value={k}>
@@ -553,7 +553,7 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
                               <button
                                 onClick={() => handleMoveSection(cIdx, sIdx, -1)}
                                 disabled={sIdx === 0}
-                                className="px-1 text-neutral-500 hover:text-white disabled:opacity-20 text-[10px] cursor-pointer"
+                                className="px-1 text-stone-500 hover:text-stone-900 disabled:opacity-20 text-[10px] cursor-pointer"
                                 title="Pindah ke atas"
                               >
                                 ▲
@@ -561,7 +561,7 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
                               <button
                                 onClick={() => handleMoveSection(cIdx, sIdx, 1)}
                                 disabled={sIdx === col.drawers!.length - 1}
-                                className="px-1 text-neutral-500 hover:text-white disabled:opacity-20 text-[10px] cursor-pointer"
+                                className="px-1 text-stone-500 hover:text-stone-900 disabled:opacity-20 text-[10px] cursor-pointer"
                                 title="Pindah ke bawah"
                               >
                                 ▼
@@ -569,7 +569,7 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
                               {col.drawers!.length > 1 && (
                                 <button
                                   onClick={() => handleRemoveSection(cIdx, sIdx)}
-                                  className="text-neutral-500 hover:text-rose-400 p-0.5 cursor-pointer"
+                                  className="text-stone-500 hover:text-rose-600 p-0.5 cursor-pointer"
                                   title="Hapus baris"
                                 >
                                   <Trash2 className="w-3 h-3" />
@@ -583,7 +583,7 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
                                 max={Math.max(10, Math.round(usableHeight))}
                                 value={section.height}
                                 onChange={(e) => handleSectionChange(cIdx, sIdx, { height: parseInt(e.target.value) })}
-                                className="flex-1 accent-amber-500 cursor-pointer h-1 bg-neutral-800 rounded-full"
+                                className="flex-1 accent-amber-500 cursor-pointer h-1 bg-stone-100 rounded-full"
                               />
                               <input
                                 type="number"
@@ -591,9 +591,9 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
                                 max={Math.round(usableHeight)}
                                 value={section.height}
                                 onChange={(e) => handleSectionChange(cIdx, sIdx, { height: Math.max(5, parseInt(e.target.value) || 5) })}
-                                className="w-11 px-1 py-0.5 bg-black/40 border border-white/10 rounded text-[10px] font-mono text-amber-300 text-right"
+                                className="w-11 px-1 py-0.5 bg-white border border-stone-200 rounded text-[10px] font-mono text-amber-700 text-right"
                               />
-                              <span className="text-[9px] text-neutral-500">cm</span>
+                              <span className="text-[9px] text-stone-500">cm</span>
                             </div>
                           </div>
                         ))}
@@ -611,7 +611,7 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
                           key={kind}
                           onClick={() => handleAddSection(cIdx, kind)}
                           disabled={col.drawers!.length >= MAX_SECTIONS}
-                          className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-amber-300 hover:text-amber-200 text-[10px] font-semibold disabled:opacity-30 cursor-pointer"
+                          className="px-2 py-0.5 rounded bg-stone-50 border border-stone-200 text-amber-700 hover:text-amber-800 text-[10px] font-semibold disabled:opacity-30 cursor-pointer"
                         >
                           {label}
                         </button>
@@ -619,7 +619,7 @@ export const DimensionControls: React.FC<Props> = ({ config, onChange }) => {
                       {mismatch !== 0 && (
                         <button
                           onClick={() => handleFitSections(cIdx)}
-                          className="ml-auto px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-200 text-[10px] font-semibold cursor-pointer"
+                          className="ml-auto px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-800 text-[10px] font-semibold cursor-pointer"
                           title="Skala ulang tinggi tiap baris agar total pas dengan tinggi kabinet"
                         >
                           Pas-kan ({mismatch > 0 ? '+' : ''}{mismatch} cm)

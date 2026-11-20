@@ -1765,13 +1765,13 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
   };
 
   return (
-    <div className="relative w-full h-full select-none bg-neutral-900 overflow-hidden">
+    <div className="relative w-full h-full select-none bg-white overflow-hidden">
       <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
 
       {glError && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center p-6 bg-neutral-900/95 text-center">
-          <div className="max-w-sm space-y-3 text-sm text-neutral-300">
-            <p className="text-base font-semibold text-white">
+        <div className="absolute inset-0 z-20 flex items-center justify-center p-6 bg-white text-center">
+          <div className="max-w-sm space-y-3 text-sm text-stone-700">
+            <p className="text-base font-semibold text-stone-900">
               {glError === 'lost' ? 'Tampilan 3D terputus' : 'Tampilan 3D tidak dapat dimuat'}
             </p>
             <p>
@@ -1779,7 +1779,7 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
               lalu muat ulang halaman. Jika tetap gagal, aktifkan &quot;Use graphics acceleration&quot; di pengaturan browser
               atau tutup lalu buka kembali browser.
             </p>
-            <p className="text-neutral-400">Mode Rangka, Blueprint, dan export dokumen tetap bisa dipakai.</p>
+            <p className="text-stone-500">Mode Rangka, Blueprint, dan export dokumen tetap bisa dipakai.</p>
             <button
               onClick={() => window.location.reload()}
               className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors"
@@ -1791,37 +1791,37 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
       )}
 
       {/* Camera angle buttons */}
-      <div className="absolute top-2 left-2 right-2 sm:top-3 sm:left-3 sm:right-auto z-10 flex flex-wrap gap-1 sm:gap-1.5 p-1 sm:p-1.5 bg-neutral-900/85 backdrop-blur-md rounded-xl border border-neutral-700/60 shadow-lg text-xs text-neutral-300">
-        <span className="hidden sm:inline px-2 py-1 font-semibold text-neutral-400">Sudut:</span>
+      <div className="absolute top-2 left-2 right-2 sm:top-3 sm:left-3 sm:right-auto z-10 flex flex-wrap gap-1 sm:gap-1.5 p-1 sm:p-1.5 bg-white backdrop-blur-md rounded-xl border border-stone-300 shadow-lg text-xs text-stone-700">
+        <span className="hidden sm:inline px-2 py-1 font-semibold text-stone-500">Sudut:</span>
         <button
           onClick={() => setCameraPreset('iso')}
-          className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 hover:text-white transition-colors"
+          className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 hover:text-stone-900 transition-colors"
         >
           Isometrik 3D
         </button>
         <button
           onClick={() => setCameraPreset('front')}
-          className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 hover:text-white transition-colors"
+          className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 hover:text-stone-900 transition-colors"
         >
           Depan
         </button>
         <button
           onClick={() => setCameraPreset('top')}
-          className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 hover:text-white transition-colors"
+          className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 hover:text-stone-900 transition-colors"
           title="Tampak Atas: lihat lubang cekung wastafel & kompor tanam"
         >
           Atas (Cekung Bak)
         </button>
         <button
           onClick={() => setCameraPreset('side')}
-          className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 hover:text-white transition-colors"
+          className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 hover:text-stone-900 transition-colors"
           title="Lihat tampak samping (papan tertutup rapat)"
         >
           Samping
         </button>
         <button
           onClick={() => setCameraPreset('inspect')}
-          className="px-2.5 py-1 rounded-lg bg-amber-900/40 text-amber-300 hover:bg-amber-800/60 transition-colors"
+          className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-800/60 transition-colors"
         >
           Detail Alat
         </button>
@@ -1829,7 +1829,7 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
 
       {/* Petunjuk engsel lipat */}
       {getValidHinges(config, getFrameMembers(config)).length > 0 && (
-        <div className="absolute top-36 sm:top-24 left-2 sm:left-3 z-10 flex items-center gap-2 px-3 py-1.5 bg-amber-950/85 border border-amber-500/60 rounded-xl text-[11px] font-semibold text-amber-200 shadow-xl backdrop-blur-md pointer-events-none">
+        <div className="absolute top-36 sm:top-24 left-2 sm:left-3 z-10 flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-500/60 rounded-xl text-[11px] font-semibold text-amber-800 shadow-xl backdrop-blur-md pointer-events-none">
           <div className="w-2 h-2 rounded-full bg-amber-400" />
           <span>Klik engsel untuk menekuk / meluruskan</span>
         </div>
@@ -1837,7 +1837,7 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
 
       {/* Frame Only Active Badge */}
       {config.showFrameOnly && (
-        <div className="absolute top-24 sm:top-14 left-2 sm:left-3 z-10 flex items-center gap-2 px-3 py-1.5 bg-blue-950/90 border border-blue-500 rounded-xl text-xs font-semibold text-blue-300 shadow-xl backdrop-blur-md">
+        <div className="absolute top-24 sm:top-14 left-2 sm:left-3 z-10 flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-500 rounded-xl text-xs font-semibold text-blue-700 shadow-xl backdrop-blur-md">
           <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
           <span>Mode Rangka & Besi Penyangga Saja</span>
         </div>
@@ -1845,7 +1845,7 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
 
       {/* Safety Clearance Status Badge */}
       {config.sink.enabled && config.stove.enabled && (
-        <div className="absolute top-auto bottom-28 right-2 lg:bottom-auto lg:top-3 lg:right-3 z-10 p-2 sm:p-2.5 bg-neutral-900/90 backdrop-blur-md rounded-xl border border-neutral-700/60 shadow-lg max-w-xs text-xs">
+        <div className="absolute top-auto bottom-28 right-2 lg:bottom-auto lg:top-3 lg:right-3 z-10 p-2 sm:p-2.5 bg-white backdrop-blur-md rounded-xl border border-stone-300 shadow-lg max-w-xs text-xs">
           {(() => {
             const sinkLeft = config.sink.posX - config.sink.width / 2;
             const sinkRight = config.sink.posX + config.sink.width / 2;
@@ -1859,18 +1859,18 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
 
             if (gap < 0) {
               return (
-                <div className="flex items-center gap-2 text-rose-400 font-medium">
+                <div className="flex items-center gap-2 text-rose-600 font-medium">
                   <div className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0" />
                   <span>PERINGATAN: Wastafel dan kompor bertabrakan (overlapping)!</span>
                 </div>
               );
             } else if (gap < 40) {
               return (
-                <div className="flex items-center gap-2 text-amber-300 font-medium">
+                <div className="flex items-center gap-2 text-amber-700 font-medium">
                   <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
                   <div>
                     <span>Jarak kompor & wastafel: {Math.round(gap)} cm.</span>
-                    <span className="block text-[10px] text-amber-400/80 font-normal">
+                    <span className="block text-[10px] text-amber-600/80 font-normal">
                       Disarankan min. 40-50 cm agar cipratan air aman dari api.
                     </span>
                   </div>
@@ -1878,7 +1878,7 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
               );
             } else {
               return (
-                <div className="flex items-center gap-2 text-emerald-400 font-medium">
+                <div className="flex items-center gap-2 text-emerald-600 font-medium">
                   <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
                   <span>Jarak aman ergonomis: {Math.round(gap)} cm.</span>
                 </div>
@@ -1889,7 +1889,7 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
       )}
 
       {/* Realtime Size Badge */}
-      <div className="hidden lg:block absolute bottom-3 left-3 z-10 pointer-events-none px-3 py-1.5 bg-black/60 backdrop-blur-sm rounded-lg text-xs font-mono text-neutral-300 border border-white/10">
+      <div className="hidden lg:block absolute bottom-3 left-3 z-10 pointer-events-none px-3 py-1.5 bg-white/85 backdrop-blur-sm rounded-lg text-xs font-mono text-stone-700 border border-stone-200">
         Dimensi Meja: {config.totalWidth} × {config.totalDepth} × {config.totalHeight} cm | Lubang Cekung: {config.sink.bowlDepth}cm
       </div>
     </div>

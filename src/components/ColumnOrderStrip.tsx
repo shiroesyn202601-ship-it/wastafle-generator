@@ -68,14 +68,14 @@ export const ColumnOrderStrip: React.FC<Props> = ({ config, onChange }) => {
   };
 
   return (
-    <div className="p-2 bg-black/40 rounded-lg border border-white/5 space-y-1.5">
-      <div className="text-[10px] text-neutral-400 flex justify-between font-mono">
+    <div className="p-2 bg-white rounded-lg border border-stone-200 space-y-1.5">
+      <div className="text-[10px] text-stone-500 flex justify-between font-mono">
         <span>Urutan modul (seret untuk pindah):</span>
         <span>Total: {total} cm</span>
       </div>
       <div
         ref={stripRef}
-        className="flex h-14 w-full rounded-md overflow-hidden gap-0.5 border border-white/10 touch-none select-none"
+        className="flex h-14 w-full rounded-md overflow-hidden gap-0.5 border border-stone-200 touch-none select-none"
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={() => setDrag(null)}
@@ -92,24 +92,24 @@ export const ColumnOrderStrip: React.FC<Props> = ({ config, onChange }) => {
                 columns.length > 1 ? 'cursor-grab active:cursor-grabbing' : ''
               } ${
                 isDragged
-                  ? 'bg-amber-500/40 text-white ring-2 ring-inset ring-amber-400'
-                  : 'bg-white/10 hover:bg-white/15 text-neutral-200'
+                  ? 'bg-amber-500/40 text-stone-900 ring-2 ring-inset ring-amber-400'
+                  : 'bg-stone-100 hover:bg-stone-200 text-stone-800'
               }`}
               title={`Kolom ${colIdx + 1}: ${col.width}cm (${col.type}) — seret untuk memindah`}
             >
-              <GripVertical className="absolute left-0.5 top-1/2 -translate-y-1/2 w-3 h-3 text-neutral-500" />
+              <GripVertical className="absolute left-0.5 top-1/2 -translate-y-1/2 w-3 h-3 text-stone-500" />
               <span className="flex items-center gap-0.5">
-                {colIdx === sinkCol && <Droplets className="w-3 h-3 text-sky-300" />}
-                {colIdx === stoveCol && <Flame className="w-3 h-3 text-orange-300" />}
+                {colIdx === sinkCol && <Droplets className="w-3 h-3 text-sky-700" />}
+                {colIdx === stoveCol && <Flame className="w-3 h-3 text-orange-700" />}
                 <span className="font-bold truncate">{TYPE_SHORT[col.type] || col.type}</span>
               </span>
-              <span className="text-neutral-400">{col.width}cm</span>
+              <span className="text-stone-500">{col.width}cm</span>
             </div>
           );
         })}
       </div>
-      <p className="text-[10px] text-neutral-500">
-        Wastafel <Droplets className="inline w-3 h-3 text-sky-300" /> & kompor <Flame className="inline w-3 h-3 text-orange-300" /> ikut pindah
+      <p className="text-[10px] text-stone-500">
+        Wastafel <Droplets className="inline w-3 h-3 text-sky-700" /> & kompor <Flame className="inline w-3 h-3 text-orange-700" /> ikut pindah
         bersama kolomnya, rangka penyangganya ikut menyesuaikan.
       </p>
     </div>

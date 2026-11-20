@@ -43,16 +43,16 @@ export const BottomSimulationDock: React.FC<Props> = ({ config, onChange }) => {
       <div className="flex justify-center">
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center gap-1.5 px-3.5 py-1 bg-neutral-900/90 hover:bg-neutral-800 text-neutral-300 hover:text-white text-[11px] font-medium rounded-t-xl border-t border-x border-white/10 shadow-lg backdrop-blur-md transition-all cursor-pointer"
+          className="flex items-center gap-1.5 px-3.5 py-1 bg-white hover:bg-stone-100 text-stone-700 hover:text-stone-900 text-[11px] font-medium rounded-t-xl border-t border-x border-stone-200 shadow-lg backdrop-blur-md transition-all cursor-pointer"
         >
           {collapsed ? (
             <>
-              <ChevronUp className="w-3.5 h-3.5 text-amber-400" />
+              <ChevronUp className="w-3.5 h-3.5 text-amber-600" />
               <span>Simulasi Animasi & Tampilan 3D</span>
             </>
           ) : (
             <>
-              <ChevronDown className="w-3.5 h-3.5 text-neutral-400" />
+              <ChevronDown className="w-3.5 h-3.5 text-stone-500" />
               <span>Sembunyikan Dock</span>
             </>
           )}
@@ -61,16 +61,16 @@ export const BottomSimulationDock: React.FC<Props> = ({ config, onChange }) => {
 
       {/* Main Dock Body */}
       {!collapsed && (
-        <div className="bg-neutral-900/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 sm:p-3.5 shadow-2xl text-neutral-200 max-h-[45dvh] overflow-y-auto">
+        <div className="bg-white backdrop-blur-2xl border border-stone-200 rounded-2xl p-2 sm:p-3.5 shadow-2xl text-stone-800 max-h-[45dvh] overflow-y-auto">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 items-center">
             {/* 1. Tarik Laci Keluar */}
-            <div className="bg-neutral-950/70 p-2.5 rounded-xl border border-white/5 space-y-1.5">
+            <div className="bg-stone-100 p-2.5 rounded-xl border border-stone-200 space-y-1.5">
               <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-1.5 text-neutral-300 font-medium text-[11px]">
-                  <DoorOpen className="w-3.5 h-3.5 text-amber-400" />
+                <span className="flex items-center gap-1.5 text-stone-700 font-medium text-[11px]">
+                  <DoorOpen className="w-3.5 h-3.5 text-amber-600" />
                   Buka Laci
                 </span>
-                <span className="font-mono text-xs font-semibold text-amber-400">
+                <span className="font-mono text-xs font-semibold text-amber-600">
                   {drawersOpenPercent}%
                 </span>
               </div>
@@ -80,24 +80,24 @@ export const BottomSimulationDock: React.FC<Props> = ({ config, onChange }) => {
                 max={100}
                 value={drawersOpenPercent}
                 onChange={(e) => onChange({ drawersOpenPercent: parseInt(e.target.value) })}
-                className="w-full accent-amber-500 cursor-pointer h-1.5 bg-neutral-800 rounded-full"
+                className="w-full accent-amber-500 cursor-pointer h-1.5 bg-stone-100 rounded-full"
               />
-              <div className="flex justify-between text-[10px] text-neutral-500 pt-0.5">
+              <div className="flex justify-between text-[10px] text-stone-500 pt-0.5">
                 <button
                   onClick={() => onChange({ drawersOpenPercent: 0 })}
-                  className="hover:text-neutral-300 transition-colors"
+                  className="hover:text-stone-700 transition-colors"
                 >
                   Tutup
                 </button>
                 <button
                   onClick={() => onChange({ drawersOpenPercent: 50 })}
-                  className="hover:text-neutral-300 transition-colors"
+                  className="hover:text-stone-700 transition-colors"
                 >
                   50%
                 </button>
                 <button
                   onClick={() => onChange({ drawersOpenPercent: 100 })}
-                  className="hover:text-amber-400 transition-colors"
+                  className="hover:text-amber-600 transition-colors"
                 >
                   Penuh
                 </button>
@@ -105,13 +105,13 @@ export const BottomSimulationDock: React.FC<Props> = ({ config, onChange }) => {
             </div>
 
             {/* 2. Buka Pintu Kabinet */}
-            <div className="bg-neutral-950/70 p-2.5 rounded-xl border border-white/5 space-y-1.5">
+            <div className="bg-stone-100 p-2.5 rounded-xl border border-stone-200 space-y-1.5">
               <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-1.5 text-neutral-300 font-medium text-[11px]">
-                  <DoorOpen className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="flex items-center gap-1.5 text-stone-700 font-medium text-[11px]">
+                  <DoorOpen className="w-3.5 h-3.5 text-emerald-600" />
                   Buka Pintu
                 </span>
-                <span className="font-mono text-xs font-semibold text-emerald-400">
+                <span className="font-mono text-xs font-semibold text-emerald-600">
                   {doorsOpenPercent}%
                 </span>
               </div>
@@ -121,24 +121,24 @@ export const BottomSimulationDock: React.FC<Props> = ({ config, onChange }) => {
                 max={100}
                 value={doorsOpenPercent}
                 onChange={(e) => onChange({ doorsOpenPercent: parseInt(e.target.value) })}
-                className="w-full accent-emerald-500 cursor-pointer h-1.5 bg-neutral-800 rounded-full"
+                className="w-full accent-emerald-500 cursor-pointer h-1.5 bg-stone-100 rounded-full"
               />
-              <div className="flex justify-between text-[10px] text-neutral-500 pt-0.5">
+              <div className="flex justify-between text-[10px] text-stone-500 pt-0.5">
                 <button
                   onClick={() => onChange({ doorsOpenPercent: 0 })}
-                  className="hover:text-neutral-300 transition-colors"
+                  className="hover:text-stone-700 transition-colors"
                 >
                   Rapat
                 </button>
                 <button
                   onClick={() => onChange({ doorsOpenPercent: 50 })}
-                  className="hover:text-neutral-300 transition-colors"
+                  className="hover:text-stone-700 transition-colors"
                 >
                   50%
                 </button>
                 <button
                   onClick={() => onChange({ doorsOpenPercent: 100 })}
-                  className="hover:text-emerald-400 transition-colors"
+                  className="hover:text-emerald-600 transition-colors"
                 >
                   Terbuka
                 </button>
@@ -151,16 +151,16 @@ export const BottomSimulationDock: React.FC<Props> = ({ config, onChange }) => {
                 onClick={() => onChange({ showFrameOnly: !showFrameOnly })}
                 className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
                   showFrameOnly
-                    ? 'bg-amber-500/20 border border-amber-500/60 text-amber-300 shadow-sm shadow-amber-500/10'
-                    : 'bg-neutral-950/70 border border-white/5 text-neutral-300 hover:border-white/20 hover:text-white'
+                    ? 'bg-amber-500/20 border border-amber-500/60 text-amber-700 shadow-sm shadow-amber-500/10'
+                    : 'bg-stone-100 border border-stone-200 text-stone-700 hover:border-stone-300 hover:text-stone-900'
                 }`}
                 title="Tampilkan hanya struktur rangka besi hollow (sembunyikan panel & laci)"
               >
                 <span className="flex items-center gap-2 text-[11px]">
-                  <Box className="w-3.5 h-3.5 text-amber-400" />
+                  <Box className="w-3.5 h-3.5 text-amber-600" />
                   Hanya Rangka
                 </span>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/5">
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-stone-50">
                   {showFrameOnly ? 'ON' : 'OFF'}
                 </span>
               </button>
@@ -169,15 +169,15 @@ export const BottomSimulationDock: React.FC<Props> = ({ config, onChange }) => {
                 onClick={() => onChange({ showDimensions3D: !showDimensions3D })}
                 className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
                   showDimensions3D
-                    ? 'bg-blue-500/20 border border-blue-500/60 text-blue-300 shadow-sm shadow-blue-500/10'
-                    : 'bg-neutral-950/70 border border-white/5 text-neutral-300 hover:border-white/20 hover:text-white'
+                    ? 'bg-blue-500/20 border border-blue-500/60 text-blue-700 shadow-sm shadow-blue-500/10'
+                    : 'bg-stone-100 border border-stone-200 text-stone-700 hover:border-stone-300 hover:text-stone-900'
                 }`}
               >
                 <span className="flex items-center gap-2 text-[11px]">
-                  <Ruler className="w-3.5 h-3.5 text-blue-400" />
+                  <Ruler className="w-3.5 h-3.5 text-blue-600" />
                   Garis Ukuran 3D
                 </span>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/5">
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-stone-50">
                   {showDimensions3D ? 'AKTIF' : 'OFF'}
                 </span>
               </button>
@@ -189,16 +189,16 @@ export const BottomSimulationDock: React.FC<Props> = ({ config, onChange }) => {
                 onClick={() => onChange({ showXRayWireframe: !showXRayWireframe })}
                 className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
                   showXRayWireframe
-                    ? 'bg-purple-500/20 border border-purple-500/60 text-purple-300 shadow-sm shadow-purple-500/10'
-                    : 'bg-neutral-950/70 border border-white/5 text-neutral-300 hover:border-white/20 hover:text-white'
+                    ? 'bg-purple-500/20 border border-purple-500/60 text-purple-700 shadow-sm shadow-purple-500/10'
+                    : 'bg-stone-100 border border-stone-200 text-stone-700 hover:border-stone-300 hover:text-stone-900'
                 }`}
                 title="Mode transparansi rontgen untuk melihat susunan sekat kabinet"
               >
                 <span className="flex items-center gap-2 text-[11px]">
-                  <Eye className="w-3.5 h-3.5 text-purple-400" />
+                  <Eye className="w-3.5 h-3.5 text-purple-600" />
                   Mode X-Ray
                 </span>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/5">
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-stone-50">
                   {showXRayWireframe ? 'AKTIF' : 'OFF'}
                 </span>
               </button>
@@ -207,16 +207,16 @@ export const BottomSimulationDock: React.FC<Props> = ({ config, onChange }) => {
                 onClick={() => onChange({ hideTopTable: !hideTopTable })}
                 className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
                   hideTopTable
-                    ? 'bg-rose-500/20 border border-rose-500/60 text-rose-300 shadow-sm shadow-rose-500/10'
-                    : 'bg-neutral-950/70 border border-white/5 text-neutral-300 hover:border-white/20 hover:text-white'
+                    ? 'bg-rose-500/20 border border-rose-500/60 text-rose-700 shadow-sm shadow-rose-500/10'
+                    : 'bg-stone-100 border border-stone-200 text-stone-700 hover:border-stone-300 hover:text-stone-900'
                 }`}
                 title="Tampilkan / sembunyikan top table (countertop) di tampilan 3D"
               >
                 <span className="flex items-center gap-2 text-[11px]">
-                  <Layers className="w-3.5 h-3.5 text-rose-400" />
+                  <Layers className="w-3.5 h-3.5 text-rose-600" />
                   Top Table
                 </span>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/5">
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-stone-50">
                   {hideTopTable ? 'HIDE' : 'SHOW'}
                 </span>
               </button>
@@ -230,7 +230,7 @@ export const BottomSimulationDock: React.FC<Props> = ({ config, onChange }) => {
                 }}
                 className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
                   isAnyOpen
-                    ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-white/10'
+                    ? 'bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-200'
                     : 'bg-gradient-to-r from-amber-600/80 to-amber-700/80 hover:from-amber-500 hover:to-amber-600 text-white shadow-md shadow-amber-900/30'
                 }`}
               >

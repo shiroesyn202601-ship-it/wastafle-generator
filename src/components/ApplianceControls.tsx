@@ -119,18 +119,18 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
   };
 
   return (
-    <div className="space-y-4 text-neutral-200 select-none">
+    <div className="space-y-4 text-stone-800 select-none">
       {/* 0. DOKUMEN SPK & MANUAL FABRIKASI BANNER */}
       {onOpenDocModal && (
-        <div className="relative overflow-hidden p-3.5 bg-gradient-to-r from-blue-950/60 via-indigo-950/40 to-neutral-900/80 border border-blue-500/30 rounded-xl shadow-lg">
+        <div className="relative overflow-hidden p-3.5 bg-gradient-to-r from-blue-50 via-indigo-50 to-white border border-blue-500/30 rounded-xl shadow-lg">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400 shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-600 shrink-0">
                 <FileText className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-xs font-bold text-white tracking-tight">Manual & Ukuran Potongan Besi</p>
-                <p className="text-[11px] text-blue-200/70">
+                <p className="text-xs font-bold text-stone-900 tracking-tight">Manual & Ukuran Potongan Besi</p>
+                <p className="text-[11px] text-blue-800/70">
                   Ekspor format Word (.DOC) untuk diserahkan ke tukang las & wastafel
                 </p>
               </div>
@@ -147,17 +147,17 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
       )}
 
       {/* 1. ERGONOMIC CLEARANCE METER */}
-      <div className="p-3.5 bg-[#12151c]/90 border border-white/[0.08] rounded-xl space-y-2.5">
+      <div className="p-3.5 bg-white border border-stone-200 rounded-xl space-y-2.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <ShieldAlert className="w-4 h-4 text-amber-400" />
-            <span className="text-xs font-semibold text-white">Jarak Kerja Ergonomis</span>
+            <ShieldAlert className="w-4 h-4 text-amber-600" />
+            <span className="text-xs font-semibold text-stone-900">Jarak Kerja Ergonomis</span>
           </div>
           <button
             onClick={handleAutoIdealLayout}
-            className="flex items-center gap-1 px-2.5 py-1 bg-white/5 hover:bg-white/10 text-amber-300 text-[11px] font-medium rounded-lg border border-amber-500/30 transition cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1 bg-stone-50 hover:bg-stone-100 text-amber-700 text-[11px] font-medium rounded-lg border border-amber-500/30 transition cursor-pointer"
           >
-            <Sparkles className="w-3 h-3 text-amber-400" />
+            <Sparkles className="w-3 h-3 text-amber-600" />
             <span>Atur Posisi Ideal</span>
           </button>
         </div>
@@ -165,18 +165,18 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
         {/* Tukar posisi wastafel & kompor (cermin layout kiri-kanan) */}
         <button
           onClick={() => onChange(mirrorKitchenLayout(config))}
-          className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-gradient-to-r from-blue-950/50 to-amber-950/40 hover:from-blue-900/50 hover:to-amber-900/40 border border-white/10 rounded-lg transition cursor-pointer"
+          className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-gradient-to-r from-blue-50 to-amber-50 hover:from-blue-50 hover:to-amber-50 border border-stone-200 rounded-lg transition cursor-pointer"
           title="Cerminkan layout: posisi wastafel & kompor, urutan modul kabinet, arah engsel pintu, dan rangka"
         >
-          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-blue-300">
+          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-blue-700">
             <Droplets className="w-3.5 h-3.5" />
             {sink.posX <= stove.posX ? 'Kiri' : 'Kanan'}
           </span>
-          <span className="flex items-center gap-1.5 text-xs font-bold text-white">
+          <span className="flex items-center gap-1.5 text-xs font-bold text-stone-900">
             <ArrowLeftRight className="w-4 h-4" />
             Tukar Posisi Wastafel ⇄ Kompor
           </span>
-          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-300">
+          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-700">
             {stove.posX < sink.posX ? 'Kiri' : 'Kanan'}
             <Flame className="w-3.5 h-3.5" />
           </span>
@@ -185,14 +185,14 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
         {/* Clearance Metric Bar */}
         <div className="space-y-1">
           <div className="flex justify-between items-center text-xs">
-            <span className="text-[11px] text-neutral-400">Jarak Bersih Wastafel ↔ Kompor:</span>
+            <span className="text-[11px] text-stone-500">Jarak Bersih Wastafel ↔ Kompor:</span>
             <span className={`font-mono font-bold ${
-              gap < 0 ? 'text-rose-400' : gap < 40 ? 'text-amber-400' : 'text-emerald-400'
+              gap < 0 ? 'text-rose-600' : gap < 40 ? 'text-amber-600' : 'text-emerald-600'
             }`}>
               {gap < 0 ? 'Bertabrakan!' : `${Math.round(gap)} cm`}
             </span>
           </div>
-          <div className="h-1.5 w-full bg-neutral-800 rounded-full overflow-hidden">
+          <div className="h-1.5 w-full bg-stone-100 rounded-full overflow-hidden">
             <div
               className={`h-full transition-all duration-300 rounded-full ${
                 gap < 0
@@ -204,7 +204,7 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
               style={{ width: gap < 0 ? '100%' : `${Math.min(100, (gap / 80) * 100)}%` }}
             />
           </div>
-          <p className="text-[10px] text-neutral-400 leading-relaxed pt-0.5">
+          <p className="text-[10px] text-stone-500 leading-relaxed pt-0.5">
             {gap < 0
               ? 'Peringatan: Posisi lubang wastafel dan kompor bertabrakan. Geser salah satu perangkat.'
               : gap < 40
@@ -215,18 +215,18 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
       </div>
 
       {/* 2. PENGATURAN WASTAFEL CUCI PIRING */}
-      <div className="p-3.5 bg-[#12151c]/90 border border-white/[0.08] rounded-xl space-y-3.5">
-        <div className="flex items-center justify-between pb-2.5 border-b border-white/[0.08]">
+      <div className="p-3.5 bg-white border border-stone-200 rounded-xl space-y-3.5">
+        <div className="flex items-center justify-between pb-2.5 border-b border-stone-200">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400">
+            <div className="w-7 h-7 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-600">
               <Droplets className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-semibold text-xs text-white">Wastafel Cuci Piring (Kitchen Sink)</h3>
-              <p className="text-[10px] text-neutral-400">Cekung ke bawah dengan mangkuk dalam & saringan afur</p>
+              <h3 className="font-semibold text-xs text-stone-900">Wastafel Cuci Piring (Kitchen Sink)</h3>
+              <p className="text-[10px] text-stone-500">Cekung ke bawah dengan mangkuk dalam & saringan afur</p>
             </div>
           </div>
-          <label className="flex items-center gap-1.5 text-xs text-neutral-300 cursor-pointer">
+          <label className="flex items-center gap-1.5 text-xs text-stone-700 cursor-pointer">
             <input
               type="checkbox"
               checked={sink.enabled}
@@ -241,8 +241,8 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
           <div className="space-y-3.5">
             {/* Pilihan Model Resmi Produsen */}
             <div className="space-y-1.5">
-              <label className="text-[11px] text-neutral-300 font-semibold flex items-center gap-1.5">
-                <Building className="w-3.5 h-3.5 text-blue-400" />
+              <label className="text-[11px] text-stone-700 font-semibold flex items-center gap-1.5">
+                <Building className="w-3.5 h-3.5 text-blue-600" />
                 Pilihan Model Resmi Produsen
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -255,20 +255,20 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
                       onClick={() => handleSelectSinkPreset(key)}
                       className={`p-2 rounded-lg border text-left transition cursor-pointer ${
                         isSelected
-                          ? 'bg-blue-950/40 border-blue-500/80 text-white shadow-sm ring-1 ring-blue-500/40'
-                          : 'bg-black/30 border-white/[0.06] hover:border-white/20 text-neutral-300'
+                          ? 'bg-blue-50 border-blue-500/80 text-stone-900 shadow-sm ring-1 ring-blue-500/40'
+                          : 'bg-stone-50 border-stone-200 hover:border-stone-300 text-stone-700'
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-semibold text-xs text-white">{item.name}</span>
-                        {isSelected && <Check className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
+                        <span className="font-semibold text-xs text-stone-900">{item.name}</span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
                       </div>
-                      <div className="flex items-center gap-1 text-[10px] text-neutral-400 mt-0.5">
-                        <span className="text-blue-300 font-medium">{item.brand} ({item.origin})</span>
+                      <div className="flex items-center gap-1 text-[10px] text-stone-500 mt-0.5">
+                        <span className="text-blue-700 font-medium">{item.brand} ({item.origin})</span>
                         <span>·</span>
                         <span className="font-mono">{item.width}×{item.length} cm</span>
                         <span>·</span>
-                        <span className="font-mono text-emerald-400">Bak {item.bowlDepth}cm</span>
+                        <span className="font-mono text-emerald-600">Bak {item.bowlDepth}cm</span>
                       </div>
                     </button>
                   );
@@ -278,17 +278,17 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
                   onClick={() => handleSelectSinkPreset('custom')}
                   className={`p-2 rounded-lg border text-left transition cursor-pointer ${
                     sink.brandModel === 'custom' || !sink.brandModel
-                      ? 'bg-blue-950/40 border-blue-500/80 text-white shadow-sm ring-1 ring-blue-500/40'
-                      : 'bg-black/30 border-white/[0.06] hover:border-white/20 text-neutral-300'
+                      ? 'bg-blue-50 border-blue-500/80 text-stone-900 shadow-sm ring-1 ring-blue-500/40'
+                      : 'bg-stone-50 border-stone-200 hover:border-stone-300 text-stone-700'
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-xs text-white">Kustom Bebas (Custom Sink)</span>
+                    <span className="font-semibold text-xs text-stone-900">Kustom Bebas (Custom Sink)</span>
                     {(sink.brandModel === 'custom' || !sink.brandModel) && (
-                      <Check className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                      <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                     )}
                   </div>
-                  <p className="text-[10px] text-neutral-400 mt-0.5">
+                  <p className="text-[10px] text-stone-500 mt-0.5">
                     Atur dimensi lebar, panjang, dan kedalaman bak secara mandiri.
                   </p>
                 </button>
@@ -296,23 +296,23 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
             </div>
 
             {/* Slider Posisi Horizontal (X) */}
-            <div className="bg-black/20 p-2.5 rounded-lg border border-white/5 space-y-1.5">
+            <div className="bg-stone-50 p-2.5 rounded-lg border border-stone-200 space-y-1.5">
               <div className="flex justify-between items-center text-xs">
-                <span className="flex items-center gap-1.5 text-neutral-300 text-[11px]">
-                  <MoveHorizontal className="w-3.5 h-3.5 text-blue-400" />
+                <span className="flex items-center gap-1.5 text-stone-700 text-[11px]">
+                  <MoveHorizontal className="w-3.5 h-3.5 text-blue-600" />
                   Posisi Horizontal (X)
                 </span>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => handleSinkChange({ posX: Math.max(Math.round(sink.width / 2 + 5), sink.posX - 5) })}
-                    className="px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/10 text-neutral-300 text-[10px] font-mono cursor-pointer"
+                    className="px-1.5 py-0.5 rounded bg-stone-50 hover:bg-stone-100 text-stone-700 text-[10px] font-mono cursor-pointer"
                   >
                     -5
                   </button>
-                  <span className="font-mono font-bold text-blue-400 px-1">{sink.posX} cm</span>
+                  <span className="font-mono font-bold text-blue-600 px-1">{sink.posX} cm</span>
                   <button
                     onClick={() => handleSinkChange({ posX: Math.min(Math.round(totalWidth - sink.width / 2 - 5), sink.posX + 5) })}
-                    className="px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/10 text-neutral-300 text-[10px] font-mono cursor-pointer"
+                    className="px-1.5 py-0.5 rounded bg-stone-50 hover:bg-stone-100 text-stone-700 text-[10px] font-mono cursor-pointer"
                   >
                     +5
                   </button>
@@ -325,18 +325,18 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
                 step={1}
                 value={sink.posX}
                 onChange={(e) => handleSinkChange({ posX: parseInt(e.target.value) })}
-                className="w-full accent-blue-500 cursor-pointer h-1.5 bg-neutral-800 rounded-full"
+                className="w-full accent-blue-500 cursor-pointer h-1.5 bg-stone-100 rounded-full"
               />
             </div>
 
             {/* Slider Posisi Kedalaman (Y) */}
-            <div className="bg-black/20 p-2.5 rounded-lg border border-white/5 space-y-1.5">
+            <div className="bg-stone-50 p-2.5 rounded-lg border border-stone-200 space-y-1.5">
               <div className="flex justify-between items-center text-xs">
-                <span className="flex items-center gap-1.5 text-neutral-300 text-[11px]">
-                  <ArrowUpDown className="w-3.5 h-3.5 text-blue-400" />
+                <span className="flex items-center gap-1.5 text-stone-700 text-[11px]">
+                  <ArrowUpDown className="w-3.5 h-3.5 text-blue-600" />
                   Posisi Kedalaman (Y)
                 </span>
-                <span className="font-mono font-bold text-blue-400">{sink.posY} cm</span>
+                <span className="font-mono font-bold text-blue-600">{sink.posY} cm</span>
               </div>
               <input
                 type="range"
@@ -345,16 +345,16 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
                 step={1}
                 value={sink.posY}
                 onChange={(e) => handleSinkChange({ posY: parseInt(e.target.value) })}
-                className="w-full accent-blue-500 cursor-pointer h-1.5 bg-neutral-800 rounded-full"
+                className="w-full accent-blue-500 cursor-pointer h-1.5 bg-stone-100 rounded-full"
               />
             </div>
 
             {/* Dimensi: Lebar, Panjang, Kedalaman Bak */}
             <div className="grid grid-cols-3 gap-2">
-              <div className="bg-black/20 p-2 rounded-lg border border-white/5 space-y-1">
+              <div className="bg-stone-50 p-2 rounded-lg border border-stone-200 space-y-1">
                 <div className="flex justify-between text-[11px]">
-                  <span className="text-neutral-400">Lebar (P)</span>
-                  <span className="font-mono font-bold text-blue-400">{sink.width}cm</span>
+                  <span className="text-stone-500">Lebar (P)</span>
+                  <span className="font-mono font-bold text-blue-600">{sink.width}cm</span>
                 </div>
                 <input
                   type="range"
@@ -363,14 +363,14 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
                   step={1}
                   value={sink.width}
                   onChange={(e) => handleSinkChange({ width: parseInt(e.target.value) })}
-                  className="w-full accent-blue-500 cursor-pointer h-1 bg-neutral-800 rounded-full"
+                  className="w-full accent-blue-500 cursor-pointer h-1 bg-stone-100 rounded-full"
                 />
               </div>
 
-              <div className="bg-black/20 p-2 rounded-lg border border-white/5 space-y-1">
+              <div className="bg-stone-50 p-2 rounded-lg border border-stone-200 space-y-1">
                 <div className="flex justify-between text-[11px]">
-                  <span className="text-neutral-400">Panjang (L)</span>
-                  <span className="font-mono font-bold text-blue-400">{sink.length}cm</span>
+                  <span className="text-stone-500">Panjang (L)</span>
+                  <span className="font-mono font-bold text-blue-600">{sink.length}cm</span>
                 </div>
                 <input
                   type="range"
@@ -379,14 +379,14 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
                   step={1}
                   value={sink.length}
                   onChange={(e) => handleSinkChange({ length: parseInt(e.target.value) })}
-                  className="w-full accent-blue-500 cursor-pointer h-1 bg-neutral-800 rounded-full"
+                  className="w-full accent-blue-500 cursor-pointer h-1 bg-stone-100 rounded-full"
                 />
               </div>
 
-              <div className="bg-black/20 p-2 rounded-lg border border-white/5 space-y-1">
+              <div className="bg-stone-50 p-2 rounded-lg border border-stone-200 space-y-1">
                 <div className="flex justify-between text-[11px]">
-                  <span className="text-neutral-400">Kedalaman Bak</span>
-                  <span className="font-mono font-bold text-emerald-400">{sink.bowlDepth}cm</span>
+                  <span className="text-stone-500">Kedalaman Bak</span>
+                  <span className="font-mono font-bold text-emerald-600">{sink.bowlDepth}cm</span>
                 </div>
                 <input
                   type="range"
@@ -395,7 +395,7 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
                   step={1}
                   value={sink.bowlDepth}
                   onChange={(e) => handleSinkChange({ bowlDepth: parseInt(e.target.value) })}
-                  className="w-full accent-emerald-500 cursor-pointer h-1 bg-neutral-800 rounded-full"
+                  className="w-full accent-emerald-500 cursor-pointer h-1 bg-stone-100 rounded-full"
                 />
               </div>
             </div>
@@ -403,11 +403,11 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
             {/* Model & Pemasangan */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
               <div>
-                <label className="text-[10px] text-neutral-400 block mb-1">Model Bak</label>
+                <label className="text-[10px] text-stone-500 block mb-1">Model Bak</label>
                 <select
                   value={sink.model}
                   onChange={(e) => handleSinkChange({ model: e.target.value as SinkModel })}
-                  className="w-full px-2 py-1.5 bg-black/40 border border-white/10 rounded-lg text-xs text-neutral-200 focus:outline-none focus:border-blue-500 cursor-pointer"
+                  className="w-full px-2 py-1.5 bg-white border border-stone-200 rounded-lg text-xs text-stone-800 focus:outline-none focus:border-blue-500 cursor-pointer"
                 >
                   <option value="single">Single Bowl (1 Bak)</option>
                   <option value="double">Double Bowl (2 Bak Kembar)</option>
@@ -416,11 +416,11 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
               </div>
 
               <div>
-                <label className="text-[10px] text-neutral-400 block mb-1">Tipe Pemasangan</label>
+                <label className="text-[10px] text-stone-500 block mb-1">Tipe Pemasangan</label>
                 <select
                   value={sink.mounting}
                   onChange={(e) => handleSinkChange({ mounting: e.target.value as SinkMounting })}
-                  className="w-full px-2 py-1.5 bg-black/40 border border-white/10 rounded-lg text-xs text-neutral-200 focus:outline-none focus:border-blue-500 cursor-pointer"
+                  className="w-full px-2 py-1.5 bg-white border border-stone-200 rounded-lg text-xs text-stone-800 focus:outline-none focus:border-blue-500 cursor-pointer"
                 >
                   <option value="undermount">Undermount (Di bawah marmer)</option>
                   <option value="topmount">Topmount (Bibir marmer atas)</option>
@@ -428,11 +428,11 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
               </div>
 
               <div>
-                <label className="text-[10px] text-neutral-400 block mb-1">Tipe Keran Air</label>
+                <label className="text-[10px] text-stone-500 block mb-1">Tipe Keran Air</label>
                 <select
                   value={sink.faucet}
                   onChange={(e) => handleSinkChange({ faucet: e.target.value as FaucetType })}
-                  className="w-full px-2 py-1.5 bg-black/40 border border-white/10 rounded-lg text-xs text-neutral-200 focus:outline-none focus:border-blue-500 cursor-pointer"
+                  className="w-full px-2 py-1.5 bg-white border border-stone-200 rounded-lg text-xs text-stone-800 focus:outline-none focus:border-blue-500 cursor-pointer"
                 >
                   <option value="gooseneck">Leher Angsa (Gooseneck)</option>
                   <option value="modern-flex">Modern Pull-Down Spring Chef</option>
@@ -441,11 +441,11 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
               </div>
 
               <div>
-                <label className="text-[10px] text-neutral-400 block mb-1">Finishing Material</label>
+                <label className="text-[10px] text-stone-500 block mb-1">Finishing Material</label>
                 <select
                   value={sink.finish}
                   onChange={(e) => handleSinkChange({ finish: e.target.value as SinkFinish })}
-                  className="w-full px-2 py-1.5 bg-black/40 border border-white/10 rounded-lg text-xs text-neutral-200 focus:outline-none focus:border-blue-500 cursor-pointer"
+                  className="w-full px-2 py-1.5 bg-white border border-stone-200 rounded-lg text-xs text-stone-800 focus:outline-none focus:border-blue-500 cursor-pointer"
                 >
                   <option value="stainless">Stainless Steel SUS304 Brushed</option>
                   <option value="black-nano">Black Nano Doff Anti-Gores</option>
@@ -455,7 +455,7 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
             </div>
 
             {/* Workstation Accessories */}
-            <label className="flex items-center gap-2 p-2 bg-black/30 border border-white/5 rounded-lg text-xs text-neutral-300 hover:text-white cursor-pointer transition">
+            <label className="flex items-center gap-2 p-2 bg-stone-50 border border-stone-200 rounded-lg text-xs text-stone-700 hover:text-stone-900 cursor-pointer transition">
               <input
                 type="checkbox"
                 checked={sink.showAccessories ?? false}
@@ -469,18 +469,18 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
       </div>
 
       {/* 3. PENGATURAN KOMPOR TANAM */}
-      <div className="p-3.5 bg-[#12151c]/90 border border-white/[0.08] rounded-xl space-y-3.5">
-        <div className="flex items-center justify-between pb-2.5 border-b border-white/[0.08]">
+      <div className="p-3.5 bg-white border border-stone-200 rounded-xl space-y-3.5">
+        <div className="flex items-center justify-between pb-2.5 border-b border-stone-200">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+            <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600">
               <Flame className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-semibold text-xs text-white">Kompor Tanam (Built-in Cooktop)</h3>
-              <p className="text-[10px] text-neutral-400">Gas tungku kuningan atau induksi kaca keramik</p>
+              <h3 className="font-semibold text-xs text-stone-900">Kompor Tanam (Built-in Cooktop)</h3>
+              <p className="text-[10px] text-stone-500">Gas tungku kuningan atau induksi kaca keramik</p>
             </div>
           </div>
-          <label className="flex items-center gap-1.5 text-xs text-neutral-300 cursor-pointer">
+          <label className="flex items-center gap-1.5 text-xs text-stone-700 cursor-pointer">
             <input
               type="checkbox"
               checked={stove.enabled}
@@ -495,8 +495,8 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
           <div className="space-y-3.5">
             {/* Pilihan Model Resmi Produsen Kompor */}
             <div className="space-y-1.5">
-              <label className="text-[11px] text-neutral-300 font-semibold flex items-center gap-1.5">
-                <Building className="w-3.5 h-3.5 text-amber-400" />
+              <label className="text-[11px] text-stone-700 font-semibold flex items-center gap-1.5">
+                <Building className="w-3.5 h-3.5 text-amber-600" />
                 Pilihan Model Resmi Produsen Kompor
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -509,20 +509,20 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
                       onClick={() => handleSelectStovePreset(key)}
                       className={`p-2 rounded-lg border text-left transition cursor-pointer ${
                         isSelected
-                          ? 'bg-amber-950/40 border-amber-500/80 text-white shadow-sm ring-1 ring-amber-500/40'
-                          : 'bg-black/30 border-white/[0.06] hover:border-white/20 text-neutral-300'
+                          ? 'bg-amber-50 border-amber-500/80 text-stone-900 shadow-sm ring-1 ring-amber-500/40'
+                          : 'bg-stone-50 border-stone-200 hover:border-stone-300 text-stone-700'
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-semibold text-xs text-white">{item.name}</span>
-                        {isSelected && <Check className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+                        <span className="font-semibold text-xs text-stone-900">{item.name}</span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-amber-600 shrink-0" />}
                       </div>
-                      <div className="flex items-center gap-1 text-[10px] text-neutral-400 mt-0.5">
-                        <span className="text-amber-300 font-medium">{item.brand} ({item.origin})</span>
+                      <div className="flex items-center gap-1 text-[10px] text-stone-500 mt-0.5">
+                        <span className="text-amber-700 font-medium">{item.brand} ({item.origin})</span>
                         <span>·</span>
                         <span className="font-mono">{item.width}×{item.length} cm</span>
                         <span>·</span>
-                        <span className="font-mono text-emerald-400">Tanam {item.recessDepth}cm</span>
+                        <span className="font-mono text-emerald-600">Tanam {item.recessDepth}cm</span>
                       </div>
                     </button>
                   );
@@ -532,17 +532,17 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
                   onClick={() => handleSelectStovePreset('custom')}
                   className={`p-2 rounded-lg border text-left transition cursor-pointer ${
                     stove.brandModel === 'custom' || !stove.brandModel
-                      ? 'bg-amber-950/40 border-amber-500/80 text-white shadow-sm ring-1 ring-amber-500/40'
-                      : 'bg-black/30 border-white/[0.06] hover:border-white/20 text-neutral-300'
+                      ? 'bg-amber-50 border-amber-500/80 text-stone-900 shadow-sm ring-1 ring-amber-500/40'
+                      : 'bg-stone-50 border-stone-200 hover:border-stone-300 text-stone-700'
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-xs text-white">Kustom Bebas (Custom Cooktop)</span>
+                    <span className="font-semibold text-xs text-stone-900">Kustom Bebas (Custom Cooktop)</span>
                     {(stove.brandModel === 'custom' || !stove.brandModel) && (
-                      <Check className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <Check className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                     )}
                   </div>
-                  <p className="text-[10px] text-neutral-400 mt-0.5">
+                  <p className="text-[10px] text-stone-500 mt-0.5">
                     Atur dimensi lebar, panjang, dan kedalaman ceruk tanam secara bebas.
                   </p>
                 </button>
@@ -550,23 +550,23 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
             </div>
 
             {/* Slider Posisi Horizontal (X) */}
-            <div className="bg-black/20 p-2.5 rounded-lg border border-white/5 space-y-1.5">
+            <div className="bg-stone-50 p-2.5 rounded-lg border border-stone-200 space-y-1.5">
               <div className="flex justify-between items-center text-xs">
-                <span className="flex items-center gap-1.5 text-neutral-300 text-[11px]">
-                  <MoveHorizontal className="w-3.5 h-3.5 text-amber-400" />
+                <span className="flex items-center gap-1.5 text-stone-700 text-[11px]">
+                  <MoveHorizontal className="w-3.5 h-3.5 text-amber-600" />
                   Posisi Horizontal (X)
                 </span>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => handleStoveChange({ posX: Math.max(Math.round(stove.width / 2 + 5), stove.posX - 5) })}
-                    className="px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/10 text-neutral-300 text-[10px] font-mono cursor-pointer"
+                    className="px-1.5 py-0.5 rounded bg-stone-50 hover:bg-stone-100 text-stone-700 text-[10px] font-mono cursor-pointer"
                   >
                     -5
                   </button>
-                  <span className="font-mono font-bold text-amber-400 px-1">{stove.posX} cm</span>
+                  <span className="font-mono font-bold text-amber-600 px-1">{stove.posX} cm</span>
                   <button
                     onClick={() => handleStoveChange({ posX: Math.min(Math.round(totalWidth - stove.width / 2 - 5), stove.posX + 5) })}
-                    className="px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/10 text-neutral-300 text-[10px] font-mono cursor-pointer"
+                    className="px-1.5 py-0.5 rounded bg-stone-50 hover:bg-stone-100 text-stone-700 text-[10px] font-mono cursor-pointer"
                   >
                     +5
                   </button>
@@ -579,18 +579,18 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
                 step={1}
                 value={stove.posX}
                 onChange={(e) => handleStoveChange({ posX: parseInt(e.target.value) })}
-                className="w-full accent-amber-500 cursor-pointer h-1.5 bg-neutral-800 rounded-full"
+                className="w-full accent-amber-500 cursor-pointer h-1.5 bg-stone-100 rounded-full"
               />
             </div>
 
             {/* Slider Posisi Kedalaman (Y) */}
-            <div className="bg-black/20 p-2.5 rounded-lg border border-white/5 space-y-1.5">
+            <div className="bg-stone-50 p-2.5 rounded-lg border border-stone-200 space-y-1.5">
               <div className="flex justify-between items-center text-xs">
-                <span className="flex items-center gap-1.5 text-neutral-300 text-[11px]">
-                  <ArrowUpDown className="w-3.5 h-3.5 text-amber-400" />
+                <span className="flex items-center gap-1.5 text-stone-700 text-[11px]">
+                  <ArrowUpDown className="w-3.5 h-3.5 text-amber-600" />
                   Posisi Kedalaman (Y)
                 </span>
-                <span className="font-mono font-bold text-amber-400">{stove.posY} cm</span>
+                <span className="font-mono font-bold text-amber-600">{stove.posY} cm</span>
               </div>
               <input
                 type="range"
@@ -599,16 +599,16 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
                 step={1}
                 value={stove.posY}
                 onChange={(e) => handleStoveChange({ posY: parseInt(e.target.value) })}
-                className="w-full accent-amber-500 cursor-pointer h-1.5 bg-neutral-800 rounded-full"
+                className="w-full accent-amber-500 cursor-pointer h-1.5 bg-stone-100 rounded-full"
               />
             </div>
 
             {/* Dimensi: Lebar, Panjang, Tebal Tanam */}
             <div className="grid grid-cols-3 gap-2">
-              <div className="bg-black/20 p-2 rounded-lg border border-white/5 space-y-1">
+              <div className="bg-stone-50 p-2 rounded-lg border border-stone-200 space-y-1">
                 <div className="flex justify-between text-[11px]">
-                  <span className="text-neutral-400">Lebar (P)</span>
-                  <span className="font-mono font-bold text-amber-400">{stove.width}cm</span>
+                  <span className="text-stone-500">Lebar (P)</span>
+                  <span className="font-mono font-bold text-amber-600">{stove.width}cm</span>
                 </div>
                 <input
                   type="range"
@@ -617,14 +617,14 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
                   step={1}
                   value={stove.width}
                   onChange={(e) => handleStoveChange({ width: parseInt(e.target.value) })}
-                  className="w-full accent-amber-500 cursor-pointer h-1 bg-neutral-800 rounded-full"
+                  className="w-full accent-amber-500 cursor-pointer h-1 bg-stone-100 rounded-full"
                 />
               </div>
 
-              <div className="bg-black/20 p-2 rounded-lg border border-white/5 space-y-1">
+              <div className="bg-stone-50 p-2 rounded-lg border border-stone-200 space-y-1">
                 <div className="flex justify-between text-[11px]">
-                  <span className="text-neutral-400">Panjang (L)</span>
-                  <span className="font-mono font-bold text-amber-400">{stove.length}cm</span>
+                  <span className="text-stone-500">Panjang (L)</span>
+                  <span className="font-mono font-bold text-amber-600">{stove.length}cm</span>
                 </div>
                 <input
                   type="range"
@@ -633,14 +633,14 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
                   step={1}
                   value={stove.length}
                   onChange={(e) => handleStoveChange({ length: parseInt(e.target.value) })}
-                  className="w-full accent-amber-500 cursor-pointer h-1 bg-neutral-800 rounded-full"
+                  className="w-full accent-amber-500 cursor-pointer h-1 bg-stone-100 rounded-full"
                 />
               </div>
 
-              <div className="bg-black/20 p-2 rounded-lg border border-white/5 space-y-1">
+              <div className="bg-stone-50 p-2 rounded-lg border border-stone-200 space-y-1">
                 <div className="flex justify-between text-[11px]">
-                  <span className="text-neutral-400">Tebal Tanam</span>
-                  <span className="font-mono font-bold text-emerald-400">{stove.recessDepth}cm</span>
+                  <span className="text-stone-500">Tebal Tanam</span>
+                  <span className="font-mono font-bold text-emerald-600">{stove.recessDepth}cm</span>
                 </div>
                 <input
                   type="range"
@@ -649,7 +649,7 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
                   step={1}
                   value={stove.recessDepth}
                   onChange={(e) => handleStoveChange({ recessDepth: parseInt(e.target.value) })}
-                  className="w-full accent-emerald-500 cursor-pointer h-1 bg-neutral-800 rounded-full"
+                  className="w-full accent-emerald-500 cursor-pointer h-1 bg-stone-100 rounded-full"
                 />
               </div>
             </div>
@@ -657,11 +657,11 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
             {/* Tipe Kompor & Kenop */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
               <div>
-                <label className="text-[10px] text-neutral-400 block mb-1">Tipe Kompor Tanam</label>
+                <label className="text-[10px] text-stone-500 block mb-1">Tipe Kompor Tanam</label>
                 <select
                   value={stove.type}
                   onChange={(e) => handleStoveChange({ type: e.target.value as StoveType })}
-                  className="w-full px-2 py-1.5 bg-black/40 border border-white/10 rounded-lg text-xs text-neutral-200 focus:outline-none focus:border-amber-500 cursor-pointer"
+                  className="w-full px-2 py-1.5 bg-white border border-stone-200 rounded-lg text-xs text-stone-800 focus:outline-none focus:border-amber-500 cursor-pointer"
                 >
                   <option value="gas-2">Kompor Gas 2 Tungku (Populer)</option>
                   <option value="gas-3">Kompor Gas 3 Tungku (Chef)</option>
@@ -672,8 +672,8 @@ export const ApplianceControls: React.FC<Props> = ({ config, onChange, onOpenDoc
               </div>
 
               <div>
-                <label className="text-[10px] text-neutral-400 block mb-1">Kontrol Fisik</label>
-                <label className="flex items-center gap-2 px-2.5 py-1.5 bg-black/40 border border-white/10 rounded-lg text-xs text-neutral-200 cursor-pointer">
+                <label className="text-[10px] text-stone-500 block mb-1">Kontrol Fisik</label>
+                <label className="flex items-center gap-2 px-2.5 py-1.5 bg-white border border-stone-200 rounded-lg text-xs text-stone-800 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={stove.hasKnobs}

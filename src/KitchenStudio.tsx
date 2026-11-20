@@ -60,15 +60,15 @@ const safeSet = (key: string, value: string | null) => {
 };
 
 const VIEW_TABS: { id: ViewMode; label: string; short: string; icon: React.ReactNode }[] = [
-  { id: 'frame', label: '2D', short: '2D', icon: <Grid3x3 className="w-4 h-4 text-orange-400" /> },
-  { id: '3d', label: '3D', short: '3D', icon: <Box className="w-4 h-4 text-amber-400" /> },
-  { id: 'blueprint', label: 'Potongan besi', short: 'Potongan', icon: <Layers className="w-4 h-4 text-emerald-400" /> },
+  { id: 'frame', label: '2D', short: '2D', icon: <Grid3x3 className="w-4 h-4 text-orange-600" /> },
+  { id: '3d', label: '3D', short: '3D', icon: <Box className="w-4 h-4 text-amber-600" /> },
+  { id: 'blueprint', label: 'Potongan besi', short: 'Potongan', icon: <Layers className="w-4 h-4 text-emerald-600" /> },
 ];
 
 const SIDEBAR_TABS: { id: SidebarTab; label: string; title: string; icon: React.ReactNode }[] = [
-  { id: 'dimensions', label: 'Ukuran', title: 'Atur ukuran meja, kolom, dan laci', icon: <Sliders className="w-3.5 h-3.5 text-blue-400" /> },
-  { id: 'appliances', label: 'Bak & kompor', title: 'Atur posisi dan kedalaman wastafel & kompor', icon: <Flame className="w-3.5 h-3.5 text-amber-400" /> },
-  { id: 'materials', label: 'Bahan', title: 'Pilih top table, warna kabinet & rangka', icon: <Palette className="w-3.5 h-3.5 text-purple-400" /> },
+  { id: 'dimensions', label: 'Ukuran', title: 'Atur ukuran meja, kolom, dan laci', icon: <Sliders className="w-3.5 h-3.5 text-blue-600" /> },
+  { id: 'appliances', label: 'Bak & kompor', title: 'Atur posisi dan kedalaman wastafel & kompor', icon: <Flame className="w-3.5 h-3.5 text-amber-600" /> },
+  { id: 'materials', label: 'Bahan', title: 'Pilih top table, warna kabinet & rangka', icon: <Palette className="w-3.5 h-3.5 text-purple-600" /> },
 ];
 
 /** Studio meja dapur (wastafel, kompor, laci): tampilan lama, dibuka dari Beranda */
@@ -209,61 +209,61 @@ export function KitchenStudio({ onHome }: { onHome: () => void }) {
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] w-screen bg-[#0b0d11] text-neutral-100 overflow-hidden font-sans">
+    <div className="flex flex-col h-[100dvh] w-screen bg-stone-100 text-stone-900 overflow-hidden font-sans">
       {/* Toast */}
       {toastMessage && (
-        <div className="fixed top-16 left-3 right-3 sm:left-auto sm:right-6 z-[60] flex items-center gap-2.5 px-4 py-2.5 bg-neutral-900/95 border border-emerald-500/40 rounded-xl shadow-2xl text-xs font-medium text-emerald-300 backdrop-blur-xl">
-          <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+        <div className="fixed top-16 left-3 right-3 sm:left-auto sm:right-6 z-[60] flex items-center gap-2.5 px-4 py-2.5 bg-white border border-emerald-500/40 rounded-xl shadow-2xl text-xs font-medium text-emerald-700 backdrop-blur-xl">
+          <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {/* NAVBAR ATAS */}
-      <header className="h-14 border-b border-white/[0.08] bg-[#0f1218]/90 backdrop-blur-xl px-3 sm:px-4 flex items-center justify-between gap-2 z-30 shrink-0 select-none">
+      <header className="h-14 border-b border-stone-200 bg-white backdrop-blur-xl px-3 sm:px-4 flex items-center justify-between gap-2 z-30 shrink-0 select-none">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
             onClick={onHome}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 shrink-0 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-neutral-200 cursor-pointer"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 shrink-0 rounded-lg bg-stone-50 hover:bg-stone-100 border border-stone-200 text-xs font-semibold text-stone-800 cursor-pointer"
             title="Kembali ke Beranda"
           >
             <ArrowLeft className="w-4 h-4" /> <span className="hidden sm:inline">Beranda</span>
           </button>
-          <div className="min-w-0 hidden sm:block">
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold tracking-tight text-white">Meja Dapur</span>
-              <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400/90 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
+              <span className="text-sm font-bold tracking-tight text-stone-900">Meja Dapur</span>
+              <span className="hidden sm:inline text-[10px] font-mono uppercase tracking-wider text-amber-600/90 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
                 Studio Rangka
               </span>
             </div>
-            <p className="text-[11px] text-neutral-400 hidden xl:flex items-center gap-1.5">
+            <p className="text-[11px] text-stone-500 hidden xl:flex items-center gap-1.5">
               <span>
                 {config.totalWidth} × {config.totalDepth} × {config.totalHeight} cm
               </span>
-              <span className="text-neutral-600">·</span>
+              <span className="text-stone-400">·</span>
               <span>{config.columns.length} Modul</span>
-              <span className="text-neutral-600">·</span>
-              <span className="text-neutral-300">{config.frame?.customLayout ? 'Rangka Manual' : 'Rangka Otomatis'}</span>
+              <span className="text-stone-400">·</span>
+              <span className="text-stone-700">{config.frame?.customLayout ? 'Rangka Manual' : 'Rangka Otomatis'}</span>
             </p>
           </div>
 
           <button
             onClick={() => setIsPresetModalOpen(true)}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-white/5 hover:bg-white/10 text-amber-300 text-xs font-medium rounded-lg border border-amber-500/30 transition cursor-pointer shrink-0"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-stone-50 hover:bg-stone-100 text-amber-700 text-xs font-medium rounded-lg border border-amber-500/30 transition cursor-pointer shrink-0"
             title="Preset Desain"
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
             <span className="hidden md:inline">Preset</span>
           </button>
         </div>
 
         {/* Tab tampilan (layar lebar) */}
-        <nav className="hidden lg:flex items-center p-1 bg-black/40 rounded-xl border border-white/5">
+        <nav className="hidden lg:flex items-center p-1 bg-stone-100 rounded-xl">
           {VIEW_TABS.map((t) => (
             <button
               key={t.id}
               onClick={() => setViewMode(t.id)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
-                viewMode === t.id ? 'bg-white/15 text-white shadow-sm ring-1 ring-white/10' : 'text-neutral-400 hover:text-neutral-200'
+                viewMode === t.id ? 'bg-stone-900 text-white shadow-sm' : 'text-stone-600 hover:text-stone-900'
               }`}
             >
               {t.icon}
@@ -276,7 +276,7 @@ export function KitchenStudio({ onHome }: { onHome: () => void }) {
         <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           <button
             onClick={() => setIsDriveModalOpen(true)}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-white/5 hover:bg-white/10 text-sky-300 text-xs font-semibold rounded-lg border border-sky-500/30 transition cursor-pointer"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-stone-50 hover:bg-stone-100 text-sky-700 text-xs font-semibold rounded-lg border border-sky-500/30 transition cursor-pointer"
             title={driveFile ? `Google Drive (file aktif: ${driveFile.name})` : 'Simpan & buka dari Google Drive'}
           >
             <Cloud className="w-4 h-4" />
@@ -285,7 +285,7 @@ export function KitchenStudio({ onHome }: { onHome: () => void }) {
 
           <button
             onClick={() => setIsDocModalOpen(true)}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold rounded-lg shadow-md shadow-blue-900/30 ring-1 ring-white/20 transition cursor-pointer"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold rounded-lg shadow-md shadow-blue-900/30 ring-1 ring-stone-300 transition cursor-pointer"
             title="Dokumen SPK & potongan besi (Export .DOC)"
           >
             <FileText className="w-4 h-4" />
@@ -294,28 +294,28 @@ export function KitchenStudio({ onHome }: { onHome: () => void }) {
 
           <div className="hidden md:flex items-center gap-1">
             {fileActions.map((a) => (
-              <button key={a.label} onClick={a.onClick} className="p-2 rounded-lg text-neutral-400 hover:text-white hover:bg-white/5 transition cursor-pointer" title={a.label}>
+              <button key={a.label} onClick={a.onClick} className="p-2 rounded-lg text-stone-500 hover:text-stone-900 hover:bg-stone-50 transition cursor-pointer" title={a.label}>
                 {a.icon}
               </button>
             ))}
-            <label className="p-2 rounded-lg text-neutral-400 hover:text-white hover:bg-white/5 cursor-pointer transition" title="Buka / Impor File Desain (.json)">
+            <label className="p-2 rounded-lg text-stone-500 hover:text-stone-900 hover:bg-stone-50 cursor-pointer transition" title="Buka / Impor File Desain (.json)">
               <Upload className="w-4 h-4" />
               <input type="file" accept=".json,application/json" onChange={handleImportJSON} className="hidden" />
             </label>
-            <button onClick={handleReset} className="p-2 rounded-lg text-neutral-400 hover:text-rose-400 hover:bg-white/5 transition cursor-pointer" title="Reset ke Pengaturan Awal">
+            <button onClick={handleReset} className="p-2 rounded-lg text-stone-500 hover:text-rose-600 hover:bg-stone-50 transition cursor-pointer" title="Reset ke Pengaturan Awal">
               <RotateCcw className="w-4 h-4" />
             </button>
           </div>
 
           {/* Menu lainnya (layar kecil) */}
           <div className="relative md:hidden">
-            <button onClick={() => setIsMoreOpen(!isMoreOpen)} className="p-2 rounded-lg text-neutral-300 hover:bg-white/5 cursor-pointer" title="Menu lainnya">
+            <button onClick={() => setIsMoreOpen(!isMoreOpen)} className="p-2 rounded-lg text-stone-700 hover:bg-stone-50 cursor-pointer" title="Menu lainnya">
               <MoreVertical className="w-4.5 h-4.5" />
             </button>
             {isMoreOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setIsMoreOpen(false)} />
-                <div className="absolute right-0 top-11 z-50 w-56 p-1.5 bg-[#151922] border border-white/10 rounded-xl shadow-2xl">
+                <div className="absolute right-0 top-11 z-50 w-56 p-1.5 bg-white border border-stone-200 rounded-xl shadow-2xl">
                   {fileActions.map((a) => (
                     <button
                       key={a.label}
@@ -323,12 +323,12 @@ export function KitchenStudio({ onHome }: { onHome: () => void }) {
                         setIsMoreOpen(false);
                         a.onClick();
                       }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-neutral-200 hover:bg-white/5 cursor-pointer"
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-stone-800 hover:bg-stone-50 cursor-pointer"
                     >
                       {a.icon} {a.label}
                     </button>
                   ))}
-                  <label className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-neutral-200 hover:bg-white/5 cursor-pointer">
+                  <label className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-stone-800 hover:bg-stone-50 cursor-pointer">
                     <Upload className="w-4 h-4" /> Buka File .json
                     <input
                       type="file"
@@ -345,7 +345,7 @@ export function KitchenStudio({ onHome }: { onHome: () => void }) {
                       setIsMoreOpen(false);
                       handleReset();
                     }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-rose-300 hover:bg-white/5 cursor-pointer"
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-rose-700 hover:bg-stone-50 cursor-pointer"
                   >
                     <RotateCcw className="w-4 h-4" /> Reset ke Awal
                   </button>
@@ -363,21 +363,21 @@ export function KitchenStudio({ onHome }: { onHome: () => void }) {
 
         {/* PANEL KONTROL: sidebar di layar lebar, bottom sheet di HP */}
         <aside
-          className={`fixed lg:static inset-x-0 bottom-14 lg:bottom-auto z-40 lg:z-20 h-[72dvh] lg:h-auto w-full lg:w-96 shrink-0 bg-[#0e1117] border-t lg:border-t-0 lg:border-r border-white/[0.08] rounded-t-2xl lg:rounded-none flex flex-col shadow-2xl lg:shadow-none transition-transform duration-200 ease-out ${
+          className={`fixed lg:static inset-x-0 bottom-14 lg:bottom-auto z-40 lg:z-20 h-[72dvh] lg:h-auto w-full lg:w-96 shrink-0 bg-white border-t lg:border-t-0 lg:border-r border-stone-200 rounded-t-2xl lg:rounded-none flex flex-col shadow-2xl lg:shadow-none transition-transform duration-200 ease-out ${
             isPanelOpen ? 'translate-y-0' : 'translate-y-[110%] lg:translate-y-0'
           }`}
         >
           <div className="lg:hidden flex justify-center pt-2">
-            <div className="w-10 h-1 rounded-full bg-white/20" />
+            <div className="w-10 h-1 rounded-full bg-stone-200" />
           </div>
-          <div className="p-2.5 border-b border-white/[0.08] bg-[#0b0d12]/60 flex items-center gap-2">
-            <div className="flex-1 grid grid-cols-3 gap-1 p-1 bg-black/40 rounded-xl border border-white/5">
+          <div className="p-2.5 border-b border-stone-200 bg-white flex items-center gap-2">
+            <div className="flex-1 grid grid-cols-3 gap-1 p-1 bg-white rounded-xl border border-stone-200">
               {SIDEBAR_TABS.map((t) => (
                 <button
                   key={t.id}
                   onClick={() => setActiveTab(t.id)}
                   className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-medium transition cursor-pointer ${
-                    activeTab === t.id ? 'bg-white/10 text-white shadow-sm ring-1 ring-white/10' : 'text-neutral-400 hover:text-neutral-200'
+                    activeTab === t.id ? 'bg-stone-100 text-stone-900 shadow-sm ring-1 ring-stone-200' : 'text-stone-500 hover:text-stone-800'
                   }`}
                   title={t.title}
                 >
@@ -386,7 +386,7 @@ export function KitchenStudio({ onHome }: { onHome: () => void }) {
                 </button>
               ))}
             </div>
-            <button onClick={() => setIsPanelOpen(false)} className="lg:hidden p-2 rounded-lg text-neutral-400 hover:text-white hover:bg-white/5 cursor-pointer" title="Tutup panel">
+            <button onClick={() => setIsPanelOpen(false)} className="lg:hidden p-2 rounded-lg text-stone-500 hover:text-stone-900 hover:bg-stone-50 cursor-pointer" title="Tutup panel">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -431,10 +431,10 @@ export function KitchenStudio({ onHome }: { onHome: () => void }) {
       </div>
 
       {/* NAVIGASI BAWAH (HP & tablet) */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 h-14 grid grid-cols-4 bg-[#0f1218]/95 backdrop-blur-xl border-t border-white/[0.08] select-none">
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 h-14 grid grid-cols-4 bg-white backdrop-blur-xl border-t border-stone-200 select-none">
         <button
           onClick={() => (isPanelOpen ? setIsPanelOpen(false) : openPanel())}
-          className={`flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium cursor-pointer ${isPanelOpen ? 'text-amber-300' : 'text-neutral-400'}`}
+          className={`flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium cursor-pointer ${isPanelOpen ? 'text-amber-700' : 'text-stone-500'}`}
         >
           <SlidersHorizontal className="w-4 h-4" />
           Atur
@@ -447,7 +447,7 @@ export function KitchenStudio({ onHome }: { onHome: () => void }) {
               setIsPanelOpen(false);
             }}
             className={`flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium cursor-pointer ${
-              viewMode === t.id && !isPanelOpen ? 'text-white' : 'text-neutral-500'
+              viewMode === t.id && !isPanelOpen ? 'text-stone-900' : 'text-stone-500'
             }`}
           >
             {t.icon}

@@ -684,10 +684,10 @@ export const FrameCutListTable: React.FC<Props> = ({ config }) => {
   const pieces = cutList.hollowPieces;
   const totalPcs = pieces.reduce((s, p) => s + p.qty, 0);
   const btn =
-    'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-neutral-700 bg-neutral-800 hover:bg-neutral-700 text-xs font-semibold text-neutral-200 transition';
+    'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-stone-300 bg-stone-100 hover:bg-stone-200 text-xs font-semibold text-stone-800 transition';
 
   return (
-    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-3 sm:p-6 shadow-xl">
+    <div className="bg-white border border-stone-200 rounded-2xl p-3 sm:p-6 shadow-xl">
       <svg width="0" height="0" className="absolute">
         <defs>
           <marker id="cut-arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
@@ -698,22 +698,22 @@ export const FrameCutListTable: React.FC<Props> = ({ config }) => {
 
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
-          <Scissors className="w-4 h-4 text-amber-400" />
-          <h3 className="font-semibold text-sm text-neutral-200 uppercase tracking-wider">4. Daftar Potongan Besi Rangka</h3>
+          <Scissors className="w-4 h-4 text-amber-600" />
+          <h3 className="font-semibold text-sm text-stone-800 uppercase tracking-wider">4. Daftar Potongan Besi Rangka</h3>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => printCutListPdf(config)} className={btn} title="Cetak / simpan sebagai PDF (A4 lanskap)">
-            <FileDown className="w-3.5 h-3.5 text-rose-400" /> PDF
+            <FileDown className="w-3.5 h-3.5 text-rose-600" /> PDF
           </button>
           <button onClick={() => downloadCutListPng(config)} className={btn} title="Unduh tabel sebagai gambar PNG">
-            <ImageDown className="w-3.5 h-3.5 text-emerald-400" /> Gambar
+            <ImageDown className="w-3.5 h-3.5 text-emerald-600" /> Gambar
           </button>
         </div>
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs min-w-[760px]">
-          <thead className="bg-neutral-950 text-neutral-400 border-b border-neutral-800">
+          <thead className="bg-stone-100 text-stone-500 border-b border-stone-200">
             <tr>
               <th className="py-2.5 px-3 text-center">No</th>
               <th className="py-2.5 px-3">Posisi di Rangka</th>
@@ -724,15 +724,15 @@ export const FrameCutListTable: React.FC<Props> = ({ config }) => {
               <th className="py-2.5 px-3 text-right">Subtotal</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-800/60">
+          <tbody className="divide-y divide-stone-200">
             {pieces.map((p, idx) => {
               const color = ROLE_COLORS[p.category];
               const names = memberNames(p, byId);
               return (
-                <tr key={p.id} className="align-middle hover:bg-neutral-800/30">
-                  <td className="py-2 px-3 text-center font-mono font-bold text-neutral-300">{idx + 1}</td>
+                <tr key={p.id} className="align-middle hover:bg-stone-50">
+                  <td className="py-2 px-3 text-center font-mono font-bold text-stone-700">{idx + 1}</td>
                   <td className="py-2 px-3">
-                    <div className="rounded-lg bg-neutral-950/70 border border-neutral-800 inline-block">
+                    <div className="rounded-lg bg-stone-100 border border-stone-200 inline-block">
                       <PositionThumb config={config} members={members} highlight={new Set(p.memberIds || [])} color={color} />
                     </div>
                   </td>
@@ -740,32 +740,32 @@ export const FrameCutListTable: React.FC<Props> = ({ config }) => {
                     <CutShape piece={p} color={color} />
                   </td>
                   <td className="py-2 px-3 max-w-[220px]">
-                    <p className="font-semibold text-neutral-200" style={{ color }}>
+                    <p className="font-semibold text-stone-800" style={{ color }}>
                       {p.label}
                     </p>
-                    <p className="text-[10px] text-neutral-400 mt-0.5">
+                    <p className="text-[10px] text-stone-500 mt-0.5">
                       {names.slice(0, 4).join(', ')}
                       {names.length > 4 ? ', …' : ''}
                     </p>
                   </td>
-                  <td className="py-2 px-3 text-right font-mono font-bold text-neutral-100 whitespace-nowrap">{p.lengthCm} cm</td>
-                  <td className="py-2 px-3 text-center font-mono font-bold text-amber-300 whitespace-nowrap">{p.qty} pcs</td>
-                  <td className="py-2 px-3 text-right font-mono text-neutral-300 whitespace-nowrap">{((p.qty * p.lengthCm) / 100).toFixed(2)} m</td>
+                  <td className="py-2 px-3 text-right font-mono font-bold text-stone-900 whitespace-nowrap">{p.lengthCm} cm</td>
+                  <td className="py-2 px-3 text-center font-mono font-bold text-amber-700 whitespace-nowrap">{p.qty} pcs</td>
+                  <td className="py-2 px-3 text-right font-mono text-stone-700 whitespace-nowrap">{((p.qty * p.lengthCm) / 100).toFixed(2)} m</td>
                 </tr>
               );
             })}
           </tbody>
-          <tfoot className="bg-neutral-950 border-t-2 border-neutral-800 font-mono">
+          <tfoot className="bg-stone-100 border-t-2 border-stone-200 font-mono">
             <tr>
-              <td colSpan={5} className="py-3 px-3 text-right font-sans font-semibold text-neutral-300">
+              <td colSpan={5} className="py-3 px-3 text-right font-sans font-semibold text-stone-700">
                 Total potongan
               </td>
-              <td className="py-3 px-3 text-center font-bold text-amber-300">{totalPcs} pcs</td>
-              <td className="py-3 px-3 text-right font-bold text-neutral-100">{cutList.totalSteelLengthM} m</td>
+              <td className="py-3 px-3 text-center font-bold text-amber-700">{totalPcs} pcs</td>
+              <td className="py-3 px-3 text-right font-bold text-stone-900">{cutList.totalSteelLengthM} m</td>
             </tr>
             <tr>
-              <td colSpan={7} className="py-2.5 px-3 font-sans text-[11px] text-neutral-400">
-                Kebutuhan bahan: <span className="text-emerald-400 font-semibold">{describeBars(cutList)} @ 6 m</span> (sudah termasuk sisa
+              <td colSpan={7} className="py-2.5 px-3 font-sans text-[11px] text-stone-500">
+                Kebutuhan bahan: <span className="text-emerald-600 font-semibold">{describeBars(cutList)} @ 6 m</span> (sudah termasuk sisa
                 potong {cutList.wastePercentage}%)
                 {cutList.levelingFeetCount > 0 && <> • Kaki stel: {cutList.levelingFeetCount} buah</>}
                 {cutList.hingeSummary && <> • Engsel lipat: {cutList.hingeSummary}</>}
@@ -775,7 +775,7 @@ export const FrameCutListTable: React.FC<Props> = ({ config }) => {
         </table>
       </div>
 
-      <p className="text-[10px] text-neutral-500 mt-3">
+      <p className="text-[10px] text-stone-500 mt-3">
         Semua ujung batang dipotong lurus 90°. Panjang L diukur ujung ke ujung; sketsa bentuk potongan tidak berskala.
       </p>
     </div>

@@ -203,9 +203,9 @@ export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImpor
   const seg = (on: boolean) => `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold cursor-pointer ${on ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-600 hover:text-stone-900'}`;
 
   return (
-    <div className="min-h-[100dvh] w-full overflow-y-auto bg-stone-100 text-stone-900">
-      <header className="bg-white border-b border-stone-200">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
+    <div className="min-h-[100dvh] w-full bg-stone-100 text-stone-900">
+      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-stone-200">
+        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-stone-900 text-amber-400 flex items-center justify-center">
             <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true">
               <path d="M4 20V6h16v14M4 11h16M9 6v14M15 6v14" fill="none" stroke="currentColor" strokeWidth={2} />
@@ -213,7 +213,7 @@ export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImpor
           </div>
           <div>
             <div className="font-bold leading-tight">Studio Rangka</div>
-            <div className="text-xs text-stone-500">Rancang furnitur rangka besi, langsung dapat daftar potongan besi</div>
+            <div className="hidden sm:block text-xs text-stone-500">Rancang furnitur rangka besi, langsung dapat daftar potongan besi</div>
           </div>
           <label className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-stone-300 bg-white text-sm font-semibold text-stone-700 hover:bg-stone-50 cursor-pointer">
             <FolderOpen className="w-4 h-4" /> <span className="hidden sm:inline">Buka file</span>
@@ -222,7 +222,7 @@ export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImpor
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-6 space-y-5">
+      <main className="max-w-6xl mx-auto px-4 py-5 sm:py-8 space-y-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
         <div className="space-y-1">
           <h1 className="text-2xl sm:text-3xl font-bold">Mau bikin apa?</h1>
           <p className="text-stone-600">

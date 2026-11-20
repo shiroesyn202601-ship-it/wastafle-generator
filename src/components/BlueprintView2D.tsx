@@ -58,17 +58,17 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
   };
 
   return (
-    <div className="w-full h-full overflow-y-auto bg-neutral-950 text-neutral-100 p-3 sm:p-6 flex flex-col items-center">
+    <div className="w-full h-full overflow-y-auto bg-stone-100 text-stone-900 p-3 sm:p-6 flex flex-col items-center">
       {/* Blueprint Header & Actions */}
-      <div className="w-full max-w-5xl flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-neutral-800">
+      <div className="w-full max-w-5xl flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-stone-200">
         <div>
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30">
+            <span className="px-2.5 py-0.5 rounded text-xs font-semibold bg-blue-500/20 text-blue-600 border border-blue-500/30">
               CAD BLUEPRINT 2D
             </span>
-            <h2 className="text-xl font-bold tracking-tight text-white">Gambar Kerja Teknik & Dimensi Potongan</h2>
+            <h2 className="text-xl font-bold tracking-tight text-stone-900">Gambar Kerja Teknik & Dimensi Potongan</h2>
           </div>
-          <p className="text-xs text-neutral-400 mt-1">
+          <p className="text-xs text-stone-500 mt-1">
             Skala presisi 1:{Math.round(100 / scale)} • Dimensi dalam satuan Centimeter (cm) • Standar Fabrikasi Interior Kitchen Set
           </p>
         </div>
@@ -76,7 +76,7 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
         <div className="flex items-center gap-2">
           <button
             onClick={exportSvg}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium rounded-lg border border-neutral-700 transition"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-medium rounded-lg border border-stone-300 transition"
           >
             <Download className="w-3.5 h-3.5" />
             Ekspor SVG
@@ -93,20 +93,20 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
 
       <div ref={printRef} className="w-full max-w-5xl space-y-8 print:p-0 print:m-0">
         {/* 1. TAMPAK DEPAN (FRONT ELEVATION) */}
-        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-3 sm:p-6 shadow-xl relative overflow-x-auto">
+        <div className="bg-white border border-stone-200 rounded-2xl p-3 sm:p-6 shadow-xl relative overflow-x-auto">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Layers className="w-4 h-4 text-blue-400" />
-              <h3 className="font-semibold text-sm text-neutral-200 uppercase tracking-wider">
+              <Layers className="w-4 h-4 text-blue-600" />
+              <h3 className="font-semibold text-sm text-stone-800 uppercase tracking-wider">
                 1. Tampak Depan (Front Elevation) & Pembagian Laci
               </h3>
             </div>
-            <span className="text-xs font-mono text-neutral-400">
+            <span className="text-xs font-mono text-stone-500">
               P: {W} cm × T: {H} cm (Plinth: {plinthH}cm | Kabinet: {carcaseH}cm | Top: {topT}cm)
             </span>
           </div>
 
-          <div className="flex justify-center bg-neutral-950/80 p-3 sm:p-6 rounded-xl border border-neutral-800/80 min-w-[700px]">
+          <div className="flex justify-center bg-stone-100 p-3 sm:p-6 rounded-xl border border-stone-200 min-w-[700px]">
             <svg
               id="blueprint-front-svg"
               width={frontSvgW}
@@ -119,10 +119,10 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                   <path d="M 0 0 L 10 5 L 0 10 z" fill="#3b82f6" />
                 </marker>
                 <pattern id="grid" width="22" height="22" patternUnits="userSpaceOnUse">
-                  <path d="M 22 0 L 0 0 0 22" fill="none" stroke="#262626" strokeWidth="0.5" />
+                  <path d="M 22 0 L 0 0 0 22" fill="none" stroke="#e7e5e4" strokeWidth="0.5" />
                 </pattern>
                 <pattern id="hatch" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
-                  <line x1="0" y1="0" x2="0" y2="8" stroke="#374151" strokeWidth="1" />
+                  <line x1="0" y1="0" x2="0" y2="8" stroke="#d6d3d1" strokeWidth="1" />
                 </pattern>
               </defs>
 
@@ -151,7 +151,7 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                     />
                     <line x1={originX} y1={svgPadY - 35} x2={originX} y2={svgPadY} stroke="#3b82f6" strokeWidth="0.7" strokeDasharray="3,3" />
                     <line x1={originX + W * scale} y1={svgPadY - 35} x2={originX + W * scale} y2={svgPadY} stroke="#3b82f6" strokeWidth="0.7" strokeDasharray="3,3" />
-                    <text x={originX + (W * scale) / 2} y={svgPadY - 32} fill="#60a5fa" textAnchor="middle" fontWeight="bold">
+                    <text x={originX + (W * scale) / 2} y={svgPadY - 32} fill="#2563eb" textAnchor="middle" fontWeight="bold">
                       Panjang Total: {W} cm
                     </text>
 
@@ -171,7 +171,7 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                     <text
                       x={originX + W * scale + 45}
                       y={originY + (carcaseH * scale) / 2}
-                      fill="#60a5fa"
+                      fill="#2563eb"
                       textAnchor="middle"
                       transform={`rotate(90, ${originX + W * scale + 45}, ${originY + (carcaseH * scale) / 2})`}
                       fontWeight="bold"
@@ -185,11 +185,11 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                       y={topY}
                       width={W * scale}
                       height={topT * scale}
-                      fill="#374151"
-                      stroke="#60a5fa"
+                      fill="#d6d3d1"
+                      stroke="#2563eb"
                       strokeWidth="1.5"
                     />
-                    <text x={originX + 10} y={topY + (topT * scale) / 2 + 3} fill="#e5e7eb" fontSize="9">
+                    <text x={originX + 10} y={topY + (topT * scale) / 2 + 3} fill="#292524" fontSize="9">
                       Top Table {topT}cm ({describeCountertop(config)})
                     </text>
 
@@ -201,12 +201,12 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                           y={plinthY}
                           width={(W - 10) * scale}
                           height={plinthH * scale}
-                          fill={legType === 'plinth' ? '#1f2937' : 'none'}
-                          stroke="#4b5563"
+                          fill={legType === 'plinth' ? '#e7e5e4' : 'none'}
+                          stroke="#a8a29e"
                           strokeWidth="1.2"
                           strokeDasharray={legType === 'plinth' ? undefined : '4,3'}
                         />
-                        <text x={originX + (W * scale) / 2} y={plinthY + (plinthH * scale) / 2 + 4} fill="#9ca3af" textAnchor="middle" fontSize="9">
+                        <text x={originX + (W * scale) / 2} y={plinthY + (plinthH * scale) / 2 + 4} fill="#57534e" textAnchor="middle" fontSize="9">
                           {legType === 'frame' ? 'Kaki dari Rangka' : legType === 'feet' ? 'Kaki Stel Terbuka' : 'Plinth Kaki'} ({plinthH} cm)
                         </text>
                       </>
@@ -219,7 +219,7 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                       width={W * scale}
                       height={carcaseH * scale}
                       fill="none"
-                      stroke="#9ca3af"
+                      stroke="#57534e"
                       strokeWidth="2"
                     />
 
@@ -242,8 +242,8 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                               y={originY}
                               width={colWpx}
                               height={carcaseH * scale}
-                              fill="#18181b"
-                              stroke="#52525b"
+                              fill="#fafaf9"
+                              stroke="#a8a29e"
                               strokeWidth="1"
                             />
 
@@ -253,7 +253,7 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                               y1={originY + carcaseH * scale + 15}
                               x2={thisX + colWpx - 4}
                               y2={originY + carcaseH * scale + 15}
-                              stroke="#60a5fa"
+                              stroke="#2563eb"
                               strokeWidth="1"
                               markerStart="url(#arrow)"
                               markerEnd="url(#arrow)"
@@ -261,7 +261,7 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                             <text
                               x={thisX + colWpx / 2}
                               y={originY + carcaseH * scale + 28}
-                              fill="#93c5fd"
+                              fill="#2563eb"
                               textAnchor="middle"
                               fontSize="9"
                             >
@@ -294,8 +294,8 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                                         y={by}
                                         width={bw}
                                         height={bh}
-                                        fill={isVoid ? 'none' : kind === 'drawer' ? '#27272a' : '#1c1c20'}
-                                        stroke="#71717a"
+                                        fill={isVoid ? 'none' : kind === 'drawer' ? '#e7e5e4' : '#f5f5f4'}
+                                        stroke="#78716c"
                                         strokeWidth="1"
                                         strokeDasharray={isVoid ? '4,3' : undefined}
                                         rx="2"
@@ -306,13 +306,13 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                                           y1={thisDY + 10}
                                           x2={thisX + colWpx / 2 + 20}
                                           y2={thisDY + 10}
-                                          stroke="#fbbf24"
+                                          stroke="#d97706"
                                           strokeWidth="2.5"
                                           strokeLinecap="round"
                                         />
                                       )}
                                       {kind === 'door-double' && (
-                                        <line x1={bx + bw / 2} y1={by} x2={bx + bw / 2} y2={by + bh} stroke="#71717a" strokeWidth="1" />
+                                        <line x1={bx + bw / 2} y1={by} x2={bx + bw / 2} y2={by + bh} stroke="#78716c" strokeWidth="1" />
                                       )}
                                       {/* Garis arah bukaan pintu (segitiga menuju sisi engsel) */}
                                       {(kind === 'door-left' || kind === 'door-right') && (
@@ -323,18 +323,18 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                                               : `${bx},${by} ${bx + bw},${by + bh / 2} ${bx},${by + bh}`
                                           }
                                           fill="none"
-                                          stroke="#38bdf8"
+                                          stroke="#0284c7"
                                           strokeWidth="0.8"
                                           strokeDasharray="5,3"
                                         />
                                       )}
                                       {kind === 'open' && (
-                                        <line x1={bx} y1={by + bh / 2} x2={bx + bw} y2={by + bh / 2} stroke="#52525b" strokeWidth="1.5" />
+                                        <line x1={bx} y1={by + bh / 2} x2={bx + bw} y2={by + bh / 2} stroke="#a8a29e" strokeWidth="1.5" />
                                       )}
                                       <text
                                         x={thisX + colWpx / 2}
                                         y={thisDY + dHpx / 2 + 4}
-                                        fill={kind === 'drawer' ? '#e4e4e7' : '#93c5fd'}
+                                        fill={kind === 'drawer' ? '#44403c' : '#2563eb'}
                                         textAnchor="middle"
                                         fontSize="9"
                                       >
@@ -352,11 +352,11 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                                   y={originY + 3}
                                   width={colWpx - 6}
                                   height={16 * scale}
-                                  fill="#27272a"
-                                  stroke="#71717a"
+                                  fill="#e7e5e4"
+                                  stroke="#78716c"
                                   strokeWidth="1"
                                 />
-                                <text x={thisX + colWpx / 2} y={originY + 8 * scale + 4} fill="#a1a1aa" textAnchor="middle" fontSize="9">
+                                <text x={thisX + colWpx / 2} y={originY + 8 * scale + 4} fill="#57534e" textAnchor="middle" fontSize="9">
                                   Panel Palsu / Pipa (16cm)
                                 </text>
                                 {/* Lower door pair */}
@@ -365,8 +365,8 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                                   y={originY + 16 * scale + 5}
                                   width={colWpx / 2 - 5}
                                   height={carcaseH * scale - 16 * scale - 8}
-                                  fill="#18181b"
-                                  stroke="#71717a"
+                                  fill="#fafaf9"
+                                  stroke="#78716c"
                                   strokeWidth="1"
                                 />
                                 <rect
@@ -374,14 +374,14 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                                   y={originY + 16 * scale + 5}
                                   width={colWpx / 2 - 5}
                                   height={carcaseH * scale - 16 * scale - 8}
-                                  fill="#18181b"
-                                  stroke="#71717a"
+                                  fill="#fafaf9"
+                                  stroke="#78716c"
                                   strokeWidth="1"
                                 />
                                 <text
                                   x={thisX + colWpx / 2}
                                   y={originY + (carcaseH * scale) * 0.65}
-                                  fill="#38bdf8"
+                                  fill="#0284c7"
                                   textAnchor="middle"
                                   fontSize="9"
                                 >
@@ -395,8 +395,8 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                                   y={originY + 3}
                                   width={colWpx - 6}
                                   height={carcaseH * scale - 6}
-                                  fill="#18181b"
-                                  stroke="#71717a"
+                                  fill="#fafaf9"
+                                  stroke="#78716c"
                                   strokeWidth="1"
                                 />
                                 {/* Louver vents */}
@@ -414,7 +414,7 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                                 <text
                                   x={thisX + colWpx / 2}
                                   y={originY + (carcaseH * scale) / 2}
-                                  fill="#4ade80"
+                                  fill="#16a34a"
                                   textAnchor="middle"
                                   fontSize="9"
                                 >
@@ -428,14 +428,14 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                                   y={originY + 3}
                                   width={colWpx - 6}
                                   height={carcaseH * scale - 6}
-                                  fill="#27272a"
-                                  stroke="#71717a"
+                                  fill="#e7e5e4"
+                                  stroke="#78716c"
                                   strokeWidth="1"
                                 />
                                 <text
                                   x={thisX + colWpx / 2}
                                   y={originY + (carcaseH * scale) / 2}
-                                  fill="#e4e4e7"
+                                  fill="#44403c"
                                   textAnchor="middle"
                                   fontSize="9"
                                 >
@@ -461,20 +461,20 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
         </div>
 
         {/* 2. TAMPAK ATAS (TOP PLAN & CUTOUTS) */}
-        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-3 sm:p-6 shadow-xl relative overflow-x-auto">
+        <div className="bg-white border border-stone-200 rounded-2xl p-3 sm:p-6 shadow-xl relative overflow-x-auto">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Eye className="w-4 h-4 text-emerald-400" />
-              <h3 className="font-semibold text-sm text-neutral-200 uppercase tracking-wider">
+              <Eye className="w-4 h-4 text-emerald-600" />
+              <h3 className="font-semibold text-sm text-stone-800 uppercase tracking-wider">
                 2. Tampak Atas (Top Plan) & Lubang Potongan (Cutout Tanam)
               </h3>
             </div>
-            <span className="text-xs font-mono text-neutral-400">
+            <span className="text-xs font-mono text-stone-500">
               P: {W} cm × L: {D} cm • Posisi Tanam Wastafel & Kompor
             </span>
           </div>
 
-          <div className="flex justify-center bg-neutral-950/80 p-3 sm:p-6 rounded-xl border border-neutral-800/80 min-w-[700px]">
+          <div className="flex justify-center bg-stone-100 p-3 sm:p-6 rounded-xl border border-stone-200 min-w-[700px]">
             <svg
               width={topSvgW}
               height={topSvgH}
@@ -483,7 +483,7 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
             >
               <defs>
                 <pattern id="grid-top" width="22" height="22" patternUnits="userSpaceOnUse">
-                  <path d="M 22 0 L 0 0 0 22" fill="none" stroke="#262626" strokeWidth="0.5" />
+                  <path d="M 22 0 L 0 0 0 22" fill="none" stroke="#e7e5e4" strokeWidth="0.5" />
                 </pattern>
               </defs>
 
@@ -495,8 +495,8 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                 y={svgPadY}
                 width={W * scale}
                 height={D * scale}
-                fill="#262626"
-                stroke="#60a5fa"
+                fill="#e7e5e4"
+                stroke="#2563eb"
                 strokeWidth="2"
               />
 
@@ -516,8 +516,8 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                           y={cutY}
                           width={cutW}
                           height={cutL}
-                          fill="#1e3a8a"
-                          stroke="#38bdf8"
+                          fill="#dbeafe"
+                          stroke="#0284c7"
                           strokeWidth="1.5"
                           strokeDasharray="4,2"
                           rx="4"
@@ -525,7 +525,7 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                         <text
                           x={cutX + cutW / 2}
                           y={cutY + cutL / 2 - 6}
-                          fill="#e0f2fe"
+                          fill="#1e3a8a"
                           textAnchor="middle"
                           fontWeight="bold"
                           fontSize="10"
@@ -535,7 +535,7 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                         <text
                           x={cutX + cutW / 2}
                           y={cutY + cutL / 2 + 8}
-                          fill="#93c5fd"
+                          fill="#2563eb"
                           textAnchor="middle"
                           fontSize="9"
                         >
@@ -543,8 +543,8 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                         </text>
 
                         {/* Faucet circle indicator */}
-                        <circle cx={cutX + cutW / 2} cy={cutY - 8} r="6" fill="#38bdf8" />
-                        <text x={cutX + cutW / 2 + 10} y={cutY - 5} fill="#7dd3fc" fontSize="8">
+                        <circle cx={cutX + cutW / 2} cy={cutY - 8} r="6" fill="#0284c7" />
+                        <text x={cutX + cutW / 2 + 10} y={cutY - 5} fill="#0284c7" fontSize="8">
                           Keran
                         </text>
                       </g>
@@ -569,7 +569,7 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                           y={cutY}
                           width={cutW}
                           height={cutL}
-                          fill="#451a03"
+                          fill="#ffedd5"
                           stroke="#f97316"
                           strokeWidth="1.5"
                           strokeDasharray="4,2"
@@ -578,7 +578,7 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                         <text
                           x={cutX + cutW / 2}
                           y={cutY + cutL / 2 - 6}
-                          fill="#ffedd5"
+                          fill="#7c2d12"
                           textAnchor="middle"
                           fontWeight="bold"
                           fontSize="10"
@@ -588,7 +588,7 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                         <text
                           x={cutX + cutW / 2}
                           y={cutY + cutL / 2 + 8}
-                          fill="#fdba74"
+                          fill="#c2410c"
                           textAnchor="middle"
                           fontSize="9"
                         >
@@ -630,13 +630,13 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
                           y={lineY - 18}
                           width="80"
                           height="14"
-                          fill="#064e3b"
+                          fill="#d1fae5"
                           rx="3"
                         />
                         <text
                           x={(startX + endX) / 2}
                           y={lineY - 8}
-                          fill="#6ee7b7"
+                          fill="#047857"
                           textAnchor="middle"
                           fontSize="8.5"
                           fontWeight="bold"
@@ -664,7 +664,7 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
               <text
                 x={svgPadX - 30}
                 y={svgPadY + (D * scale) / 2}
-                fill="#60a5fa"
+                fill="#2563eb"
                 textAnchor="middle"
                 transform={`rotate(-90, ${svgPadX - 30}, ${svgPadY + (D * scale) / 2})`}
                 fontWeight="bold"
@@ -676,36 +676,36 @@ export const BlueprintView2D: React.FC<Props> = ({ config, onChange }) => {
         </div>
 
         {/* 3. TECHNICAL SPECIFICATION TABLE */}
-        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-xl">
-          <h3 className="font-semibold text-sm text-neutral-200 uppercase tracking-wider mb-4">
+        <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xl">
+          <h3 className="font-semibold text-sm text-stone-800 uppercase tracking-wider mb-4">
             3. Ringkasan Ukuran Potongan & Spesifikasi
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">
-            <div className="p-3 bg-neutral-950/60 rounded-xl border border-neutral-800">
-              <span className="text-neutral-500 block mb-1">UKURAN KABINET MEJA</span>
-              <p className="text-neutral-200 font-bold">Panjang Total: {W} cm</p>
-              <p className="text-neutral-200">Kedalaman: {D} cm</p>
-              <p className="text-neutral-200">Tinggi Finish: {H} cm</p>
-              <p className="text-neutral-400">Tinggi Kaki: {plinthH > 0 ? `${plinthH} cm` : 'tanpa kaki'}</p>
-              <p className="text-neutral-400">Tebal Top Table: {topT} cm</p>
+            <div className="p-3 bg-stone-100 rounded-xl border border-stone-200">
+              <span className="text-stone-500 block mb-1">UKURAN KABINET MEJA</span>
+              <p className="text-stone-800 font-bold">Panjang Total: {W} cm</p>
+              <p className="text-stone-800">Kedalaman: {D} cm</p>
+              <p className="text-stone-800">Tinggi Finish: {H} cm</p>
+              <p className="text-stone-500">Tinggi Kaki: {plinthH > 0 ? `${plinthH} cm` : 'tanpa kaki'}</p>
+              <p className="text-stone-500">Tebal Top Table: {topT} cm</p>
             </div>
 
-            <div className="p-3 bg-neutral-950/60 rounded-xl border border-neutral-800">
-              <span className="text-blue-400 block mb-1">LUBANG TANAM WASTAFEL</span>
-              <p className="text-neutral-200 font-bold">Panjang × Lebar: {sink.width} × {sink.length} cm</p>
-              <p className="text-neutral-200">Kedalaman Bak: {sink.bowlDepth} cm</p>
-              <p className="text-neutral-200">Posisi Titik Tengah: X={sink.posX} cm, Y={sink.posY} cm</p>
-              <p className="text-neutral-400">Tipe Pasang: {sink.mounting === 'undermount' ? 'Undermount (Di bawah granit)' : 'Topmount (Drop-in bibir atas)'}</p>
-              <p className="text-neutral-400">Model: {sink.model} ({sink.finish})</p>
+            <div className="p-3 bg-stone-100 rounded-xl border border-stone-200">
+              <span className="text-blue-600 block mb-1">LUBANG TANAM WASTAFEL</span>
+              <p className="text-stone-800 font-bold">Panjang × Lebar: {sink.width} × {sink.length} cm</p>
+              <p className="text-stone-800">Kedalaman Bak: {sink.bowlDepth} cm</p>
+              <p className="text-stone-800">Posisi Titik Tengah: X={sink.posX} cm, Y={sink.posY} cm</p>
+              <p className="text-stone-500">Tipe Pasang: {sink.mounting === 'undermount' ? 'Undermount (Di bawah granit)' : 'Topmount (Drop-in bibir atas)'}</p>
+              <p className="text-stone-500">Model: {sink.model} ({sink.finish})</p>
             </div>
 
-            <div className="p-3 bg-neutral-950/60 rounded-xl border border-neutral-800">
-              <span className="text-amber-400 block mb-1">LUBANG TANAM KOMPOR</span>
-              <p className="text-neutral-200 font-bold">Panjang × Lebar: {stove.width} × {stove.length} cm</p>
-              <p className="text-neutral-200">Kedalaman Tanam: {stove.recessDepth} cm</p>
-              <p className="text-neutral-200">Posisi Titik Tengah: X={stove.posX} cm, Y={stove.posY} cm</p>
-              <p className="text-neutral-400">Tipe: {stove.type}</p>
-              <p className="text-neutral-400">Jarak ke Wastafel: {Math.round(Math.abs(stove.posX - sink.posX) - (stove.width + sink.width) / 2)} cm</p>
+            <div className="p-3 bg-stone-100 rounded-xl border border-stone-200">
+              <span className="text-amber-600 block mb-1">LUBANG TANAM KOMPOR</span>
+              <p className="text-stone-800 font-bold">Panjang × Lebar: {stove.width} × {stove.length} cm</p>
+              <p className="text-stone-800">Kedalaman Tanam: {stove.recessDepth} cm</p>
+              <p className="text-stone-800">Posisi Titik Tengah: X={stove.posX} cm, Y={stove.posY} cm</p>
+              <p className="text-stone-500">Tipe: {stove.type}</p>
+              <p className="text-stone-500">Jarak ke Wastafel: {Math.round(Math.abs(stove.posX - sink.posX) - (stove.width + sink.width) / 2)} cm</p>
             </div>
           </div>
         </div>

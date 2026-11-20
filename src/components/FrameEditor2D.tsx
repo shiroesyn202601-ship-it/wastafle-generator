@@ -65,12 +65,12 @@ import {
 type View = FrameView;
 
 const ROLE_COLORS: Record<FrameMemberRole, string> = {
-  post: '#cbd5e1',
-  'rail-x': '#60a5fa',
-  'rail-z': '#a78bfa',
-  'sink-cradle': '#38bdf8',
-  'stove-cradle': '#fb923c',
-  custom: '#34d399',
+  post: '#64748b',
+  'rail-x': '#3b82f6',
+  'rail-z': '#8b5cf6',
+  'sink-cradle': '#0ea5e9',
+  'stove-cradle': '#f97316',
+  custom: '#10b981',
 };
 
 interface Props {
@@ -659,7 +659,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                   points={poly.map((q) => `${q.h},${vs - q.v}`).join(' ')}
                   fill={color}
                   fillOpacity={isSel ? 0.9 : 0.55}
-                  stroke={isSel ? '#fbbf24' : isWarn ? '#f43f5e' : '#0f172a'}
+                  stroke={isSel ? '#d97706' : isWarn ? '#f43f5e' : '#0f172a'}
                   strokeWidth={isSel ? sw * 2.2 : isWarn ? sw * 1.8 : sw}
                 />
               ) : (
@@ -670,7 +670,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                   height={h}
                   fill={color}
                   fillOpacity={isSel ? 0.9 : 0.55}
-                  stroke={isSel ? '#fbbf24' : isWarn ? '#f43f5e' : '#0f172a'}
+                  stroke={isSel ? '#d97706' : isWarn ? '#f43f5e' : '#0f172a'}
                   strokeWidth={isSel ? sw * 2.2 : isWarn ? sw * 1.8 : sw}
                   strokeDasharray={isWarn && !isSel ? `${fsz * 0.4} ${fsz * 0.25}` : undefined}
                 />
@@ -727,7 +727,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                 cy={pv.y}
                 r={rad}
                 fill={col}
-                stroke={isSel ? '#fff' : '#0f172a'}
+                stroke={isSel ? '#d97706' : '#0f172a'}
                 strokeWidth={sw * (isSel ? 2 : 1.2)}
                 style={interactive ? { cursor: 'pointer' } : undefined}
                 onPointerDown={
@@ -760,17 +760,17 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
     const els: React.ReactNode[] = [];
     const axisName = (a: FrameAxis) => (a === 'x' ? 'Panjang' : a === 'y' ? 'Tinggi' : 'Kedalaman');
 
-    els.push(dimH(0, mainH, mainV + fs * 2.6, `${axisName(def.h)} ${mainH} cm`, '#60a5fa', 'tot-h'));
-    els.push(dimV(mainH + fs * 3.4, 0, mainV, `${axisName(def.v)} ${mainV} cm`, '#60a5fa', 'tot-v', false));
+    els.push(dimH(0, mainH, mainV + fs * 2.6, `${axisName(def.h)} ${mainH} cm`, '#2563eb', 'tot-h'));
+    els.push(dimV(mainH + fs * 3.4, 0, mainV, `${axisName(def.v)} ${mainV} cm`, '#2563eb', 'tot-v', false));
 
     // Rantai ukur as batang yang memotong arah horizontal (bawah) & vertikal (kiri)
     const hPos = uniqueSorted([0, mainH, ...items.filter(({ m }) => m.axis !== def.h).map(({ p }) => (p.h0 + p.h1) / 2)]);
     for (let i = 0; i < hPos.length - 1; i++) {
-      els.push(dimH(hPos[i], hPos[i + 1], -fs * 2.4, `${r1(hPos[i + 1] - hPos[i])}`, '#94a3b8', `ch-${i}`, false));
+      els.push(dimH(hPos[i], hPos[i + 1], -fs * 2.4, `${r1(hPos[i + 1] - hPos[i])}`, '#64748b', `ch-${i}`, false));
     }
     const vPos = uniqueSorted([0, mainV, ...items.filter(({ m }) => m.axis !== def.v).map(({ p }) => (p.v0 + p.v1) / 2)]);
     for (let i = 0; i < vPos.length - 1; i++) {
-      els.push(dimV(-fs * 3, vPos[i], vPos[i + 1], `${r1(vPos[i + 1] - vPos[i])}`, '#94a3b8', `cv-${i}`));
+      els.push(dimV(-fs * 3, vPos[i], vPos[i + 1], `${r1(vPos[i + 1] - vPos[i])}`, '#64748b', `cv-${i}`));
     }
 
     // Ukuran batang terpilih
@@ -778,14 +778,14 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
       const a = projPt(view, [selected.x, selected.y, selected.z]);
       const b = projPt(view, memberEndPoint(selected));
       els.push(
-        <text key="sel-ang" x={(a.h + b.h) / 2 + fs * 1.2} y={mainV - (a.v + b.v) / 2} fontSize={fs * 0.85} fill="#fbbf24" fontWeight="bold">
+        <text key="sel-ang" x={(a.h + b.h) / 2 + fs * 1.2} y={mainV - (a.v + b.v) / 2} fontSize={fs * 0.85} fill="#d97706" fontWeight="bold">
           {`${selected.length} cm · miring ${memberTiltDeg(selected)}°`}
         </text>
       );
     }
     if (selected && !selected.end) {
       const p = projBox(view, memberBox(selected, memberSectionCm(selected, config)));
-      const amber = '#fbbf24';
+      const amber = '#d97706';
       const ch = r1((p.h0 + p.h1) / 2);
       const cv = r1((p.v0 + p.v1) / 2);
       if (selected.axis === def.v) {
@@ -831,12 +831,12 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
       if (g.axis === def.h) {
         const x = mapAxis(def.h, def.hFlip, g.value);
         els.push(
-          <line key={`g-${i}`} x1={x} y1={-fs * 2} x2={x} y2={mainV + fs * 2} stroke="#34d399" strokeWidth={fs * 0.1} strokeDasharray={`${fs * 0.5} ${fs * 0.3}`} />
+          <line key={`g-${i}`} x1={x} y1={-fs * 2} x2={x} y2={mainV + fs * 2} stroke="#059669" strokeWidth={fs * 0.1} strokeDasharray={`${fs * 0.5} ${fs * 0.3}`} />
         );
       } else if (g.axis === def.v) {
         const y = mainV - mapAxis(def.v, def.vFlip, g.value);
         els.push(
-          <line key={`g-${i}`} x1={-fs * 2} y1={y} x2={mainH + fs * 2} y2={y} stroke="#34d399" strokeWidth={fs * 0.1} strokeDasharray={`${fs * 0.5} ${fs * 0.3}`} />
+          <line key={`g-${i}`} x1={-fs * 2} y1={y} x2={mainH + fs * 2} y2={y} stroke="#059669" strokeWidth={fs * 0.1} strokeDasharray={`${fs * 0.5} ${fs * 0.3}`} />
         );
       }
     });
@@ -866,7 +866,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
             width={hsz}
             height={hsz}
             rx={hsz * 0.2}
-            fill="#fbbf24"
+            fill="#d97706"
             stroke="#0f172a"
             strokeWidth={fs * 0.1}
             style={{ cursor: selected.end ? 'move' : selected.axis === def.v ? 'ns-resize' : 'ew-resize' }}
@@ -882,9 +882,9 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
 
   const NumField = ({ label, value, onCommit, hint }: { label: string; value: number; onCommit: (v: number) => void; hint?: string }) => (
     <label className="block space-y-0.5">
-      <span className="flex justify-between text-[10px] text-neutral-400">
+      <span className="flex justify-between text-[10px] text-stone-500">
         <span>{label}</span>
-        {hint && <span className="text-neutral-500">{hint}</span>}
+        {hint && <span className="text-stone-500">{hint}</span>}
       </span>
       <input
         key={`${label}-${value}`}
@@ -899,7 +899,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
         onKeyDown={(e) => {
           if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
         }}
-        className="w-full px-2 py-1.5 bg-black/40 border border-white/10 rounded-md text-xs font-mono text-neutral-100 focus:outline-none focus:border-amber-500"
+        className="w-full px-2 py-1.5 bg-white border border-stone-200 rounded-md text-xs font-mono text-stone-900 focus:outline-none focus:border-amber-500"
       />
     </label>
   );
@@ -949,16 +949,16 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
   const btn = 'flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold cursor-pointer shrink-0';
 
   return (
-    <div className="w-full h-full flex flex-col bg-neutral-950 text-neutral-100 outline-none" tabIndex={0} onKeyDown={onKeyDown}>
+    <div className="w-full h-full flex flex-col bg-stone-100 text-stone-900 outline-none" tabIndex={0} onKeyDown={onKeyDown}>
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-white/[0.08] bg-[#0f1218]">
-        <div className="flex items-center p-1 bg-black/40 rounded-lg border border-white/5 overflow-x-auto max-w-full">
+      <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-stone-200 bg-white">
+        <div className="flex items-center p-1 bg-white rounded-lg border border-stone-200 overflow-x-auto max-w-full">
           {(Object.keys(VIEW_LABELS) as View[]).map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
               className={`px-2.5 py-1 rounded-md text-xs font-medium transition cursor-pointer shrink-0 ${
-                view === v ? 'bg-white/15 text-white ring-1 ring-white/10' : 'text-neutral-400 hover:text-white'
+                view === v ? 'bg-stone-200 text-stone-900 ring-1 ring-stone-200' : 'text-stone-500 hover:text-stone-900'
               }`}
             >
               <span className="hidden sm:inline">Tampilan </span>
@@ -971,25 +971,25 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
           <button onClick={addPost} className={`${btn} bg-emerald-600 hover:bg-emerald-500 text-white`}>
             <Plus className="w-3.5 h-3.5" /> Kaki / tiang
           </button>
-          <button onClick={addRailX} className={`${btn} bg-emerald-600/80 hover:bg-emerald-500 text-white`}>
+          <button onClick={addRailX} className={`${btn} bg-emerald-600/80 hover:bg-emerald-500 text-stone-900`}>
             <Plus className="w-3.5 h-3.5" /> Palang kiri–kanan
           </button>
-          <button onClick={addRailZ} className={`${btn} bg-emerald-600/60 hover:bg-emerald-500 text-white`}>
+          <button onClick={addRailZ} className={`${btn} bg-emerald-600/60 hover:bg-emerald-500 text-stone-900`}>
             <Plus className="w-3.5 h-3.5" /> Palang depan–belakang
           </button>
-          <button onClick={addAngled} className={`${btn} bg-emerald-600/45 hover:bg-emerald-500 text-white`} title="Batang miring: tarik kedua ujungnya ke posisi yang diinginkan">
+          <button onClick={addAngled} className={`${btn} bg-emerald-600/45 hover:bg-emerald-500 text-stone-900`} title="Batang miring: tarik kedua ujungnya ke posisi yang diinginkan">
             <Plus className="w-3.5 h-3.5" /> Batang miring
           </button>
           <button
             onClick={() => setMagnet(!magnet)}
-            className={`${btn} border ${magnet ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300' : 'bg-white/5 border-white/10 text-neutral-400'}`}
+            className={`${btn} border ${magnet ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-700' : 'bg-stone-50 border-stone-200 text-stone-500'}`}
             title="Magnet: batang otomatis menempel ke sisi / as batang lain saat digeser atau ditarik"
           >
             <Magnet className="w-3.5 h-3.5" /> Magnet {magnet ? 'ON' : 'OFF'}
           </button>
-          <label className="flex items-center gap-1 text-[11px] text-neutral-400 shrink-0">
+          <label className="flex items-center gap-1 text-[11px] text-stone-500 shrink-0">
             Grid
-            <select value={snap} onChange={(e) => setSnap(parseFloat(e.target.value))} className="px-1.5 py-1 bg-black/40 border border-white/10 rounded text-xs text-neutral-200 cursor-pointer">
+            <select value={snap} onChange={(e) => setSnap(parseFloat(e.target.value))} className="px-1.5 py-1 bg-white border border-stone-200 rounded text-xs text-stone-800 cursor-pointer">
               {[0.5, 1, 2, 5, 10].map((s) => (
                 <option key={s} value={s}>
                   {s} cm
@@ -997,7 +997,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
               ))}
             </select>
           </label>
-          <button onClick={handleUndo} disabled={history.length === 0} className={`${btn} text-neutral-300 hover:text-white hover:bg-white/5 disabled:opacity-30`} title="Undo (Ctrl+Z)">
+          <button onClick={handleUndo} disabled={history.length === 0} className={`${btn} text-stone-700 hover:text-stone-900 hover:bg-stone-50 disabled:opacity-30`} title="Undo (Ctrl+Z)">
             <Undo2 className="w-3.5 h-3.5" /> Undo
           </button>
         </div>
@@ -1005,13 +1005,13 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
         <div className="ml-auto flex items-center gap-2">
           <span
             className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
-              isCustom ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+              isCustom ? 'bg-amber-500/15 text-amber-700 border-amber-500/30' : 'bg-emerald-500/10 text-emerald-700 border-emerald-500/30'
             }`}
           >
             {isCustom ? 'MANUAL' : 'OTOMATIS'}
           </span>
           {isCustom && (
-            <button onClick={handleResetAuto} className={`${btn} text-rose-300 hover:bg-rose-500/10`}>
+            <button onClick={handleResetAuto} className={`${btn} text-rose-700 hover:bg-rose-500/10`}>
               <RotateCcw className="w-3.5 h-3.5" /> Reset
             </button>
           )}
@@ -1021,7 +1021,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
       <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
         {/* Kanvas */}
         <div className="lg:flex-1 flex flex-col lg:overflow-hidden p-2 sm:p-3 gap-2 sm:gap-3">
-          <div className="relative h-[52vh] lg:h-auto lg:flex-1 min-h-0 bg-[#0b0e14] rounded-xl border border-white/[0.08] overflow-hidden">
+          <div className="relative h-[52vh] lg:h-auto lg:flex-1 min-h-0 bg-stone-100 rounded-xl border border-stone-200 overflow-hidden">
             <svg
               ref={svgRef}
               viewBox={viewBox}
@@ -1036,14 +1036,14 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
               {renderScene(view, true, fs)}
               {renderOverlay()}
             </svg>
-            <div className="absolute top-2 left-3 right-3 text-[10px] sm:text-[11px] text-neutral-500 pointer-events-none flex items-center gap-1.5">
+            <div className="absolute top-2 left-3 right-3 text-[10px] sm:text-[11px] text-stone-500 pointer-events-none flex items-center gap-1.5">
               <MousePointer2 className="w-3 h-3 shrink-0" />
               <span className="truncate">
                 Ketuk pilih · ketuk lagi untuk batang di belakangnya · seret untuk geser · kotak kuning untuk ubah panjang
               </span>
             </div>
             {!isCustom && (
-              <div className="absolute bottom-2 left-3 right-3 text-[10px] sm:text-[11px] text-emerald-300/80 pointer-events-none">
+              <div className="absolute bottom-2 left-3 right-3 text-[10px] sm:text-[11px] text-emerald-700/80 pointer-events-none">
                 Rangka masih otomatis. Begitu satu batang diubah di sini, rangka tidak lagi mengikuti pengaturan ukuran.
               </div>
             )}
@@ -1060,9 +1060,9 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                   <button
                     key={v}
                     onClick={() => setView(v)}
-                    className="relative bg-[#0b0e14] rounded-xl border border-white/[0.08] hover:border-amber-500/50 overflow-hidden cursor-pointer"
+                    className="relative bg-stone-100 rounded-xl border border-stone-200 hover:border-amber-500/50 overflow-hidden cursor-pointer"
                   >
-                    <span className="absolute top-1 left-1.5 text-[9px] sm:text-[10px] font-semibold text-neutral-400">{VIEW_LABELS[v]}</span>
+                    <span className="absolute top-1 left-1.5 text-[9px] sm:text-[10px] font-semibold text-stone-500">{VIEW_LABELS[v]}</span>
                     <svg viewBox={`${-f * 2} ${-f * 3} ${s.hs + f * 4} ${s.vs + f * 5}`} preserveAspectRatio="xMidYMid meet" className="w-full h-full pointer-events-none">
                       {renderScene(v, false, f)}
                     </svg>
@@ -1073,15 +1073,15 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
         </div>
 
         {/* Panel properti */}
-        <aside className="w-full lg:w-72 shrink-0 border-t lg:border-t-0 lg:border-l border-white/[0.08] bg-[#0e1117] lg:overflow-y-auto p-3 space-y-3">
+        <aside className="w-full lg:w-72 shrink-0 border-t lg:border-t-0 lg:border-l border-stone-200 bg-white lg:overflow-y-auto p-3 space-y-3">
           {selected ? (
-            <div className="p-3 bg-[#12151c] border border-amber-500/30 rounded-xl space-y-2.5">
+            <div className="p-3 bg-white border border-amber-500/30 rounded-xl space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-amber-300">Batang Terpilih</span>
-                <span className="text-[10px] font-mono text-neutral-400">{AXIS_LABELS[selected.axis]}</span>
+                <span className="text-xs font-bold text-amber-700">Batang Terpilih</span>
+                <span className="text-[10px] font-mono text-stone-500">{AXIS_LABELS[selected.axis]}</span>
               </div>
               <div
-                className={`flex items-center gap-1.5 text-[11px] ${connectedCount > 0 ? 'text-emerald-300' : 'text-rose-300'}`}
+                className={`flex items-center gap-1.5 text-[11px] ${connectedCount > 0 ? 'text-emerald-700' : 'text-rose-700'}`}
               >
                 <Link2 className="w-3.5 h-3.5" />
                 {connectedCount > 0 ? `Tersambung ke ${connectedCount} batang` : 'Belum tersambung ke rangka'}
@@ -1091,12 +1091,12 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                 defaultValue={selected.label || ''}
                 placeholder={FRAME_ROLE_LABELS[selected.role]}
                 onBlur={(e) => e.target.value !== (selected.label || '') && updateMember(selected.id, { label: e.target.value })}
-                className="w-full px-2 py-1.5 bg-black/40 border border-white/10 rounded-md text-xs text-neutral-100 focus:outline-none focus:border-amber-500"
+                className="w-full px-2 py-1.5 bg-white border border-stone-200 rounded-md text-xs text-stone-900 focus:outline-none focus:border-amber-500"
               />
               <select
                 value={selected.role}
                 onChange={(e) => updateMember(selected.id, { role: e.target.value as FrameMemberRole })}
-                className="w-full px-2 py-1.5 bg-black/40 border border-white/10 rounded-md text-xs text-neutral-200 cursor-pointer"
+                className="w-full px-2 py-1.5 bg-white border border-stone-200 rounded-md text-xs text-stone-800 cursor-pointer"
               >
                 {(Object.keys(FRAME_ROLE_LABELS) as FrameMemberRole[]).map((r) => (
                   <option key={r} value={r}>
@@ -1116,7 +1116,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                   ];
                   return (
                     <div className="p-2 rounded-lg bg-emerald-500/[0.06] border border-emerald-500/25 space-y-1.5">
-                      <div className="text-[10px] font-semibold text-emerald-300">Sambung palang dari tiang ini</div>
+                      <div className="text-[10px] font-semibold text-emerald-700">Sambung palang dari tiang ini</div>
                       <NumField label="Tinggi as palang dari lantai (cm)" value={cy} onCommit={(v) => setConnectY(v)} />
                       <div className="grid grid-cols-2 gap-1.5">
                         {dirs.map(({ axis, dir, label }) => {
@@ -1127,17 +1127,17 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                               disabled={!t}
                               onClick={() => connectFromSelected(axis, dir, cy)}
                               title={t ? `Palang ${r1(t.length)} cm ke ${t.m.label || FRAME_ROLE_LABELS[t.m.role]}` : 'Tidak ada batang di arah ini'}
-                              className="flex flex-col items-center py-1.5 rounded-md bg-emerald-600/20 hover:bg-emerald-600/35 border border-emerald-500/30 text-[11px] font-semibold text-emerald-200 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                              className="flex flex-col items-center py-1.5 rounded-md bg-emerald-600/20 hover:bg-emerald-600/35 border border-emerald-500/30 text-[11px] font-semibold text-emerald-800 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                             >
                               <span className="flex items-center gap-1">
                                 <Plus className="w-3 h-3" /> {label}
                               </span>
-                              <span className="text-[9px] font-mono font-normal text-emerald-300/70">{t ? `${r1(t.length)} cm` : '—'}</span>
+                              <span className="text-[9px] font-mono font-normal text-emerald-700/70">{t ? `${r1(t.length)} cm` : '—'}</span>
                             </button>
                           );
                         })}
                       </div>
-                      <p className="text-[10px] text-neutral-500 leading-snug">
+                      <p className="text-[10px] text-stone-500 leading-snug">
                         Klik tiang di ketinggian yang diinginkan (tampak depan/belakang/samping), lalu pilih arah. Palang otomatis
                         menempel ke batang terdekat di arah itu.
                       </p>
@@ -1146,10 +1146,10 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                 })()}
 
               {selected.end && (
-                <div className="p-2 rounded-lg bg-black/25 border border-white/[0.06] space-y-2">
-                  <div className="flex items-center justify-between text-[10px] font-semibold text-neutral-300">
+                <div className="p-2 rounded-lg bg-stone-50 border border-stone-200 space-y-2">
+                  <div className="flex items-center justify-between text-[10px] font-semibold text-stone-700">
                     <span>Batang miring</span>
-                    <span className="font-mono text-amber-300">
+                    <span className="font-mono text-amber-700">
                       {selected.length} cm · {memberTiltDeg(selected)}°
                     </span>
                   </div>
@@ -1159,7 +1159,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                     const pt = which === 'awal' ? a : b;
                     return (
                       <div key={which} className="space-y-1">
-                        <div className="text-[10px] text-neutral-400">Titik {which} (as pipa, cm)</div>
+                        <div className="text-[10px] text-stone-500">Titik {which} (as pipa, cm)</div>
                         <div className="grid grid-cols-3 gap-1.5">
                           {(['x', 'y', 'z'] as FrameAxis[]).map((ax, i) => (
                             <NumField
@@ -1178,7 +1178,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                       </div>
                     );
                   })}
-                  <p className="text-[10px] text-neutral-500 leading-snug">
+                  <p className="text-[10px] text-stone-500 leading-snug">
                     Tarik kotak kuning di ujung batang untuk mengubah arah & panjang. Kedua ujung dipotong miring sesuai sudutnya (tertulis di daftar
                     potongan).
                   </p>
@@ -1192,10 +1192,10 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                 const toMax = r1(info.span - sb.max[i]);
                 const nbs = axis === selected.axis ? [] : ([-1, 1] as const).map((dir) => ({ dir, nb: neighborAlong(axis, dir) }));
                 return (
-                  <div key={axis} className="p-2 rounded-lg bg-black/25 border border-white/[0.06] space-y-1.5">
-                    <div className="flex items-center justify-between text-[10px] font-semibold text-neutral-300">
+                  <div key={axis} className="p-2 rounded-lg bg-stone-50 border border-stone-200 space-y-1.5">
+                    <div className="flex items-center justify-between text-[10px] font-semibold text-stone-700">
                       <span>{info.title}</span>
-                      <span className="font-mono text-neutral-500">as {selected[axis]}</span>
+                      <span className="font-mono text-stone-500">as {selected[axis]}</span>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       {axis === selected.axis ? (
@@ -1230,11 +1230,11 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                   </div>
                 );
               })}
-              <p className="text-[10px] text-neutral-500 leading-snug">
+              <p className="text-[10px] text-stone-500 leading-snug">
                 Jarak diukur dari sisi luar pipa (bukan as). Kedalaman juga bisa diseret di Tampak Kiri/Kanan/Atas.
               </p>
 
-              <label className="flex items-center justify-between gap-2 text-[11px] text-neutral-400">
+              <label className="flex items-center justify-between gap-2 text-[11px] text-stone-500">
                 Ukuran pipa
                 <select
                   value={`${selected.tubeSize || 0}x${selected.tubeH || 0}`}
@@ -1242,7 +1242,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                     const [w, h] = e.target.value.split('x').map((v) => parseInt(v) || undefined);
                     updateMember(selected.id, { tubeSize: w, tubeH: h });
                   }}
-                  className="min-w-0 px-1.5 py-1 bg-black/40 border border-white/10 rounded text-xs text-neutral-200 cursor-pointer"
+                  className="min-w-0 px-1.5 py-1 bg-white border border-stone-200 rounded text-xs text-stone-800 cursor-pointer"
                 >
                   <option value="0x0">Ikut rangka ({config.frame?.tubeSize || 40}×{config.frame?.tubeSize || 40} mm)</option>
                   <optgroup label="Kotak">
@@ -1278,18 +1278,18 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
 
               {/* Engsel lipat */}
               {selected.end ? (
-                <p className="p-2 rounded-lg bg-amber-500/[0.05] border border-amber-500/25 text-[10px] text-amber-200/80">
+                <p className="p-2 rounded-lg bg-amber-500/[0.05] border border-amber-500/25 text-[10px] text-amber-800/80">
                   Engsel lipat belum bisa dipasang di batang miring. Pasang di batang lurus yang tersambung, lalu centang &quot;Bawa batang yang
                   tersambung&quot; supaya batang miring ikut terlipat.
                 </p>
               ) : (
               <div className="p-2 rounded-lg bg-amber-500/[0.05] border border-amber-500/25 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-semibold text-amber-300">Engsel Lipat</span>
+                  <span className="text-[10px] font-semibold text-amber-700">Engsel Lipat</span>
                   {selectedHinge && (
                     <button
                       onClick={() => removeHinge(selectedHinge.id)}
-                      className="flex items-center gap-1 text-[10px] text-rose-300 hover:text-rose-200 cursor-pointer"
+                      className="flex items-center gap-1 text-[10px] text-rose-700 hover:text-rose-800 cursor-pointer"
                     >
                       <Unlink className="w-3 h-3" /> Lepas
                     </button>
@@ -1302,7 +1302,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                       <>
                         <button
                           onClick={() => addHinge(selected)}
-                          className="w-full flex items-center justify-center gap-1 py-1.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-[11px] font-semibold text-amber-200 cursor-pointer"
+                          className="w-full flex items-center justify-center gap-1 py-1.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-[11px] font-semibold text-amber-800 cursor-pointer"
                         >
                           <Plus className="w-3 h-3" /> Lipat di satu titik
                         </button>
@@ -1310,21 +1310,21 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                           onClick={() => addHinge(selected, 'edge')}
                           disabled={partners.length === 0}
                           title={partners.length === 0 ? 'Tidak ada batang sejajar yang menempel di sisi panjang batang ini' : undefined}
-                          className="w-full flex items-center justify-center gap-1 py-1.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-[11px] font-semibold text-amber-200 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="w-full flex items-center justify-center gap-1 py-1.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-[11px] font-semibold text-amber-800 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           <Plus className="w-3 h-3" /> Lipat seperti pintu (ke batang sebelah)
                         </button>
                         <button
                           onClick={() => addHinge(selected, 'axle')}
-                          className="w-full flex items-center justify-center gap-1 py-1.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-[11px] font-semibold text-amber-200 cursor-pointer"
+                          className="w-full flex items-center justify-center gap-1 py-1.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-[11px] font-semibold text-amber-800 cursor-pointer"
                         >
                           <Plus className="w-3 h-3" /> Daun berputar di kaki ini
                         </button>
-                        <p className="text-[10px] text-neutral-500 leading-snug">
-                          <strong className="text-neutral-400">Lipat di satu titik:</strong> batang dibelah di titik engsel, potongannya ditekuk. Taruh di
-                          ujung untuk engsel besi-ke-besi. <strong className="text-neutral-400">Lipat seperti pintu:</strong> untuk 2 batang yang bersebelahan
+                        <p className="text-[10px] text-stone-500 leading-snug">
+                          <strong className="text-stone-500">Lipat di satu titik:</strong> batang dibelah di titik engsel, potongannya ditekuk. Taruh di
+                          ujung untuk engsel besi-ke-besi. <strong className="text-stone-500">Lipat seperti pintu:</strong> untuk 2 batang yang bersebelahan
                           rapat; seluruh batang ini berputar di garis tepi yang menempel ke batang sebelah (seperti daun lipat).{' '}
-                          <strong className="text-neutral-400">Daun berputar di kaki:</strong> pasang di kaki; kaki tetap berdiri dan seluruh rangka yang
+                          <strong className="text-stone-500">Daun berputar di kaki:</strong> pasang di kaki; kaki tetap berdiri dan seluruh rangka yang
                           tersambung di atasnya berputar (meja flip-top, daun meja bisa jadi vertikal).
                         </p>
                       </>
@@ -1360,7 +1360,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                               onClick={() => updateHinge(hg.id, { type: t })}
                               title={HINGE_TYPES[t].desc}
                               className={`flex flex-col items-center gap-0.5 p-1.5 rounded-md border text-[10px] cursor-pointer ${
-                                hg.type === t ? 'bg-amber-500/20 border-amber-400 text-amber-100' : 'bg-black/30 border-white/10 text-neutral-400 hover:text-white'
+                                hg.type === t ? 'bg-amber-500/20 border-amber-400 text-amber-800' : 'bg-stone-50 border-stone-200 text-stone-500 hover:text-stone-900'
                               }`}
                             >
                               <HingeIcon type={t} className="w-full h-10" />
@@ -1368,7 +1368,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                             </button>
                           ))}
                         </div>
-                        <p className="text-[10px] text-neutral-500 leading-snug">{HINGE_TYPES[hg.type].desc}</p>
+                        <p className="text-[10px] text-stone-500 leading-snug">{HINGE_TYPES[hg.type].desc}</p>
 
                         <div className="grid grid-cols-3 gap-1">
                           {(['point', 'edge', 'axle'] as const).map((md) => (
@@ -1384,8 +1384,8 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                               }
                               className={`py-1 rounded text-[10px] leading-tight cursor-pointer border disabled:opacity-30 disabled:cursor-not-allowed ${
                                 md === (hg.mode || 'point')
-                                  ? 'bg-amber-500/20 border-amber-400/60 text-amber-100'
-                                  : 'bg-white/5 border-white/10 text-neutral-300 hover:bg-white/10'
+                                  ? 'bg-amber-500/20 border-amber-400/60 text-amber-800'
+                                  : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
                               }`}
                             >
                               {md === 'point' ? 'Lipat di satu titik' : md === 'edge' ? 'Lipat seperti pintu' : 'Daun berputar di kaki'}
@@ -1395,19 +1395,19 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
 
                         {isEdge && (
                           <div className="space-y-1">
-                            <div className="text-[10px] text-neutral-400">Dipasang ke batang</div>
+                            <div className="text-[10px] text-stone-500">Dipasang ke batang</div>
                             {partners.map((p) => (
                               <button
                                 key={p.partner.id}
                                 onClick={() => updateHinge(hg.id, edgeHinge(hg, p))}
                                 className={`w-full flex justify-between px-2 py-1 rounded text-[10px] cursor-pointer border ${
                                   p.partner.id === hg.partnerId
-                                    ? 'bg-amber-500/20 border-amber-400/60 text-amber-100'
-                                    : 'bg-white/5 border-white/10 text-neutral-300 hover:bg-white/10'
+                                    ? 'bg-amber-500/20 border-amber-400/60 text-amber-800'
+                                    : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
                                 }`}
                               >
                                 <span className="truncate">{p.partner.label || FRAME_ROLE_LABELS[p.partner.role]}</span>
-                                <span className="text-neutral-500 shrink-0 pl-1">di {FOLD_LABELS[p.k][p.sign === 1 ? '1' : '-1'].replace('Ke ', '').toLowerCase()}</span>
+                                <span className="text-stone-500 shrink-0 pl-1">di {FOLD_LABELS[p.k][p.sign === 1 ? '1' : '-1'].replace('Ke ', '').toLowerCase()}</span>
                               </button>
                             ))}
                           </div>
@@ -1421,7 +1421,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                               value={r1(pos)}
                               onCommit={(v) => updateHinge(hg.id, { pos: Math.min(Math.max(v, 0), L) })}
                             />
-                            <div className="text-[10px] text-neutral-400">Poros kedua (segaris)</div>
+                            <div className="text-[10px] text-stone-500">Poros kedua (segaris)</div>
                             <div className="space-y-1">
                               {[undefined, ...axleCands].map((c) => (
                                 <button
@@ -1429,8 +1429,8 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                                   onClick={() => updateHinge(hg.id, { partnerId: c?.id })}
                                   className={`w-full text-left px-2 py-1 rounded text-[10px] cursor-pointer border truncate ${
                                     (hg.partnerId || undefined) === c?.id
-                                      ? 'bg-amber-500/20 border-amber-400/60 text-amber-100'
-                                      : 'bg-white/5 border-white/10 text-neutral-300 hover:bg-white/10'
+                                      ? 'bg-amber-500/20 border-amber-400/60 text-amber-800'
+                                      : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
                                   }`}
                                 >
                                   {c ? c.label || FRAME_ROLE_LABELS[c.role] : 'Tanpa poros kedua'}
@@ -1458,7 +1458,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                               key={b.label}
                               onClick={() => updateHinge(hg.id, { pos: b.v, side: b.side })}
                               className={`py-1 rounded text-[10px] cursor-pointer border ${
-                                Math.abs(pos - b.v) < 0.05 ? 'bg-amber-500/20 border-amber-400/60 text-amber-100' : 'bg-white/5 border-white/10 text-neutral-300 hover:bg-white/10'
+                                Math.abs(pos - b.v) < 0.05 ? 'bg-amber-500/20 border-amber-400/60 text-amber-800' : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
                               }`}
                             >
                               {b.label}
@@ -1467,14 +1467,14 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                         </div>
 
                         <div className="space-y-1">
-                          <div className="text-[10px] text-neutral-400">Potongan yang ditekuk</div>
+                          <div className="text-[10px] text-stone-500">Potongan yang ditekuk</div>
                           <div className="grid grid-cols-2 gap-1">
                             {(['start', 'end'] as const).map((sd) => (
                               <button
                                 key={sd}
                                 onClick={() => updateHinge(hg.id, { side: sd })}
                                 className={`py-1 rounded text-[10px] cursor-pointer border ${
-                                  hg.side === sd ? 'bg-amber-500/20 border-amber-400/60 text-amber-100' : 'bg-white/5 border-white/10 text-neutral-300 hover:bg-white/10'
+                                  hg.side === sd ? 'bg-amber-500/20 border-amber-400/60 text-amber-800' : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
                                 }`}
                               >
                                 Sisi {sd === 'start' ? nameA : nameB} · {r1(sd === 'start' ? pos : L - pos)} cm
@@ -1486,7 +1486,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                         )}
 
                         <div className="space-y-1">
-                          <div className="text-[10px] text-neutral-400">{isAxle ? 'Arah putar daun' : 'Arah tekuk'}</div>
+                          <div className="text-[10px] text-stone-500">{isAxle ? 'Arah putar daun' : 'Arah tekuk'}</div>
                           <div className="grid grid-cols-2 gap-1">
                             {folds.map((o) => (
                               <button
@@ -1494,8 +1494,8 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                                 onClick={() => updateHinge(hg.id, { foldAxis: o.axis, foldSign: o.sign })}
                                 className={`py-1 rounded text-[10px] cursor-pointer border ${
                                   hg.foldAxis === o.axis && hg.foldSign === o.sign
-                                    ? 'bg-amber-500/20 border-amber-400/60 text-amber-100'
-                                    : 'bg-white/5 border-white/10 text-neutral-300 hover:bg-white/10'
+                                    ? 'bg-amber-500/20 border-amber-400/60 text-amber-800'
+                                    : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
                                 }`}
                               >
                                 {o.label}
@@ -1504,7 +1504,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                           </div>
                         </div>
 
-                        <div className="p-2 rounded-md bg-black/20 border border-white/10 space-y-1.5 text-[10px]">
+                        <div className="p-2 rounded-md bg-stone-50 border border-stone-200 space-y-1.5 text-[10px]">
                           {!isAxle && (
                           <label className="flex items-start gap-2 cursor-pointer">
                             <input
@@ -1513,22 +1513,22 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                               onChange={(e) => updateHinge(hg.id, { carry: e.target.checked })}
                               className="mt-0.5 accent-amber-500"
                             />
-                            <span className="text-neutral-300 leading-snug">
+                            <span className="text-stone-700 leading-snug">
                               Bawa batang yang tersambung (daun lipat)
-                              <span className="block text-neutral-500">
+                              <span className="block text-stone-500">
                                 Batang di sisi yang ditekuk yang tersambung ke batang ini ikut berputar sebagai satu bagian.
                               </span>
                             </span>
                           </label>
                           )}
                           {(hg.carry || isAxle) && lim && (
-                            <div className="text-neutral-400">
-                              Ikut berputar: <span className="text-amber-200 font-semibold">{lim.leafIds.length} batang</span>
+                            <div className="text-stone-500">
+                              Ikut berputar: <span className="text-amber-800 font-semibold">{lim.leafIds.length} batang</span>
                             </div>
                           )}
                           {hg.carry && lim && lim.bridges.length > 0 && (
                             <div className="space-y-1">
-                              <div className="text-rose-300 leading-snug">
+                              <div className="text-rose-700 leading-snug">
                                 {lim.bridges.length} batang melintasi garis engsel dan masih menyambung kedua sisi:{' '}
                                 {lim.bridges.map((b) => b.name).join(', ')}
                               </div>
@@ -1544,13 +1544,13 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                                       )
                                     )
                                   }
-                                  className="w-full flex items-center justify-center gap-1 py-1.5 rounded-md bg-rose-600/25 hover:bg-rose-600/40 border border-rose-500/40 font-semibold text-rose-100 cursor-pointer"
+                                  className="w-full flex items-center justify-center gap-1 py-1.5 rounded-md bg-rose-600/25 hover:bg-rose-600/40 border border-rose-500/40 font-semibold text-rose-800 cursor-pointer"
                                 >
                                   <Scissors className="w-3 h-3" /> Potong {lim.bridges.filter((b) => b.splittable).length} batang di garis engsel
                                 </button>
                               )}
                               {lim.bridges.some((b) => !b.splittable) && (
-                                <div className="text-neutral-500 leading-snug">
+                                <div className="text-stone-500 leading-snug">
                                   Tidak bisa dipotong otomatis (sejajar garis engsel), geser atau hapus manual:{' '}
                                   {lim.bridges.filter((b) => !b.splittable).map((b) => b.name).join(', ')}
                                 </div>
@@ -1560,12 +1560,12 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                         </div>
 
                         {lim && (
-                          <div className="p-2 rounded-md bg-black/30 border border-white/10 space-y-1 text-[10px]">
+                          <div className="p-2 rounded-md bg-stone-50 border border-stone-200 space-y-1 text-[10px]">
                             <div className="flex justify-between">
-                              <span className="text-neutral-400">Tekuk maksimum</span>
-                              <span className="font-mono font-bold text-amber-300">{lim.limitDeg}°</span>
+                              <span className="text-stone-500">Tekuk maksimum</span>
+                              <span className="font-mono font-bold text-amber-700">{lim.limitDeg}°</span>
                             </div>
-                            <div className="text-neutral-400 leading-snug">
+                            <div className="text-stone-500 leading-snug">
                               {lim.geometry.movingLen < 0.1
                                 ? 'Tidak ada potongan yang bisa ditekuk: pindahkan engsel atau ganti sisi.'
                                 : lim.bridges.length > 0
@@ -1577,17 +1577,17 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                                 : `Bebas sampai batas engsel (${lim.typeMax}°).`}
                             </div>
                             {lim.liftFromFloor && (
-                              <div className="text-sky-300/90 leading-snug">Bagian ini menapak lantai: angkat atau balik meja saat melipatnya.</div>
+                              <div className="text-sky-700/90 leading-snug">Bagian ini menapak lantai: angkat atau balik meja saat melipatnya.</div>
                             )}
                             {lim.attached.length > 0 && (
-                              <div className="text-rose-300/90 leading-snug">
+                              <div className="text-rose-700/90 leading-snug">
                                 Menempel di potongan yang ditekuk (diabaikan): {lim.attached.slice(0, 3).join(', ')}
                                 {lim.attached.length > 3 ? ', …' : ''}
                               </div>
                             )}
                             {lim.limitDeg > 0 && (
                               <label className="block pt-1 space-y-0.5">
-                                <span className="flex justify-between text-neutral-500">
+                                <span className="flex justify-between text-stone-500">
                                   <span>Pratinjau tekuk di gambar</span>
                                   <span className="font-mono">{r1(Math.min(previewDeg ?? lim.limitDeg, lim.limitDeg))}°</span>
                                 </span>
@@ -1602,7 +1602,7 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
                                 />
                               </label>
                             )}
-                            <p className="text-neutral-500 leading-snug">Di tampilan 3D, klik engselnya untuk menekuk / meluruskan.</p>
+                            <p className="text-stone-500 leading-snug">Di tampilan 3D, klik engselnya untuk menekuk / meluruskan.</p>
                           </div>
                         )}
                       </>
@@ -1613,54 +1613,54 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
               )}
 
               <div className="grid grid-cols-2 gap-1.5 pt-1">
-                <button onClick={() => duplicateSelected()} className="flex items-center justify-center gap-1 py-1.5 rounded-md bg-white/5 hover:bg-white/10 text-[11px] text-neutral-200 cursor-pointer">
+                <button onClick={() => duplicateSelected()} className="flex items-center justify-center gap-1 py-1.5 rounded-md bg-stone-50 hover:bg-stone-100 text-[11px] text-stone-800 cursor-pointer">
                   <Copy className="w-3 h-3" /> Duplikat
                 </button>
-                <button onClick={fitSelected} disabled={!!selected.end} className="flex items-center justify-center gap-1 py-1.5 rounded-md bg-white/5 hover:bg-white/10 text-[11px] text-neutral-200 cursor-pointer disabled:opacity-30" title="Rentangkan penuh sesuai ukuran rangka">
+                <button onClick={fitSelected} disabled={!!selected.end} className="flex items-center justify-center gap-1 py-1.5 rounded-md bg-stone-50 hover:bg-stone-100 text-[11px] text-stone-800 cursor-pointer disabled:opacity-30" title="Rentangkan penuh sesuai ukuran rangka">
                   <Maximize2 className="w-3 h-3" /> Rentang Penuh
                 </button>
-                <button onClick={() => duplicateSelected('x')} className="flex items-center justify-center gap-1 py-1.5 rounded-md bg-white/5 hover:bg-white/10 text-[11px] text-neutral-200 cursor-pointer" title="Salin ke posisi cermin kiri ⇄ kanan">
+                <button onClick={() => duplicateSelected('x')} className="flex items-center justify-center gap-1 py-1.5 rounded-md bg-stone-50 hover:bg-stone-100 text-[11px] text-stone-800 cursor-pointer" title="Salin ke posisi cermin kiri ⇄ kanan">
                   <FlipHorizontal className="w-3 h-3" /> Cermin Kiri/Kanan
                 </button>
-                <button onClick={() => duplicateSelected('z')} className="flex items-center justify-center gap-1 py-1.5 rounded-md bg-white/5 hover:bg-white/10 text-[11px] text-neutral-200 cursor-pointer" title="Salin ke posisi cermin depan ⇄ belakang">
+                <button onClick={() => duplicateSelected('z')} className="flex items-center justify-center gap-1 py-1.5 rounded-md bg-stone-50 hover:bg-stone-100 text-[11px] text-stone-800 cursor-pointer" title="Salin ke posisi cermin depan ⇄ belakang">
                   <FlipHorizontal className="w-3 h-3 rotate-90" /> Cermin Dpn/Blkg
                 </button>
               </div>
-              <button onClick={() => deleteMember(selected.id)} className="w-full flex items-center justify-center gap-1 py-2 rounded-md bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/30 text-xs font-semibold text-rose-300 cursor-pointer">
+              <button onClick={() => deleteMember(selected.id)} className="w-full flex items-center justify-center gap-1 py-2 rounded-md bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/30 text-xs font-semibold text-rose-700 cursor-pointer">
                 <Trash2 className="w-3.5 h-3.5" /> Hapus Batang
               </button>
             </div>
           ) : (
-            <div className="p-3 bg-[#12151c] border border-white/[0.08] rounded-xl text-[11px] text-neutral-400 leading-relaxed">
+            <div className="p-3 bg-white border border-stone-200 rounded-xl text-[11px] text-stone-500 leading-relaxed">
               Pilih batang di gambar atau di daftar bawah untuk mengatur posisi & panjangnya. Semua tampak memakai data 3D yang sama, jadi
-              perubahan di satu sisi otomatis terlihat di sisi lain dan di 3D. Dengan <strong className="text-emerald-300">Magnet ON</strong>,
+              perubahan di satu sisi otomatis terlihat di sisi lain dan di 3D. Dengan <strong className="text-emerald-700">Magnet ON</strong>,
               batang yang digeser mendekati batang lain akan otomatis menempel (garis hijau).
             </div>
           )}
 
           {/* Ringkasan */}
-          <div className="p-3 bg-[#12151c] border border-white/[0.08] rounded-xl space-y-1 text-[11px] font-mono">
-            <div className="flex items-center gap-1.5 text-neutral-300 font-sans font-semibold text-xs pb-1">
-              <Ruler className="w-3.5 h-3.5 text-blue-400" /> Ringkasan Rangka
+          <div className="p-3 bg-white border border-stone-200 rounded-xl space-y-1 text-[11px] font-mono">
+            <div className="flex items-center gap-1.5 text-stone-700 font-sans font-semibold text-xs pb-1">
+              <Ruler className="w-3.5 h-3.5 text-blue-600" /> Ringkasan Rangka
             </div>
-            <div className="flex justify-between text-neutral-400"><span>Jumlah batang</span><span className="text-white">{members.length}</span></div>
-            <div className="flex justify-between text-neutral-400"><span>Total panjang</span><span className="text-white">{r1(totalLength / 100)} m</span></div>
-            <div className="flex justify-between text-neutral-400"><span>Engsel lipat</span><span className="text-white">{hinges.length}</span></div>
-            <div className="flex justify-between text-neutral-400">
+            <div className="flex justify-between text-stone-500"><span>Jumlah batang</span><span className="text-stone-900">{members.length}</span></div>
+            <div className="flex justify-between text-stone-500"><span>Total panjang</span><span className="text-stone-900">{r1(totalLength / 100)} m</span></div>
+            <div className="flex justify-between text-stone-500"><span>Engsel lipat</span><span className="text-stone-900">{hinges.length}</span></div>
+            <div className="flex justify-between text-stone-500">
               <span>Kaki / plinth</span>
-              <span className="text-white">
+              <span className="text-stone-900">
                 {plinthH > 0 ? `${plinthH} cm (${config.legType === 'frame' ? 'rangka' : config.legType === 'feet' ? 'kaki stel' : 'plinth'})` : 'tanpa kaki'}
               </span>
             </div>
           </div>
 
           {warnings.length > 0 && (
-            <div className="p-3 bg-rose-950/30 border border-rose-500/30 rounded-xl space-y-1">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-rose-300">
+            <div className="p-3 bg-rose-50 border border-rose-500/30 rounded-xl space-y-1">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-rose-700">
                 <AlertTriangle className="w-3.5 h-3.5" /> {warnings.length} Peringatan
               </div>
               {warnings.map((w, i) => (
-                <button key={i} onClick={() => setSelectedId(w.memberId)} className="block w-full text-left text-[10px] text-rose-200/80 hover:text-white cursor-pointer">
+                <button key={i} onClick={() => setSelectedId(w.memberId)} className="block w-full text-left text-[10px] text-rose-800/80 hover:text-stone-900 cursor-pointer">
                   • {w.message}
                 </button>
               ))}
@@ -1668,21 +1668,21 @@ export const FrameEditor2D: React.FC<Props> = ({ config, onChange, initialSelect
           )}
 
           {/* Daftar batang */}
-          <div className="p-3 bg-[#12151c] border border-white/[0.08] rounded-xl space-y-1">
-            <div className="text-xs font-semibold text-neutral-300 pb-1">Daftar Batang ({members.length})</div>
+          <div className="p-3 bg-white border border-stone-200 rounded-xl space-y-1">
+            <div className="text-xs font-semibold text-stone-700 pb-1">Daftar Batang ({members.length})</div>
             <div className="max-h-80 overflow-y-auto space-y-0.5">
               {members.map((m) => (
                 <button
                   key={m.id}
                   onClick={() => setSelectedId(m.id)}
                   className={`w-full flex items-center gap-2 px-1.5 py-1.5 rounded text-left text-[10px] cursor-pointer ${
-                    m.id === selectedId ? 'bg-amber-500/15 text-white' : 'text-neutral-400 hover:bg-white/5 hover:text-neutral-200'
+                    m.id === selectedId ? 'bg-amber-500/15 text-stone-900' : 'text-stone-500 hover:bg-stone-50 hover:text-stone-800'
                   }`}
                 >
                   <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: ROLE_COLORS[m.role] }} />
                   <span className="flex-1 truncate">{m.label || FRAME_ROLE_LABELS[m.role]}</span>
-                  {warnIds.has(m.id) && <AlertTriangle className="w-3 h-3 text-rose-400 shrink-0" />}
-                  <span className="font-mono text-neutral-500 shrink-0">
+                  {warnIds.has(m.id) && <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0" />}
+                  <span className="font-mono text-stone-500 shrink-0">
                     {m.axis.toUpperCase()} {m.length}
                   </span>
                 </button>

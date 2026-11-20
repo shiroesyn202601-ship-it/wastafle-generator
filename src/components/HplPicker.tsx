@@ -16,10 +16,10 @@ export const HplPicker: React.FC<Props> = ({ value, onChange, title }) => {
   const [group, setGroup] = useState<HplGroup>(selected.group);
 
   return (
-    <div className="p-2.5 bg-black/40 rounded-lg border border-white/10 space-y-2.5">
+    <div className="p-2.5 bg-white rounded-lg border border-stone-200 space-y-2.5">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-semibold text-neutral-200">{title}</span>
-        <span className="text-[10px] font-mono text-neutral-400">{selected.name}</span>
+        <span className="text-[11px] font-semibold text-stone-800">{title}</span>
+        <span className="text-[10px] font-mono text-stone-500">{selected.name}</span>
       </div>
 
       <div className="grid grid-cols-4 gap-1">
@@ -28,7 +28,7 @@ export const HplPicker: React.FC<Props> = ({ value, onChange, title }) => {
             key={g}
             onClick={() => setGroup(g)}
             className={`py-1 rounded text-[10px] font-medium transition cursor-pointer ${
-              group === g ? 'bg-white/15 text-white ring-1 ring-white/20' : 'bg-white/5 text-neutral-400 hover:text-white'
+              group === g ? 'bg-stone-200 text-stone-900 ring-1 ring-stone-300' : 'bg-stone-50 text-stone-500 hover:text-stone-900'
             }`}
           >
             {g}
@@ -45,13 +45,13 @@ export const HplPicker: React.FC<Props> = ({ value, onChange, title }) => {
               onClick={() => onChange({ swatchId: sw.id, surface })}
               title={sw.name}
               className={`relative aspect-square rounded-md border bg-cover bg-center transition cursor-pointer ${
-                isSel ? 'border-white ring-2 ring-amber-400/70' : 'border-white/15 hover:border-white/50'
+                isSel ? 'border-white ring-2 ring-amber-400/70' : 'border-stone-300 hover:border-stone-300'
               }`}
               style={{ backgroundImage: `url(${getHplPreviewUrl(sw)})`, backgroundColor: sw.base }}
             >
               {isSel && (
                 <span className="absolute inset-0 flex items-center justify-center">
-                  <Check className="w-3.5 h-3.5 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)]" />
+                  <Check className="w-3.5 h-3.5 text-stone-900 drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)]" />
                 </span>
               )}
             </button>
@@ -59,15 +59,15 @@ export const HplPicker: React.FC<Props> = ({ value, onChange, title }) => {
         })}
       </div>
 
-      <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/5">
-        <span className="text-[10px] text-neutral-400">Permukaan:</span>
+      <div className="flex items-center justify-between gap-2 pt-1 border-t border-stone-200">
+        <span className="text-[10px] text-stone-500">Permukaan:</span>
         <div className="flex gap-1">
           {(Object.keys(HPL_SURFACE_LABELS) as HplSurface[]).map((sf) => (
             <button
               key={sf}
               onClick={() => onChange({ swatchId: selected.id, surface: sf })}
               className={`px-2 py-0.5 rounded text-[10px] transition cursor-pointer ${
-                surface === sf ? 'bg-amber-500 text-neutral-950 font-bold' : 'bg-white/5 text-neutral-400 hover:text-white'
+                surface === sf ? 'bg-amber-500 text-neutral-950 font-bold' : 'bg-stone-50 text-stone-500 hover:text-stone-900'
               }`}
             >
               {HPL_SURFACE_LABELS[sf].name}

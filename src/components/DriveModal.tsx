@@ -128,40 +128,40 @@ export const DriveModal: React.FC<Props> = ({ isOpen, onClose, config, onLoad, c
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="w-full sm:max-w-lg max-h-[92vh] flex flex-col bg-[#10131a] border border-white/10 rounded-t-2xl sm:rounded-2xl shadow-2xl"
+        className="w-full sm:max-w-lg max-h-[92vh] flex flex-col bg-white border border-stone-200 rounded-t-2xl sm:rounded-2xl shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.08]">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200">
           <div className="flex items-center gap-2">
-            <Cloud className="w-4.5 h-4.5 text-sky-400" />
-            <h2 className="text-sm font-bold text-white">Simpan & Buka dari Google Drive</h2>
+            <Cloud className="w-4.5 h-4.5 text-sky-600" />
+            <h2 className="text-sm font-bold text-stone-900">Simpan & Buka dari Google Drive</h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/5 cursor-pointer">
+          <button onClick={onClose} className="p-1.5 rounded-lg text-stone-500 hover:text-stone-900 hover:bg-stone-50 cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {error && <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-500/40 text-xs text-rose-200">{error}</div>}
+          {error && <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-500/40 text-xs text-rose-800">{error}</div>}
 
           {!clientId ? (
-            <div className="space-y-3 text-xs text-neutral-300">
-              <div className="p-3 rounded-lg bg-amber-950/30 border border-amber-500/30 space-y-1.5">
-                <div className="flex items-center gap-1.5 font-semibold text-amber-300">
+            <div className="space-y-3 text-xs text-stone-700">
+              <div className="p-3 rounded-lg bg-amber-50 border border-amber-500/30 space-y-1.5">
+                <div className="flex items-center gap-1.5 font-semibold text-amber-700">
                   <KeyRound className="w-3.5 h-3.5" /> Google Client ID belum diatur
                 </div>
-                <p className="text-neutral-400 leading-relaxed">
+                <p className="text-stone-500 leading-relaxed">
                   Fitur ini butuh OAuth Client ID dari Google Cloud Console (tipe "Web application") dengan Authorized JavaScript origin
-                  alamat aplikasi ini: <code className="text-neutral-200">{window.location.origin}</code>
+                  alamat aplikasi ini: <code className="text-stone-800">{window.location.origin}</code>
                 </p>
               </div>
               <label className="block space-y-1">
-                <span className="text-neutral-400">Tempel Client ID (disimpan di browser ini saja):</span>
+                <span className="text-stone-500">Tempel Client ID (disimpan di browser ini saja):</span>
                 <input
                   value={clientIdInput}
                   onChange={(e) => setClientIdInput(e.target.value)}
                   placeholder="xxxxxxxx.apps.googleusercontent.com"
-                  className="w-full px-2.5 py-2 bg-black/40 border border-white/10 rounded-lg text-xs font-mono text-neutral-100 focus:outline-none focus:border-sky-500"
+                  className="w-full px-2.5 py-2 bg-white border border-stone-200 rounded-lg text-xs font-mono text-stone-900 focus:outline-none focus:border-sky-500"
                 />
               </label>
               <button
@@ -174,14 +174,14 @@ export const DriveModal: React.FC<Props> = ({ isOpen, onClose, config, onLoad, c
             </div>
           ) : !connected ? (
             <div className="space-y-3 text-center">
-              <p className="text-xs text-neutral-400 leading-relaxed">
-                Hubungkan akun Google untuk menyimpan desain ke folder <strong className="text-neutral-200">"KitchenCraft Desain"</strong> di
+              <p className="text-xs text-stone-500 leading-relaxed">
+                Hubungkan akun Google untuk menyimpan desain ke folder <strong className="text-stone-800">"KitchenCraft Desain"</strong> di
                 Drive kamu, lalu buka dari HP atau komputer mana pun. Aplikasi hanya bisa mengakses file yang dibuatnya sendiri.
               </p>
               <button
                 onClick={handleConnect}
                 disabled={busy === 'connect'}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white text-neutral-900 text-sm font-semibold hover:bg-neutral-200 disabled:opacity-60 cursor-pointer"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white text-stone-900 text-sm font-semibold hover:bg-stone-700 disabled:opacity-60 cursor-pointer"
               >
                 {busy === 'connect' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cloud className="w-4 h-4 text-sky-600" />}
                 Hubungkan Google Drive
@@ -192,7 +192,7 @@ export const DriveModal: React.FC<Props> = ({ isOpen, onClose, config, onLoad, c
                     setClientIdOverride('');
                     setClientId('');
                   }}
-                  className="block mx-auto text-[11px] text-neutral-500 hover:text-neutral-300 cursor-pointer"
+                  className="block mx-auto text-[11px] text-stone-500 hover:text-stone-700 cursor-pointer"
                 >
                   Ganti Client ID
                 </button>
@@ -201,9 +201,9 @@ export const DriveModal: React.FC<Props> = ({ isOpen, onClose, config, onLoad, c
           ) : (
             <>
               {/* Simpan */}
-              <div className="p-3 rounded-xl bg-black/30 border border-white/[0.08] space-y-2">
-                <div className="text-xs font-semibold text-white flex items-center gap-1.5">
-                  <CloudUpload className="w-3.5 h-3.5 text-sky-400" /> Simpan desain saat ini
+              <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 space-y-2">
+                <div className="text-xs font-semibold text-stone-900 flex items-center gap-1.5">
+                  <CloudUpload className="w-3.5 h-3.5 text-sky-600" /> Simpan desain saat ini
                 </div>
                 {currentFile && (
                   <button
@@ -219,13 +219,13 @@ export const DriveModal: React.FC<Props> = ({ isOpen, onClose, config, onLoad, c
                   <input
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    className="flex-1 min-w-0 px-2.5 py-2 bg-black/40 border border-white/10 rounded-lg text-xs text-neutral-100 focus:outline-none focus:border-sky-500"
+                    className="flex-1 min-w-0 px-2.5 py-2 bg-white border border-stone-200 rounded-lg text-xs text-stone-900 focus:outline-none focus:border-sky-500"
                     placeholder="Nama file"
                   />
                   <button
                     onClick={handleSaveNew}
                     disabled={!!busy}
-                    className="shrink-0 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 disabled:opacity-50 text-xs font-semibold text-white cursor-pointer"
+                    className="shrink-0 px-3 py-2 rounded-lg bg-stone-100 hover:bg-stone-200 disabled:opacity-50 text-xs font-semibold text-stone-900 cursor-pointer"
                   >
                     {busy === 'save-new' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Simpan Baru'}
                   </button>
@@ -235,22 +235,22 @@ export const DriveModal: React.FC<Props> = ({ isOpen, onClose, config, onLoad, c
               {/* Daftar file */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-white">Desain di Drive ({files.length})</span>
-                  <button onClick={refresh} disabled={!!busy} className="p-1.5 rounded-md text-neutral-400 hover:text-white hover:bg-white/5 cursor-pointer" title="Muat ulang">
+                  <span className="text-xs font-semibold text-stone-900">Desain di Drive ({files.length})</span>
+                  <button onClick={refresh} disabled={!!busy} className="p-1.5 rounded-md text-stone-500 hover:text-stone-900 hover:bg-stone-50 cursor-pointer" title="Muat ulang">
                     <RefreshCw className={`w-3.5 h-3.5 ${busy === 'list' ? 'animate-spin' : ''}`} />
                   </button>
                 </div>
-                {files.length === 0 && busy !== 'list' && <p className="text-[11px] text-neutral-500">Belum ada desain tersimpan.</p>}
+                {files.length === 0 && busy !== 'list' && <p className="text-[11px] text-stone-500">Belum ada desain tersimpan.</p>}
                 {files.map((f) => (
                   <div
                     key={f.id}
                     className={`p-2.5 rounded-lg border flex items-center gap-2 ${
-                      currentFile?.id === f.id ? 'bg-sky-950/30 border-sky-500/40' : 'bg-black/30 border-white/[0.06]'
+                      currentFile?.id === f.id ? 'bg-sky-50 border-sky-500/40' : 'bg-stone-50 border-stone-200'
                     }`}
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-white truncate">{f.name}</p>
-                      <p className="text-[10px] text-neutral-500">{fmtTime(f.modifiedTime)}</p>
+                      <p className="text-xs font-medium text-stone-900 truncate">{f.name}</p>
+                      <p className="text-[10px] text-stone-500">{fmtTime(f.modifiedTime)}</p>
                     </div>
                     <button
                       onClick={() => handleOpen(f)}
@@ -262,7 +262,7 @@ export const DriveModal: React.FC<Props> = ({ isOpen, onClose, config, onLoad, c
                     <button
                       onClick={() => handleOverwrite(f)}
                       disabled={!!busy}
-                      className="p-1.5 rounded-md text-neutral-400 hover:text-sky-300 hover:bg-white/5 cursor-pointer"
+                      className="p-1.5 rounded-md text-stone-500 hover:text-sky-700 hover:bg-stone-50 cursor-pointer"
                       title="Timpa dengan desain saat ini"
                     >
                       <Save className="w-3.5 h-3.5" />
@@ -270,7 +270,7 @@ export const DriveModal: React.FC<Props> = ({ isOpen, onClose, config, onLoad, c
                     <button
                       onClick={() => handleDelete(f)}
                       disabled={!!busy}
-                      className="p-1.5 rounded-md text-neutral-400 hover:text-rose-400 hover:bg-white/5 cursor-pointer"
+                      className="p-1.5 rounded-md text-stone-500 hover:text-rose-600 hover:bg-stone-50 cursor-pointer"
                       title="Hapus"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -279,7 +279,7 @@ export const DriveModal: React.FC<Props> = ({ isOpen, onClose, config, onLoad, c
                 ))}
               </div>
 
-              <button onClick={handleDisconnect} className="flex items-center gap-1.5 text-[11px] text-neutral-500 hover:text-neutral-300 cursor-pointer">
+              <button onClick={handleDisconnect} className="flex items-center gap-1.5 text-[11px] text-stone-500 hover:text-stone-700 cursor-pointer">
                 <LogOut className="w-3 h-3" /> Putuskan Google Drive
               </button>
             </>

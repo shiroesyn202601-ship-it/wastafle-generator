@@ -23,6 +23,11 @@ const tipSeen = () => {
 
 /** Tampilan: 3D (atur + model), 2D (gambar rangka per tampak), potongan besi */
 type Tab = '3d' | '2d' | 'potongan';
+const VIEWS: { id: Tab; label: string; short: string; icon: React.ReactNode }[] = [
+  { id: '3d', label: '3D', short: '3D & atur', icon: <Box className="w-4 h-4" /> },
+  { id: '2d', label: '2D', short: 'Gambar 2D', icon: <Grid2x2 className="w-4 h-4" /> },
+  { id: 'potongan', label: 'Potongan besi', short: 'Potongan', icon: <Scissors className="w-4 h-4" /> },
+];
 
 /** Gaya cafe populer di Indonesia: satu ketuk mengatur pipa, warna cat & bahan papan */
 const STYLES: { label: string; desc: string; params: Record<string, string> }[] = [
@@ -119,9 +124,14 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
   return (
     <div className="flex flex-col h-[100dvh] w-full bg-stone-100 text-stone-900 overflow-hidden">
       {/* Header */}
-      <header className="shrink-0 bg-white border-b border-stone-200 px-3 sm:px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-2">
-        <button onClick={onHome} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-semibold text-stone-700 hover:bg-stone-100 cursor-pointer">
-          <ArrowLeft className="w-4 h-4" /> <span className="hidden sm:inline">Beranda</span>
+      <header className="shrink-0 h-14 bg-white border-b border-stone-200 px-2 sm:px-4 flex items-center gap-2 sm:gap-3">
+        <button
+          onClick={onHome}
+          className="flex items-center gap-1.5 p-2 sm:px-3 rounded-lg text-sm font-semibold text-stone-700 hover:bg-stone-100 cursor-pointer"
+          title="Kembali ke Beranda"
+          aria-label="Kembali ke Beranda"
+        >
+          <ArrowLeft className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline">Beranda</span>
         </button>
         <div className="min-w-0 flex-1">
           <div className="text-sm font-bold truncate">
@@ -130,44 +140,47 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
           </div>
           <div className="text-xs text-stone-500 truncate">{def.summary(design.params)}</div>
         </div>
-        <div className="flex items-center gap-1.5 order-last sm:order-none w-full sm:w-auto">
-          <div className="flex p-1 rounded-xl bg-stone-100" role="radiogroup" aria-label="Tampilan">
-            {(
-              [
-                ['2d', '2D', <Grid2x2 key="i" className="w-4 h-4" />],
-                ['3d', '3D', <Box key="i" className="w-4 h-4" />],
-              ] as const
-            ).map(([id, label, icon]) => (
-              <button
-                key={id}
-                role="radio"
-                aria-checked={tab === id}
-                onClick={() => goTab(id)}
-                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-bold cursor-pointer ${tab === id ? 'bg-stone-900 text-white shadow-sm' : 'text-stone-500 hover:text-stone-800'}`}
-              >
-                {icon}
-                {label}
-              </button>
-            ))}
-          </div>
+
+        {/* Tab tampilan (PC / tablet); di HP pindah ke navigasi bawah */}
+        <nav className="hidden md:flex p-1 rounded-xl bg-stone-100" role="tablist" aria-label="Tampilan">
+          {VIEWS.map((v) => (
+            <button
+              key={v.id}
+              role="tab"
+              aria-selected={tab === v.id}
+              onClick={() => goTab(v.id)}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold cursor-pointer transition ${
+                tab === v.id ? 'bg-stone-900 text-white shadow-sm' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              {v.icon}
+              {v.label}
+              {v.id === 'potongan' && (
+                <span className={`text-xs font-normal tabular-nums ${tab === v.id ? 'text-stone-300' : 'text-stone-500'}`}>
+                  {cut.bars} btg · {cut.totalLengthM.toLocaleString('id-ID')} m
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        <div className="flex items-center gap-0.5 sm:gap-1">
           <button
-            onClick={() => goTab(tab === 'potongan' ? '3d' : 'potongan')}
-            aria-pressed={tab === 'potongan'}
-            className={`flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold border cursor-pointer ${
-              tab === 'potongan' ? 'bg-sky-600 text-white border-sky-600' : 'bg-white text-stone-800 border-stone-300 hover:bg-stone-50'
-            }`}
-            title="Pola potong batang & daftar potongan besi"
+            onClick={undo}
+            disabled={!history.current.stack.length}
+            className="flex items-center gap-1.5 p-2 lg:px-3 rounded-lg text-sm font-semibold text-stone-700 hover:bg-stone-100 disabled:opacity-30 cursor-pointer"
+            title="Batalkan perubahan terakhir"
+            aria-label="Undo"
           >
-            <Scissors className="w-4 h-4" /> Potongan besi
-            <span className={`text-xs font-normal tabular-nums ${tab === 'potongan' ? 'text-sky-100' : 'text-stone-500'}`}>
-              {cut.bars} btg · {cut.totalLengthM.toLocaleString('id-ID')} m
-            </span>
+            <Undo2 className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden lg:inline">Undo</span>
           </button>
-          <button onClick={undo} disabled={!history.current.stack.length} className="p-2 rounded-lg text-stone-600 hover:bg-stone-100 disabled:opacity-30 cursor-pointer" title="Batalkan perubahan terakhir">
-            <Undo2 className="w-4 h-4" />
-          </button>
-          <button onClick={saveJson} className="p-2 rounded-lg text-stone-600 hover:bg-stone-100 cursor-pointer" title="Simpan file desain (.json)">
-            <Download className="w-4 h-4" />
+          <button
+            onClick={saveJson}
+            className="flex items-center gap-1.5 p-2 lg:px-3 rounded-lg text-sm font-semibold text-stone-700 hover:bg-stone-100 cursor-pointer"
+            title="Simpan file desain (.json)"
+            aria-label="Simpan file desain"
+          >
+            <Download className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden lg:inline">Simpan</span>
           </button>
         </div>
       </header>
@@ -175,7 +188,7 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
       {tab === '3d' && (
         <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
           {/* 3D */}
-          <div className="h-[42dvh] lg:h-auto lg:flex-1 min-h-0 lg:order-2">
+          <div className="h-[38dvh] md:h-[45dvh] lg:h-auto lg:flex-1 min-h-0 lg:order-2">
             <div className="relative w-full h-full" data-product-scene>
               <ThreeProductScene
                 host={host}
@@ -372,8 +385,8 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
 
       {tab === '2d' && (
         <div className="flex-1 min-h-0 flex flex-col">
-          <div className="shrink-0 px-4 py-2 bg-stone-800 text-stone-100 text-xs flex flex-wrap items-center gap-x-3 gap-y-1">
-            <Grid2x2 className="w-3.5 h-3.5" />
+          <div className="hidden sm:flex shrink-0 px-4 py-2 bg-white border-b border-stone-200 text-stone-600 text-xs items-center gap-2">
+            <Grid2x2 className="w-3.5 h-3.5 shrink-0 text-stone-400" />
             <span>
               <b>Tampilan 2D</b>: tampak depan/samping/atas, angka per batang, engsel lipat. Perubahan di sini membuat rangka tidak lagi otomatis.
             </span>
@@ -406,6 +419,26 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
           />
         </div>
       )}
+
+      {/* Navigasi bawah khusus HP */}
+      <nav className="md:hidden shrink-0 grid grid-cols-3 bg-white border-t border-stone-200 pb-[env(safe-area-inset-bottom)]" role="tablist" aria-label="Tampilan">
+        {VIEWS.map((v) => {
+          const on = tab === v.id;
+          return (
+            <button
+              key={v.id}
+              role="tab"
+              aria-selected={on}
+              onClick={() => goTab(v.id)}
+              className={`relative flex flex-col items-center justify-center gap-0.5 h-14 text-[11px] font-semibold cursor-pointer ${on ? 'text-sky-700' : 'text-stone-500'}`}
+            >
+              {on && <span className="absolute top-0 inset-x-8 h-0.5 rounded-full bg-sky-600" />}
+              <span className="[&>svg]:w-5 [&>svg]:h-5">{v.icon}</span>
+              {v.id === 'potongan' ? `${v.short} · ${cut.bars} btg` : v.short}
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 };
