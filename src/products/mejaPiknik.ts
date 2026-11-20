@@ -352,23 +352,34 @@ function buildExtra(p: Params, model: string, d: Dim): ProductBuild {
     const S = 2 * R + lb;
     const c = S / 2;
     const yF = L / 2;
+    const h = L / 2; // setengah lebar pipa kaki
     add('tiang', 'y', c, L, c, yTop - 2 - L, 'post', 'Tiang tengah meja', leg);
     add('dudukan-meja-x', 'x', c - dm * 0.35, yTop, c, dm * 0.7, 'rail-x', 'Palang bawah meja 1', rail);
     add('dudukan-meja-z1', 'z', c, yTop, c - dm * 0.35, dm * 0.35 - 1, 'rail-z', 'Palang bawah meja 2a', rail);
     add('dudukan-meja-z2', 'z', c, yTop, c + 1, dm * 0.35 - 1, 'rail-z', 'Palang bawah meja 2b', rail);
-    const a0 = -Math.PI / 2 + Math.PI / n;
-    for (let i = 0; i < n; i++) {
-      const a = a0 + (2 * Math.PI * i) / n;
-      const ca = Math.cos(a);
-      const sa = Math.sin(a);
-      const sx = c + R * ca;
-      const sz = c + R * sa;
+    // Kaki lantai cara tukang las: satu batang lurus menerus kiri–kanan lewat bawah tiang tengah,
+    // lengan depan/belakang dipotong lurus dan dilas menempel di sisi batang itu. Tidak ada potongan miring.
+    // Kursi: 2 = berhadapan, 3 = bentuk T, 4 = silang, 5–6 = dua lengan sejajar (posisi segi enam).
+    const r3 = R * Math.sqrt(3) / 2;
+    const seats: [number, number][] =
+      n === 2 ? [[-R, 0], [R, 0]]
+      : n === 3 ? [[-R, 0], [R, 0], [0, R]]
+      : n === 4 ? [[-R, 0], [R, 0], [0, -R], [0, R]]
+      : n === 5 ? [[-R, 0], [R, 0], [-R / 2, r3], [R / 2, r3], [0, -R]]
+      : [[-R, 0], [R, 0], [-R / 2, -r3], [-R / 2, r3], [R / 2, -r3], [R / 2, r3]];
+    add('kaki-lantai-utama', 'x', c - R - h, yF, c, 2 * R + L, 'rail-x', 'Kaki lantai utama (menerus)', leg);
+    seats.forEach(([dx, dz], i) => {
       const k = i + 1;
-      line(`kaki-lantai-${k}`, [c + (L / 2) * ca, yF, c + (L / 2) * sa], [sx, yF, sz], 'custom', `Kaki lantai ke kursi ${k}`, leg);
+      const sx = c + dx;
+      const sz = c + dz;
+      if (dz > 0) add(`kaki-lantai-${k}`, 'z', sx, yF, c + h, dz, 'rail-z', `Lengan lantai ke kursi ${k}`, leg);
+      if (dz < 0) add(`kaki-lantai-${k}`, 'z', sx, yF, sz - h, -dz, 'rail-z', `Lengan lantai ke kursi ${k}`, leg);
       add(`kursi-tiang-${k}`, 'y', sx, L, sz, ySeat - 2 - L, 'post', `Tiang kursi ${k}`, leg);
-      add(`kursi-palang-${k}`, 'x', sx - lb * 0.3, ySeat, sz, lb * 0.6, 'rail-x', `Palang bawah dudukan kursi ${k}`, rail);
+      add(`kursi-palang-${k}`, 'x', sx - lb * 0.3, ySeat, sz, lb * 0.6, 'rail-x', `Palang dudukan kursi ${k} (1)`, rail);
+      add(`kursi-palang-${k}a`, 'z', sx, ySeat, sz - lb * 0.3, lb * 0.3 - 1, 'rail-z', `Palang dudukan kursi ${k} (2a)`, rail);
+      add(`kursi-palang-${k}b`, 'z', sx, ySeat, sz + 1, lb * 0.3 - 1, 'rail-z', `Palang dudukan kursi ${k} (2b)`, rail);
       if (b > 0) boards.push({ ...board(`kursi-${k}`, `Dudukan kursi bulat ${k}`, sx - lb / 2, sx + lb / 2, Hb - b, Hb, sz - lb / 2, sz + lb / 2), shape: 'round' });
-    }
+    });
     if (b > 0) boards.push({ ...board('daun-meja', 'Daun meja bundar', c - dm / 2, c + dm / 2, Hm - b, Hm, c - dm / 2, c + dm / 2), shape: 'round' });
     return { members: list, boards, casters: [], W: S, D: S, H: Hm, boardThick: 0 };
   }

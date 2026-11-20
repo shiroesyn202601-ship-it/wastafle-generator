@@ -33,6 +33,12 @@ Bentuk lengkung, anyaman rotan, laci tertutup, pintu kaca, dan ukiran **tidak bi
 3. **1 desain = 1 kategori.** Satu bentuk rangka hanya boleh ada di satu produk di seluruh aplikasi. Dua desain di kategori berbeda yang bentuknya sama (hanya beda nama atau fungsi) adalah duplikat: pilih satu kategori, hapus yang lain. Jalan pintas Beranda (`{ product, preset }`) boleh dipakai sebagai pengganti, asal bukan salinan template.
 4. **Ragu = buang.** Lebih baik 12 template yang jelas beda daripada 20 yang mirip-mirip. Angka 20 adalah target, bukan kewajiban.
 5. Bahasa di UI: Indonesia sehari-hari untuk orang awam dan tukang las (nama, `desc`, `help`, `checks`).
+6. **Sambungan harus bisa dilas tukang las sungguhan.** Dua batang tidak boleh menempati ruang yang sama.
+   - Ujung batang menempel RATA di sisi batang lain (butt joint), tidak masuk ke dalamnya dan tidak menonjol keluar.
+   - Dua batang yang bersilangan di ketinggian/bidang sama: satu menerus, yang lain dipotong dua dan dilas di kedua sisinya, ATAU satu diletakkan di atas/samping yang lain.
+   - Utamakan batang sejajar sumbu. Batang miring hanya bila bentuknya memang miring (kaki A, kaki X, sandaran), dan ujungnya dipotong rata dengan lantai / sisi batang yang ditemui.
+   - Tiang yang berdiri di atas lengan: ujung lengan rata dengan sisi luar tiang.
+   - Wajib lolos `npx tsx scripts/cek-sambungan.ts <productId>` (0 sambungan tembus).
 
 ---
 
