@@ -23,6 +23,14 @@ const tipSeen = () => {
 
 type Tab = 'atur' | 'ahli' | 'hasil';
 
+/** Gaya cafe populer di Indonesia: satu ketuk mengatur pipa, warna cat & bahan papan */
+const STYLES: { label: string; desc: string; params: Record<string, string> }[] = [
+  { label: 'Industrial', desc: 'pipa 40×40 hitam doff, kayu tebal', params: { pipa: '40', warna: '#1f2226', papan: 'kayu' } },
+  { label: 'Japandi', desc: 'pipa 20×20 putih, kayu muda', params: { pipa: '20', warna: '#e9e7e1', papan: 'kayu' } },
+  { label: 'Minimalis', desc: 'pipa 30×30 abu, HPL', params: { pipa: '30', warna: '#6b7078', papan: 'hpl' } },
+  { label: 'Tropis', desc: 'hijau army / terakota, kayu', params: { pipa: '30', warna: '#2f4a3a', papan: 'kayu' } },
+];
+
 interface Props {
   design: FurnitureDesign;
   onChange: (d: FurnitureDesign) => void;
@@ -268,6 +276,26 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
                 </div>
               )}
 
+              {step.id === 'bahan' && def.params.some((x) => x.key === 'warna') && (
+                <div className="space-y-1.5">
+                  <div className="text-sm font-semibold text-stone-800">Gaya cepat</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {STYLES.map((st) => (
+                      <button
+                        key={st.label}
+                        onClick={() => setParams(def.params.some((x) => x.key === 'papan') ? st.params : { pipa: st.params.pipa, warna: st.params.warna })}
+                        className="p-2.5 rounded-xl border border-stone-300 bg-white hover:border-stone-500 text-left cursor-pointer"
+                      >
+                        <span className="flex items-center gap-1.5 text-sm font-semibold text-stone-800">
+                          <span className="w-3.5 h-3.5 rounded-full border border-black/10" style={{ backgroundColor: st.params.warna as string }} />
+                          {st.label}
+                        </span>
+                        <span className="block text-[11px] text-stone-500">{st.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {step.id === 'ukuran' && preset?.sizes && preset.sizes.length > 1 && (
                 <div className="space-y-1.5">
                   <div className="text-sm font-semibold text-stone-800">Ukuran umum untuk rangka ini</div>

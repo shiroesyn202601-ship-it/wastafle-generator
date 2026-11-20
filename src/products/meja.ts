@@ -40,23 +40,38 @@ export const MEJA: ProductDef = {
         { value: 'lurus', label: 'Lurus', desc: 'Tegak, paling mudah dibuat' },
         { value: 'melebar', label: 'Melebar', desc: 'Miring keluar, lebih stabil' },
         { value: 'x', label: 'Silang X', desc: 'Kaki menyilang di kedua ujung' },
+        { value: 'pedestal', label: 'Kaki tunggal (pedestal)', desc: 'Satu tiang di tengah, khas cafe' },
+        { value: 'u', label: 'Kaki U / sled', desc: 'Rangka U di kedua ujung, menapak rata' },
       ],
       showIf: (p) => p.kakiLipat !== true,
     },
+    {
+      key: 'alas',
+      label: 'Alas kaki tunggal',
+      type: 'choice',
+      options: [
+        { value: 'silang', label: 'Silang +', desc: 'Dua pipa menyilang di lantai' },
+        { value: 'bintang', label: 'Bintang miring', desc: '4 kaki miring dari tiang' },
+        { value: 'plat', label: 'Plat bundar', desc: 'Plat besi 8 mm, rapi & berat' },
+      ],
+      showIf: (p) => p.modelKaki === 'pedestal' && p.kakiLipat !== true,
+    },
+    { key: 'bentangAlas', label: 'Lebar alas', type: 'number', unit: 'cm', min: 35, max: 90, step: 1, help: 'Minimal setengah lebar daun meja supaya tidak mudah terguling.', showIf: (p) => p.modelKaki === 'pedestal' && p.kakiLipat !== true },
+    { key: 'pijakan', label: 'Pijakan kaki', type: 'toggle', help: 'Ring pijakan untuk meja bar tinggi (±30 cm dari lantai).', showIf: (p) => (p.modelKaki === 'pedestal' || p.modelKaki === 'u') && p.kakiLipat !== true },
     { key: 'sudutKaki', label: 'Sudut kaki melebar', type: 'number', unit: '°', min: 3, max: 15, step: 1, help: 'Kemiringan tiap kaki dari tegak lurus.', showIf: (p) => p.modelKaki === 'melebar' && p.kakiLipat !== true },
     { key: 'kakiLipat', label: 'Kaki bisa dilipat', type: 'toggle', help: 'Kaki dipasang engsel kunci; klik engselnya di 3D untuk melipat.', showIf: (p) => p.bentukDaun !== 'bulat' },
-    { key: 'rakBawah', label: 'Rak bawah', type: 'toggle', help: 'Papan tambahan di bawah untuk menaruh barang.', showIf: (p) => p.kakiLipat !== true && p.modelKaki !== 'x' },
-    { key: 'tinggiRakBawah', label: 'Tinggi rak bawah', type: 'number', unit: 'cm', min: 8, max: 60, step: 1, showIf: (p) => p.rakBawah === true && p.kakiLipat !== true && p.modelKaki !== 'x' },
-    { key: 'palangKaki', label: 'Palang penguat kaki', type: 'toggle', help: 'Pipa penghubung kaki di bawah supaya tidak goyang.', showIf: (p) => p.rakBawah !== true && p.modelKaki !== 'x' && p.kakiLipat !== true },
+    { key: 'rakBawah', label: 'Rak bawah', type: 'toggle', help: 'Papan tambahan di bawah untuk menaruh barang.', showIf: (p) => p.kakiLipat !== true && p.modelKaki !== 'x' && p.modelKaki !== 'pedestal' && p.modelKaki !== 'u' },
+    { key: 'tinggiRakBawah', label: 'Tinggi rak bawah', type: 'number', unit: 'cm', min: 8, max: 60, step: 1, showIf: (p) => p.rakBawah === true && p.kakiLipat !== true && p.modelKaki !== 'x' && p.modelKaki !== 'pedestal' && p.modelKaki !== 'u' },
+    { key: 'palangKaki', label: 'Palang penguat kaki', type: 'toggle', help: 'Pipa penghubung kaki di bawah supaya tidak goyang.', showIf: (p) => p.rakBawah !== true && p.modelKaki !== 'x' && p.modelKaki !== 'pedestal' && p.modelKaki !== 'u' && p.kakiLipat !== true },
     { key: 'kakiTengah', label: 'Kaki tengah', type: 'toggle', help: 'Untuk meja panjang supaya tidak melendut.', showIf: (p) => p.modelKaki === 'lurus' && p.bentukDaun !== 'bulat' && p.kakiLipat !== true },
     ...materialParams(true),
-    { key: 'roda', label: 'Pakai roda', type: 'toggle', help: 'Meja bisa didorong. Tinggi meja tetap sama.', showIf: (p) => p.kakiLipat !== true && p.modelKaki !== 'x' },
-    { key: 'ukuranRoda', label: 'Ukuran roda', type: 'choice', options: CASTER_OPTIONS, showIf: (p) => p.roda === true && p.kakiLipat !== true && p.modelKaki !== 'x' },
-    { key: 'remRoda', label: 'Roda dengan rem', type: 'toggle', showIf: (p) => p.roda === true && p.kakiLipat !== true && p.modelKaki !== 'x' },
+    { key: 'roda', label: 'Pakai roda', type: 'toggle', help: 'Meja bisa didorong. Tinggi meja tetap sama.', showIf: (p) => p.kakiLipat !== true && p.modelKaki !== 'x' && p.modelKaki !== 'pedestal' && p.modelKaki !== 'u' },
+    { key: 'ukuranRoda', label: 'Ukuran roda', type: 'choice', options: CASTER_OPTIONS, showIf: (p) => p.roda === true && p.kakiLipat !== true && p.modelKaki !== 'x' && p.modelKaki !== 'pedestal' && p.modelKaki !== 'u' && p.modelKaki !== 'pedestal' && p.modelKaki !== 'u' },
+    { key: 'remRoda', label: 'Roda dengan rem', type: 'toggle', showIf: (p) => p.roda === true && p.kakiLipat !== true && p.modelKaki !== 'x' && p.modelKaki !== 'pedestal' && p.modelKaki !== 'u' && p.modelKaki !== 'pedestal' && p.modelKaki !== 'u' },
   ],
   defaults: {
     bentukDaun: 'kotak', panjang: 120, lebar: 75, tinggi: 75, modelKaki: 'lurus', sudutKaki: 8, kakiLipat: false,
-    rakBawah: false, tinggiRakBawah: 20, palangKaki: true, kakiTengah: false,
+    rakBawah: false, tinggiRakBawah: 20, palangKaki: true, kakiTengah: false, alas: 'silang', bentangAlas: 56, pijakan: false,
     pipa: '40', papan: 'multiplek', warna: '#1f2226', roda: false, ukuranRoda: '3', remRoda: true,
   },
   presets: [
@@ -116,6 +131,49 @@ export const MEJA: ProductDef = {
       ],
     },
     {
+      id: 'pedestal-silang',
+      name: 'Meja kaki tunggal, alas silang',
+      desc: 'satu tiang tengah, alas + di lantai',
+      params: { modelKaki: 'pedestal', alas: 'silang' },
+      sizes: [
+        { label: 'Cafe 2 orang', desc: '60 × 60 × 75 cm', params: { panjang: 60, lebar: 60, tinggi: 75, bentangAlas: 50, papan: 'kayu', pipa: '40', pijakan: false } },
+        { label: 'Cafe 4 orang', desc: '80 × 80 × 75 cm', params: { panjang: 80, lebar: 80, tinggi: 75, bentangAlas: 66, papan: 'kayu', pipa: '40', pijakan: false } },
+        { label: 'Bar tinggi + pijakan', desc: '70 × 70 × 105 cm', params: { panjang: 70, lebar: 70, tinggi: 105, bentangAlas: 60, papan: 'hpl', pipa: '40', pijakan: true } },
+      ],
+    },
+    {
+      id: 'pedestal-plat',
+      name: 'Meja bundar kaki tunggal, alas plat',
+      desc: 'daun bulat, tiang tengah, plat besi bundar',
+      params: { bentukDaun: 'bulat', modelKaki: 'pedestal', alas: 'plat' },
+      sizes: [
+        { label: 'Cafe 2 orang', desc: 'ø60 × 75 cm, plat ø45', params: { panjang: 60, tinggi: 75, bentangAlas: 45, papan: 'kayu', pipa: '40', pijakan: false } },
+        { label: 'Cafe 4 orang', desc: 'ø80 × 75 cm, plat ø50', params: { panjang: 80, tinggi: 75, bentangAlas: 50, papan: 'hpl', pipa: '40', pijakan: false } },
+        { label: 'Bar tinggi + pijakan', desc: 'ø60 × 105 cm, plat ø50', params: { panjang: 60, tinggi: 105, bentangAlas: 50, papan: 'hpl', pipa: '40', pijakan: true } },
+      ],
+    },
+    {
+      id: 'pedestal-bintang',
+      name: 'Meja kaki tunggal, alas bintang',
+      desc: 'tiang tengah + 4 kaki miring',
+      params: { modelKaki: 'pedestal', alas: 'bintang' },
+      sizes: [
+        { label: 'Cafe 4 orang', desc: '80 × 80 × 75 cm', params: { panjang: 80, lebar: 80, tinggi: 75, bentangAlas: 70, papan: 'kayu', pipa: '40', pijakan: false } },
+        { label: 'Bar tinggi', desc: '70 × 70 × 105 cm', params: { panjang: 70, lebar: 70, tinggi: 105, bentangAlas: 66, papan: 'hpl', pipa: '40', pijakan: true } },
+      ],
+    },
+    {
+      id: 'sled',
+      name: 'Meja kaki U (sled)',
+      desc: 'rangka U di kedua ujung, menapak rata',
+      params: { modelKaki: 'u' },
+      sizes: [
+        { label: 'Makan / kerja', desc: '140 × 75 × 75 cm', params: { panjang: 140, lebar: 75, tinggi: 75, papan: 'kayu', pipa: '40', pijakan: false } },
+        { label: 'Komunal cafe', desc: '240 × 90 × 75 cm', params: { panjang: 240, lebar: 90, tinggi: 75, papan: 'kayu', pipa: '40', pijakan: false } },
+        { label: 'Bar tinggi + pijakan', desc: '160 × 60 × 105 cm', params: { panjang: 160, lebar: 60, tinggi: 105, papan: 'hpl', pipa: '40', pijakan: true } },
+      ],
+    },
+    {
       id: 'lipat',
       name: 'Meja lipat',
       desc: 'kaki dilipat ke bawah daun (engsel kunci)',
@@ -163,7 +221,8 @@ export const MEJA: ProductDef = {
     const b = BOARD_THICK[str(p, 'papan', 'multiplek')] ?? 1.8;
     const lipat = !round && bool(p, 'kakiLipat');
     const model = lipat ? 'lurus' : round && str(p, 'modelKaki') === 'x' ? 'lurus' : str(p, 'modelKaki', 'lurus');
-    const roda = !lipat && model !== 'x' && bool(p, 'roda');
+    const fourLegs = model === 'lurus' || model === 'melebar';
+    const roda = !lipat && fourLegs && bool(p, 'roda');
     const inch = parseInt(str(p, 'ukuranRoda', '3')) || 3;
     const c = roda ? casterHeight(inch) : 0;
     const yTop = H - b; // bidang bawah daun meja
@@ -187,7 +246,69 @@ export const MEJA: ProductDef = {
     const fz0 = round ? D / 2 - hf : o;
     const fz1 = round ? D / 2 + hf : D - o;
 
-    if (model === 'x') {
+    if (model === 'pedestal') {
+      // Satu tiang di tengah, laba-laba atas (silang 20×40) dan alas silang / bintang / plat
+      const cx = W / 2;
+      const cz = D / 2;
+      const col = Math.max(5, L + 1); // tiang 50×50 / 60×60
+      const colT: [number, number] = [col * 10, col * 10];
+      const span = Math.min(num(p, 'bentangAlas', 56), Math.min(W, D) - 2);
+      const arm = Math.min(W, D) * 0.7;
+      const alas = str(p, 'alas', 'silang');
+      add('laba-x', 'x', cx - arm / 2, ya, cz, arm, 'rail-x', 'Laba-laba atas kiri–kanan', apron);
+      add('laba-z', 'z', cx, ya, cz - arm / 2, arm, 'rail-z', 'Laba-laba atas depan–belakang', apron);
+      let colBottom = 0;
+      if (alas === 'silang') {
+        add('alas-x', 'x', cx - span / 2, L / 2, cz, span, 'rail-x', 'Alas silang kiri–kanan', leg);
+        add('alas-z', 'z', cx, L / 2, cz - span / 2, span, 'rail-z', 'Alas silang depan–belakang', leg);
+        colBottom = L;
+      } else if (alas === 'bintang') {
+        const yh = 14;
+        const r = span / 2 / Math.SQRT2;
+        [
+          [-1, -1],
+          [1, -1],
+          [-1, 1],
+          [1, 1],
+        ].forEach(([sx, sz], i) => line(`alas-bintang-${i}`, [cx, yh, cz], [cx + sx * r, 0, cz + sz * r], 'post', `Kaki bintang ${i + 1}`, leg));
+        colBottom = yh - 4;
+      } else {
+        const pl = board('alas-plat', 'Plat alas bundar', cx - span / 2, cx + span / 2, 0, 0.8, cz - span / 2, cz + span / 2);
+        pl.shape = 'round';
+        pl.steelMm = 8;
+        boards.push(pl);
+        colBottom = 0.8;
+      }
+      add('tiang', 'y', cx, colBottom, cz, yTop - ah - colBottom, 'post', 'Tiang tengah', colT);
+      if (bool(p, 'pijakan')) {
+        // Ring pijakan persegi 40 cm di ±30 cm, disambung ke tiang dengan dua lengan
+        const yr = 30;
+        const h = 20;
+        add('pijakan-depan', 'x', cx - h, yr, cz + h, 2 * h, 'rail-x', 'Ring pijakan depan', rail);
+        add('pijakan-belakang', 'x', cx - h, yr, cz - h, 2 * h, 'rail-x', 'Ring pijakan belakang', rail);
+        add('pijakan-kiri', 'z', cx - h - 1, yr, cz - h - 1, 2 * h + 2, 'rail-z', 'Ring pijakan kiri', rail);
+        add('pijakan-kanan', 'z', cx + h + 1, yr, cz - h - 1, 2 * h + 2, 'rail-z', 'Ring pijakan kanan', rail);
+        add('pijakan-lengan', 'x', cx - h, yr, cz, 2 * h, 'rail-x', 'Lengan ring pijakan', rail);
+      }
+    } else if (model === 'u') {
+      // Rangka U / sled di kedua ujung: palang lantai + 2 tiang + palang atas, disambung gelagar
+      const xs = [fx0 + L / 2, fx1 - L / 2];
+      const zb = fz0 + L / 2;
+      const zf = fz1 - L / 2;
+      xs.forEach((x, i) => {
+        const side = i ? 'kanan' : 'kiri';
+        add(`sled-${side}`, 'z', x, L / 2, fz0, fz1 - fz0, 'rail-z', `Kaki sled ${side} (lantai)`, leg);
+        add(`kaki-${side}-b`, 'y', x, L, zb, yTop - ah - L, 'post', `Kaki ${side} belakang`, leg);
+        add(`kaki-${side}-d`, 'y', x, L, zf, yTop - ah - L, 'post', `Kaki ${side} depan`, leg);
+        add(`atas-${side}`, 'z', x, ya, fz0, fz1 - fz0, 'rail-z', `Rangka atas ${side}`, apron);
+      });
+      add('atas-depan', 'x', xs[0] + L / 2, ya, zf, xs[1] - xs[0] - L, 'rail-x', 'Rangka atas depan', apron);
+      add('atas-belakang', 'x', xs[0] + L / 2, ya, zb, xs[1] - xs[0] - L, 'rail-x', 'Rangka atas belakang', apron);
+      const yb = bool(p, 'pijakan') ? 25 : 12;
+      add('palang-bawah', 'x', xs[0] + 1, yb, (zb + zf) / 2, xs[1] - xs[0] - 2, 'rail-x', bool(p, 'pijakan') ? 'Pijakan kaki' : 'Palang bawah', rail);
+      add(`palang-ujung-kiri`, 'z', xs[0], yb, zb + L / 2, zf - zb - L, 'rail-z', 'Palang ujung kiri', rail);
+      add(`palang-ujung-kanan`, 'z', xs[1], yb, zb + L / 2, zf - zb - L, 'rail-z', 'Palang ujung kanan', rail);
+    } else if (model === 'x') {
       // Kaki silang X di kedua ujung (bidang depan–belakang), rangka atas keliling
       const xs = [fx0 + L / 2, fx1 - L / 2];
       const yLeg = yTop - ah;
@@ -308,13 +429,21 @@ export const MEJA: ProductDef = {
       out.push({ level: 'warn', message: `Meja ${W} cm tanpa kaki tengah bisa melendut di tengah kalau diberi beban berat.`, fix: { label: 'Tambah kaki tengah', params: { kakiTengah: true } } });
     if (str(p, 'pipa') === '20' && W > 100)
       out.push({ level: 'warn', message: 'Kaki 20×20 kurang kokoh untuk meja sepanjang ini, meja bisa goyang.', fix: { label: 'Pakai pipa 30×30', params: { pipa: '30' } } });
-    if (H > 95 && !bool(p, 'palangKaki') && !bool(p, 'rakBawah') && model !== 'x')
+    if (H > 95 && !bool(p, 'palangKaki') && !bool(p, 'rakBawah') && (model === 'lurus' || model === 'melebar') && !bool(p, 'kakiLipat'))
       out.push({ level: 'warn', message: 'Meja tinggi tanpa palang kaki mudah goyang.', fix: { label: 'Tambah palang kaki', params: { palangKaki: true } } });
     if (bool(p, 'rakBawah') && num(p, 'tinggiRakBawah') > H - 30)
       out.push({ level: 'warn', message: 'Rak bawah terlalu dekat ke daun meja, barang susah masuk.', fix: { label: 'Turunkan rak ke 20 cm', params: { tinggiRakBawah: 20 } } });
     if (model === 'melebar' && num(p, 'sudutKaki') > 12) out.push({ level: 'info', message: 'Kaki sangat melebar: ujung kaki keluar dari tepi daun meja, bisa tersandung.' });
     if ((model === 'melebar' || model === 'x') && !bool(p, 'kakiLipat')) out.push({ level: 'info', message: 'Kaki miring dipotong bersudut di kedua ujungnya. Sudutnya tertulis di daftar potongan.' });
     if (bool(p, 'kakiLipat')) out.push({ level: 'info', message: 'Klik engsel di 3D untuk melipat kaki. Engsel kunci menahan kaki tetap tegak saat dipakai.' });
+    if (model === 'pedestal') {
+      const top = round ? W : Math.max(W, num(p, 'lebar'));
+      const span = num(p, 'bentangAlas');
+      if (span < top * 0.5)
+        out.push({ level: 'warn', message: `Alas ${span} cm terlalu kecil untuk daun ${top} cm: meja mudah terguling saat ditekan di tepi.`, fix: { label: `Alas ${Math.ceil(top * 0.55)} cm`, params: { bentangAlas: Math.min(90, Math.ceil(top * 0.55)) } } });
+      if (!round && Math.max(W, num(p, 'lebar')) > 90) out.push({ level: 'warn', message: 'Daun lebih dari 90 cm sebaiknya pakai 2 tiang atau kaki 4.', fix: { label: 'Pakai kaki lurus', params: { modelKaki: 'lurus' } } });
+      if (H > 95 && !bool(p, 'pijakan')) out.push({ level: 'info', message: 'Meja bar tinggi enak diberi ring pijakan kaki.', fix: { label: 'Tambah pijakan', params: { pijakan: true } } });
+    }
     if (str(p, 'papan') === 'none') out.push({ level: 'info', message: 'Tanpa papan: daun meja (kaca, marmer, dll.) disiapkan sendiri.' });
     return out;
   },

@@ -5,6 +5,11 @@ import { KURSI } from './kursi';
 import { RAK_TANAMAN } from './rakTanaman';
 import { MEJA_PIKNIK } from './mejaPiknik';
 import { MEJA_DINDING } from './mejaDinding';
+import { MEJA_BAR } from './mejaBar';
+import { BOOTH } from './booth';
+import { RAK_DINDING } from './rakDinding';
+import { PAPAN_MENU } from './papanMenu';
+import { PEMBATAS } from './pembatas';
 import { FurnitureDesign, Params, ProductDef, ProductId } from './types';
 import { DEFAULT_KITCHEN_CONFIG } from '../types/kitchen';
 
@@ -16,8 +21,13 @@ export const PRODUCTS: Record<ProductId, ProductDef> = {
   troli: TROLI,
   'meja-piknik': MEJA_PIKNIK,
   'meja-dinding': MEJA_DINDING,
+  'meja-bar': MEJA_BAR,
+  booth: BOOTH,
+  'rak-dinding': RAK_DINDING,
+  'papan-menu': PAPAN_MENU,
+  pembatas: PEMBATAS,
 };
-export const PRODUCT_LIST: ProductDef[] = [MEJA, KURSI, RAK, RAK_TANAMAN, TROLI, MEJA_PIKNIK, MEJA_DINDING];
+export const PRODUCT_LIST: ProductDef[] = [MEJA, KURSI, RAK, RAK_TANAMAN, TROLI, MEJA_PIKNIK, MEJA_DINDING, MEJA_BAR, BOOTH, RAK_DINDING, PAPAN_MENU, PEMBATAS];
 
 /** Kategori di Beranda: produk atau jalan pintas ke contoh jadi tertentu */
 export interface CategoryItem {
@@ -28,6 +38,19 @@ export interface CategoryItem {
   icon?: string; // path SVG 60×40; kosong = ikon produk
 }
 export const CATEGORIES: { title: string; items: CategoryItem[] }[] = [
+  {
+    title: 'Cafe & usaha',
+    items: [
+      { product: 'meja', preset: 'pedestal-silang', title: 'Meja cafe kaki tunggal', subtitle: 'alas silang · bintang · plat', icon: 'M8 10h44M30 10v24M14 36h32' },
+      { product: 'kursi', preset: 'bar-sandar', title: 'Stool bar', subtitle: 'tinggi 65 / 75 · bersandaran' },
+      { product: 'meja-bar', title: 'Meja bar / kasir', subtitle: 'counter barista dua tingkat' },
+      { product: 'booth', title: 'Booth / sofa cafe', subtitle: 'tunggal · punggung-ke-punggung' },
+      { product: 'rak-dinding', title: 'Rak dinding / backbar', subtitle: 'botol · cangkir · gantung plafon' },
+      { product: 'papan-menu', title: 'Papan menu berdiri', subtitle: 'A-frame 60 × 90' },
+      { product: 'pembatas', title: 'Pembatas tanaman', subtitle: 'partisi · pot · beroda' },
+      { product: 'meja', preset: 'sled', title: 'Meja komunal kaki U', subtitle: 'panjang 240 · bar tinggi' },
+    ],
+  },
   {
     title: 'Meja & kursi',
     items: [

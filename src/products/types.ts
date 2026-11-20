@@ -1,7 +1,19 @@
 import { FrameConfig, FrameHinge, FrameMember } from '../types/kitchen';
 import { Box3 } from '../utils/frameLayout';
 
-export type ProductId = 'meja' | 'kursi' | 'rak' | 'rak-tanaman' | 'troli' | 'meja-piknik' | 'meja-dinding';
+export type ProductId =
+  | 'meja'
+  | 'kursi'
+  | 'rak'
+  | 'rak-tanaman'
+  | 'troli'
+  | 'meja-piknik'
+  | 'meja-dinding'
+  | 'meja-bar'
+  | 'booth'
+  | 'rak-dinding'
+  | 'papan-menu'
+  | 'pembatas';
 export type ParamValue = number | boolean | string;
 export type Params = Record<string, ParamValue>;
 
@@ -48,6 +60,8 @@ export interface Board {
   shape?: 'round'; // bundar: diameter = sisi terpendek kotak (dilihat dari atas)
   rotX?: number; // derajat, putar di sekitar sumbu kiri–kanan lewat titik tengah kotak (sandaran miring)
   attachTo?: string; // id batang: papan ikut bergerak bila batang itu terlipat engsel (mis. daun meja dinding)
+  steelMm?: number; // plat besi (mis. alas meja pedestal 8 mm): warna cat rangka, dihitung per kg
+  color?: string; // warna khusus (mis. busa jok booth); tidak dihitung sebagai papan kayu
 }
 
 /** Roda di bawah tiang: (x, z) titik tengah, topY = tinggi pelat roda dari lantai */

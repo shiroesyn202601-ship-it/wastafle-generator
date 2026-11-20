@@ -41,9 +41,9 @@ export const KURSI: ProductDef = {
         { value: 'bilah', label: 'Bilah besi', desc: 'Pipa 40×20 berjajar, tahan hujan' },
       ],
     },
-    { key: 'sandaran', label: 'Sandaran punggung', type: 'toggle', showIf: (p) => p.jenis !== 'stool' && p.mejaSamping !== true },
-    { key: 'tinggiSandaran', label: 'Tinggi sandaran dari lantai', type: 'number', unit: 'cm', min: 60, max: 110, step: 1, marks: [{ value: 85, label: 'umum' }], showIf: (p) => p.jenis !== 'stool' && p.sandaran === true && p.mejaSamping !== true },
-    { key: 'miringSandaran', label: 'Kemiringan sandaran', type: 'number', unit: '°', min: 0, max: 25, step: 1, help: '0 = tegak. 10–15° nyaman untuk makan & santai.', marks: [{ value: 0, label: 'tegak' }, { value: 12, label: 'nyaman' }], showIf: (p) => p.jenis !== 'stool' && p.sandaran === true && p.mejaSamping !== true },
+    { key: 'sandaran', label: 'Sandaran punggung', type: 'toggle', help: 'Stool bar: sandaran rendah ±30 cm di atas dudukan.', showIf: (p) => p.mejaSamping !== true },
+    { key: 'tinggiSandaran', label: 'Tinggi sandaran dari lantai', type: 'number', unit: 'cm', min: 60, max: 125, step: 1, marks: [{ value: 85, label: 'kursi' }, { value: 105, label: 'stool bar' }], showIf: (p) => p.sandaran === true && p.mejaSamping !== true },
+    { key: 'miringSandaran', label: 'Kemiringan sandaran', type: 'number', unit: '°', min: 0, max: 25, step: 1, help: '0 = tegak. 10–15° nyaman untuk makan & santai.', marks: [{ value: 0, label: 'tegak' }, { value: 12, label: 'nyaman' }], showIf: (p) => p.sandaran === true && p.mejaSamping !== true },
     { key: 'sudutKaki', label: 'Kaki melebar', type: 'number', unit: '°', min: 0, max: 12, step: 1, help: '0 = kaki tegak. Kaki melebar membuat kursi lebih stabil.', marks: [{ value: 0, label: 'tegak' }, { value: 6, label: 'melebar' }] },
     { key: 'palangKaki', label: 'Palang penguat kaki', type: 'toggle', help: 'Supaya kaki tidak goyang.', showIf: (p) => p.jenis !== 'stool' },
     { key: 'pijakan', label: 'Pijakan kaki', type: 'toggle', help: 'Tempat menaruh kaki di kursi tinggi.', showIf: (p) => p.jenis === 'stool' },
@@ -65,8 +65,37 @@ export const KURSI: ProductDef = {
     { id: 'bangku', name: 'Bangku panjang', desc: '120 × 35 cm, tinggi 45 cm', params: { jenis: 'bangku', lebar: 120, dalam: 35, tinggiDudukan: 45, sandaran: false, palangKaki: true, pipa: '30' } },
     { id: 'bangku-bilah', name: 'Bangku bilah + meja samping', desc: '150 × 40 cm, meja bundar ø40', params: { jenis: 'bangku', lebar: 150, dalam: 40, tinggiDudukan: 45, dudukan: 'bilah', sandaran: false, mejaSamping: true, diameterMeja: 40, tinggiMeja: 60, palangKaki: false, kakiTengah: true, pipa: '30', warna: '#2f4a3a' } },
     { id: 'bangku-sandar', name: 'Bangku taman bersandaran', desc: '150 × 45 cm, sandaran 12°', params: { jenis: 'bangku', lebar: 150, dalam: 45, tinggiDudukan: 45, sandaran: true, tinggiSandaran: 85, miringSandaran: 12, palangKaki: true, kakiTengah: true, pipa: '30', warna: '#2f4a3a' } },
-    { id: 'bar', name: 'Stool bar', desc: 'tinggi 75 cm, kaki melebar 6°', params: { jenis: 'stool', lebar: 35, dalam: 35, tinggiDudukan: 75, sudutKaki: 6, pijakan: true, tinggiPijakan: 28, pipa: '20' } },
-    { id: 'counter', name: 'Stool meja dapur', desc: 'tinggi 65 cm', params: { jenis: 'stool', lebar: 35, dalam: 35, tinggiDudukan: 65, pijakan: true, tinggiPijakan: 25, pipa: '20', papan: 'hpl' } },
+    {
+      id: 'bar',
+      name: 'Stool kaki melebar + pijakan',
+      desc: 'tanpa sandaran, kaki miring 6°',
+      params: { jenis: 'stool', sandaran: false, sudutKaki: 6, pijakan: true, pipa: '20' },
+      sizes: [
+        { label: 'Bar (meja 105)', desc: 'dudukan 75 cm', params: { lebar: 35, dalam: 35, tinggiDudukan: 75, tinggiPijakan: 32 } },
+        { label: 'Counter (meja 90)', desc: 'dudukan 65 cm', params: { lebar: 35, dalam: 35, tinggiDudukan: 65, tinggiPijakan: 23 } },
+      ],
+    },
+    {
+      id: 'bar-sandar',
+      name: 'Stool bar bersandaran',
+      desc: 'sandaran rendah miring, pijakan keliling',
+      params: { jenis: 'stool', sandaran: true, miringSandaran: 8, sudutKaki: 4, pijakan: true, pipa: '20' },
+      sizes: [
+        { label: 'Bar (meja 105)', desc: 'dudukan 75, sandaran 105 cm', params: { lebar: 40, dalam: 38, tinggiDudukan: 75, tinggiSandaran: 105, tinggiPijakan: 32 } },
+        { label: 'Counter (meja 90)', desc: 'dudukan 65, sandaran 95 cm', params: { lebar: 40, dalam: 38, tinggiDudukan: 65, tinggiSandaran: 95, tinggiPijakan: 23 } },
+      ],
+    },
+    {
+      id: 'counter',
+      name: 'Stool kaki tegak + pijakan',
+      desc: 'tanpa sandaran, kaki tegak',
+      params: { jenis: 'stool', sandaran: false, sudutKaki: 0, pijakan: true, pipa: '20' },
+      sizes: [
+        { label: 'Counter (meja 90)', desc: 'dudukan 65 cm', params: { lebar: 35, dalam: 35, tinggiDudukan: 65, tinggiPijakan: 23, papan: 'hpl' } },
+        { label: 'Bar (meja 105)', desc: 'dudukan 75 cm', params: { lebar: 35, dalam: 35, tinggiDudukan: 75, tinggiPijakan: 32 } },
+        { label: 'Stool pendek', desc: 'dudukan 45 cm', params: { lebar: 32, dalam: 32, tinggiDudukan: 45, pijakan: false } },
+      ],
+    },
   ],
   summary: (p) =>
     `${str(p, 'jenis') === 'bangku' ? 'Bangku' : str(p, 'jenis') === 'stool' ? 'Stool' : 'Kursi'} · dudukan ${num(p, 'lebar')} × ${num(p, 'dalam')} cm, tinggi ${num(p, 'tinggiDudukan')} cm`,
@@ -85,7 +114,7 @@ export const KURSI: ProductDef = {
     const rail: [number, number] = [20, 20];
     const leg: [number, number] = [L * 10, L * 10];
     const side = jenis === 'bangku' && bool(p, 'mejaSamping');
-    const back = jenis !== 'stool' && !side && bool(p, 'sandaran');
+    const back = !side && bool(p, 'sandaran');
     const Hb = Math.max(yS + 20, num(p, 'tinggiSandaran', 85));
     const tilt = back ? num(p, 'miringSandaran', 0) : 0;
     const tanT = Math.tan((tilt * Math.PI) / 180);
@@ -218,12 +247,12 @@ export const KURSI: ProductDef = {
         out.push({ level: 'info', message: `Jarak pijakan ke dudukan ${gap} cm. Yang nyaman sekitar 45 cm.`, fix: { label: `Pijakan ${Hs - 45} cm`, params: { tinggiPijakan: Math.max(15, Hs - 45) } } });
     }
     if (jenis === 'stool' && Hs > 60 && !bool(p, 'pijakan')) out.push({ level: 'warn', message: 'Stool tinggi tanpa pijakan membuat kaki menggantung dan kursi mudah goyang.', fix: { label: 'Tambah pijakan', params: { pijakan: true } } });
-    if (jenis !== 'stool' && bool(p, 'sandaran') && !bool(p, 'mejaSamping') && num(p, 'tinggiSandaran') - Hs < 30)
+    if (bool(p, 'sandaran') && !bool(p, 'mejaSamping') && num(p, 'tinggiSandaran') - Hs < (jenis === 'stool' ? 22 : 30))
       out.push({ level: 'warn', message: 'Sandaran terlalu pendek untuk menopang punggung.', fix: { label: `Sandaran ${Hs + 40} cm`, params: { tinggiSandaran: Math.min(110, Hs + 40) } } });
-    if (bool(p, 'sandaran') && num(p, 'miringSandaran') > 18 && jenis !== 'stool')
+    if (bool(p, 'sandaran') && num(p, 'miringSandaran') > 18)
       out.push({ level: 'warn', message: 'Sandaran sangat miring: kursi bisa terjungkal ke belakang saat bersandar.', fix: { label: 'Miring 12°', params: { miringSandaran: 12 } } });
     if (jenis === 'kursi' && Hs >= 42 && Hs <= 48) out.push({ level: 'info', message: 'Tinggi dudukan pas untuk meja makan / meja kerja 72–76 cm.' });
-    if (num(p, 'sudutKaki') > 0 || (bool(p, 'sandaran') && num(p, 'miringSandaran') > 0 && jenis !== 'stool'))
+    if (num(p, 'sudutKaki') > 0 || (bool(p, 'sandaran') && num(p, 'miringSandaran') > 0))
       out.push({ level: 'info', message: 'Batang miring dipotong bersudut. Sudut tiap potongan tertulis di daftar potongan.' });
     if (str(p, 'papan') === 'none' && str(p, 'dudukan') !== 'bilah') out.push({ level: 'info', message: 'Tanpa papan: dudukan (busa, anyaman, dll.) disiapkan sendiri.' });
     return out;

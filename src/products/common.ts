@@ -206,7 +206,7 @@ export function estimateCost(host: KitchenConfig, design: FurnitureDesign, build
   // Papan: dihitung per m² (+30% sisa potong); lembar penuh 122×244 disebut untuk patokan belanja
   const papan = String(design.params.papan || 'multiplek');
   if (build.boards.length && papan !== 'none') {
-    const area = build.boards.reduce((s, b) => {
+    const area = build.boards.filter((b) => !b.steelMm && !b.color).reduce((s, b) => {
       const d = [0, 1, 2].map((i) => b.box.max[i] - b.box.min[i]).sort((a, c) => c - a);
       return s + ((d[0] * d[1]) / 10000) * (b.shape === 'round' ? Math.PI / 4 : 1); // dua sisi terbesar = muka papan
     }, 0);
@@ -222,6 +222,27 @@ export function estimateCost(host: KitchenConfig, design: FurnitureDesign, build
       price: perM2,
       subtotal: Math.round(Math.max(0.05, m2) * perM2),
     });
+  }
+
+  // Plat besi (alas pedestal dll.): berat = luas × tebal × 7,85 kg/dm³
+  const plates = build.boards.filter((b) => b.steelMm);
+  if (plates.length) {
+    const kg = plates.reduce((s, b) => {
+      const d = [0, 1, 2].map((i) => b.box.max[i] - b.box.min[i]).sort((a, c) => c - a);
+      const m2 = ((d[0] * d[1]) / 10000) * (b.shape === 'round' ? Math.PI / 4 : 1);
+      return s + m2 * (b.steelMm! / 1000) * 7850;
+    }, 0);
+    const qty = Math.round(kg * 10) / 10;
+    lines.push({ group: 'Papan', label: `Plat besi ${plates[0].steelMm} mm (potong laser / gas)`, qty, unit: 'kg', price: prices.plateKg, subtotal: Math.round(qty * prices.plateKg) });
+  }
+  // Busa + kain jok (booth): per m² muka
+  const cushions = build.boards.filter((b) => b.color);
+  if (cushions.length) {
+    const m2 = Math.round(cushions.reduce((s, b) => {
+      const d = [0, 1, 2].map((i) => b.box.max[i] - b.box.min[i]).sort((a, c) => c - a);
+      return s + (d[0] * d[1]) / 10000;
+    }, 0) * 100) / 100;
+    lines.push({ group: 'Papan', label: 'Busa 10 cm + kain jok (perkiraan)', qty: m2, unit: 'm²', price: prices.cushionM2, subtotal: Math.round(m2 * prices.cushionM2) });
   }
 
   // Roda / karet kaki

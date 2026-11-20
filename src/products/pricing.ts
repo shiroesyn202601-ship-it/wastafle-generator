@@ -8,6 +8,8 @@ export interface PriceSettings {
   feet: number; // karet / dop kaki per buah
   paintPerM2: number; // cat dasar + 2 lapis per m²
   perWeld: number; // ongkos las per titik sambungan (0 = tidak dihitung)
+  plateKg: number; // plat besi per kg (sudah dipotong)
+  cushionM2: number; // busa + kain jok per m²
   kerfMm: number; // lebar mata potong
   stockCm: number; // panjang batang hollow
 }
@@ -29,6 +31,8 @@ export const DEFAULT_PRICES: PriceSettings = {
   feet: 2500,
   paintPerM2: 20000,
   perWeld: 0,
+  plateKg: 20000,
+  cushionM2: 350000,
   kerfMm: 3,
   stockCm: 600,
 };

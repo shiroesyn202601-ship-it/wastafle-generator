@@ -253,7 +253,7 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
     group.add(buildFrameGroup(host, leftX, backZ, 0, frameMat, hingePartsRef.current, hingeAnimRef.current));
 
     // Papan
-    if (boardMaterial !== 'none' && build.boards.length) {
+    if (build.boards.length) {
       const boardMat =
         boardMaterial === 'kayu'
           ? new THREE.MeshStandardMaterial({ color: 0xa8743f, roughness: 0.55 })
@@ -261,13 +261,15 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
           ? new THREE.MeshStandardMaterial({ color: 0xf2f0ea, roughness: 0.45 })
           : new THREE.MeshStandardMaterial({ color: 0xd9be92, roughness: 0.75 });
       build.boards.forEach((b) => {
+        if (boardMaterial === 'none' && !b.steelMm && !b.color) return; // papan kayu tidak dipakai
         const sx = (b.box.max[0] - b.box.min[0]) / 100;
         const sy = (b.box.max[1] - b.box.min[1]) / 100;
         const sz = (b.box.max[2] - b.box.min[2]) / 100;
+        const mat = b.steelMm ? frameMat : b.color ? new THREE.MeshStandardMaterial({ color: new THREE.Color(b.color), roughness: 0.9 }) : boardMat;
         const m =
           b.shape === 'round'
-            ? new THREE.Mesh(new THREE.CylinderGeometry(Math.min(sx, sz) / 2, Math.min(sx, sz) / 2, sy, 48), boardMat)
-            : new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), boardMat);
+            ? new THREE.Mesh(new THREE.CylinderGeometry(Math.min(sx, sz) / 2, Math.min(sx, sz) / 2, sy, 48), mat)
+            : new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat);
         m.position.set(leftX + (b.box.min[0] / 100 + sx / 2), b.box.min[1] / 100 + sy / 2, backZ + b.box.min[2] / 100 + sz / 2);
         if (b.rotX) m.rotation.x = (b.rotX * Math.PI) / 180;
         if (b.attachTo) m.userData.attachTo = b.attachTo;
