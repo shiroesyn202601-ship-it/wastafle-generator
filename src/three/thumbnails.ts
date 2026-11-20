@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { PRODUCTS, Params, ProductId, newDesign } from '../products';
+import { PRODUCTS, Params, ProductBuild, ProductId, newDesign } from '../products';
+import { KitchenConfig } from '../types/kitchen';
 import { toFrameHost } from '../products/common';
 import { buildProductModel } from './productModel';
 
@@ -142,5 +143,61 @@ function enqueue(key: string, make: () => string | null, wanted?: () => boolean)
     });
   queue = job;
   pending.set(key, job);
+  return job;
+}
+
+export type DesignView = 'iso' | 'front' | 'side' | 'top';
+const VIEW_DIR: Record<DesignView, [number, number, number]> = {
+  iso: [0.62, 0.42, 0.78],
+  front: [0, 0.08, 1],
+  side: [1, 0.08, 0],
+  top: [0, 1, 0.0001],
+};
+
+/**
+ * Gambar desain apa adanya (termasuk batang yang diubah sendiri / rangka manual) dari beberapa arah.
+ * Dipakai di halaman Potongan besi. Hasil: data URL PNG per tampak, urut sesuai `views`.
+ */
+export function designImages(
+  host: KitchenConfig,
+  build: ProductBuild,
+  paint: string,
+  board: string,
+  views: { view: DesignView; w: number; h: number }[]
+): Promise<(string | null)[]> {
+  const job = queue
+    .then(() => new Promise((r) => setTimeout(r, 0)))
+    .then(() => {
+      if (ctx === null) ctx = init();
+      if (!ctx) return views.map(() => null);
+      const { renderer, scene, camera, group } = ctx;
+      const out: (string | null)[] = [];
+      try {
+        clear(group);
+        buildProductModel(group, host, build, paint, board, [], new Map(), { wall: false });
+        const sphere = new THREE.Box3().setFromObject(group).getBoundingSphere(new THREE.Sphere());
+        for (const v of views) {
+          renderer.setSize(v.w, v.h, false);
+          camera.aspect = v.w / v.h;
+          camera.updateProjectionMatrix();
+          const fv = THREE.MathUtils.degToRad(camera.fov);
+          const fh = 2 * Math.atan(Math.tan(fv / 2) * camera.aspect);
+          const dist = (sphere.radius / Math.sin(Math.min(fv, fh) / 2)) * 1.02;
+          camera.position.copy(sphere.center).addScaledVector(new THREE.Vector3(...VIEW_DIR[v.view]).normalize(), dist);
+          camera.lookAt(sphere.center);
+          renderer.render(scene, camera);
+          out.push(renderer.domElement.toDataURL('image/png'));
+        }
+      } catch {
+        while (out.length < views.length) out.push(null);
+      } finally {
+        clear(group);
+        renderer.setSize(TW, TH, false);
+        camera.aspect = TW / TH;
+        camera.updateProjectionMatrix();
+      }
+      return out;
+    });
+  queue = job;
   return job;
 }
