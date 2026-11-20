@@ -102,12 +102,12 @@ export interface ImageData {
   base64: string;
 }
 
-/** Kirim teks + gambar, kembalikan teks jawaban mentah */
-export async function callEngine(e: Engine, prompt: string, image: ImageData): Promise<string> {
+/** Kirim teks (+ gambar bila ada), kembalikan teks jawaban mentah */
+export async function callEngine(e: Engine, prompt: string, image?: ImageData): Promise<string> {
   if (e.provider === 'gemini') {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(e.model)}:generateContent?key=${encodeURIComponent(e.key)}`;
     const data = await post(url, {}, {
-      contents: [{ role: 'user', parts: [{ text: prompt }, { inline_data: { mime_type: image.mime, data: image.base64 } }] }],
+      contents: [{ role: 'user', parts: image ? [{ text: prompt }, { inline_data: { mime_type: image.mime, data: image.base64 } }] : [{ text: prompt }] }],
       generationConfig: { temperature: 0.2, responseMimeType: 'application/json' },
     });
     const parts = data?.candidates?.[0]?.content?.parts || [];
@@ -129,10 +129,12 @@ export async function callEngine(e: Engine, prompt: string, image: ImageData): P
     messages: [
       {
         role: 'user',
-        content: [
-          { type: 'text', text: prompt },
-          { type: 'image_url', image_url: { url: `data:${image.mime};base64,${image.base64}` } },
-        ],
+        content: image
+          ? [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: { url: `data:${image.mime};base64,${image.base64}` } },
+            ]
+          : prompt,
       },
     ],
   });

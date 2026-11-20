@@ -149,6 +149,17 @@ Dicek dari kode (`ProductStudio.tsx`, `ParamControl.tsx`, `MemberSheet.tsx`, `Th
 | **3 · Jalan pintas** | 3.9 ketik perubahan (AI) | Infrastruktur AI sudah ada. Sebaiknya setelah fase 1, supaya hasilnya bisa disorot |
 | **4 · Mode bengkel ramah** | 3.10 ubah batang ringan · ganti istilah di 2D | Menyentuh format data `frame` dan logika otomatis/manual. Paling berisiko |
 
+### Status (20 November 2026)
+
+Keempat fase sudah dikerjakan:
+
+- **Fase 1.** Gambar pilihan dibuat otomatis dari model. Bagian yang berubah berkedip biru. Garis ukuran tampil di 3D (tombol "Ukuran"). Daftar "Tidak tersedia untuk pilihan sekarang" berisi alasan dan tombol ganti. Undo menyebut langkahnya, dan ada ↺ ke nilai contoh per pilihan. Ada juga tombol "Tahan: lihat contoh awal".
+- **Fase 2.** Ketuk batang membuka panel "Bagian yang dipilih". Pilihan terkait dicari otomatis dengan mencoba-ubah tiap pilihan. Titik biru bisa ditarik untuk panjang, lebar, dan tinggi, dan menempel ke ukuran umum. Langkah yang panjang dilipat ke "Pilihan lainnya". Angka kecil memakai tombol 1–8. Ada tombol "Orang" (figur 165 cm). Di HP, area 3D lebih besar, ada tombol perbesar 3D, dan tombol Kembali menutup panel.
+- **Fase 3.** Kotak "Mau diubah apa?": AI bila key tersedia, pembaca kalimat di perangkat bila tidak. Usulan ditampilkan sebagai pratinjau di 3D sebelum diterapkan.
+- **Fase 4.** "Ubah batang ini saja": geser ±1/±5 cm, ganti pipa, hapus, dan ikut ubah batang kembarannya. Semua disimpan sebagai `frame.tweaks` sehingga rangka tetap mengikuti slider ukuran. Tampilan 2D diganti nama menjadi "Bengkel 2D", dan istilahnya diganti (Tempel otomatis, Langkah geser, Ikut pengaturan ukuran, tegak/datar/miring).
+
+Kode utama: `src/products/insight.ts`, `src/products/tweaks.ts`, `src/ai/editText.ts`, `src/three/ThreeProductScene.tsx`, `src/components/studio/*`.
+
 ---
 
 ## 5. Cara menguji dengan orang awam

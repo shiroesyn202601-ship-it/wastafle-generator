@@ -395,6 +395,17 @@ export interface FrameConfig {
   members?: FrameMember[]; // dipakai saat customLayout = true
   hinges?: FrameHinge[]; // engsel lipat pada batang rangka
   autoMembers?: FrameMember[]; // rangka otomatis dari produk lain (meja/rak/troli); dipakai bila belum diedit manual
+  tweaks?: Record<string, MemberTweak>; // penyesuaian ringan per batang di atas rangka otomatis (rangka tetap ikut ukuran)
+}
+
+/** Penyesuaian satu batang rangka otomatis: geser (cm), ganti pipa (mm), atau buang */
+export interface MemberTweak {
+  dx?: number;
+  dy?: number;
+  dz?: number;
+  tubeSize?: number;
+  tubeH?: number;
+  removed?: boolean;
 }
 
 export type HandleStyle = 

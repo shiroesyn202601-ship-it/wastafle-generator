@@ -1,4 +1,5 @@
 import { DEFAULT_KITCHEN_CONFIG, FrameAxis, FrameConfig, FrameMember, FrameMemberRole, KitchenConfig } from '../types/kitchen';
+import { applyTweaks } from './tweaks';
 import { boxesTouch, memberBox, memberSectionCm, getFrameMembers, memberFromPoints } from '../utils/frameLayout';
 import { Board, Caster, FurnitureDesign, ParamDef, Params, ProductBuild } from './types';
 import { DEFAULT_PRICES, PriceSettings } from './pricing';
@@ -139,7 +140,7 @@ export function toFrameHost(design: FurnitureDesign, build: ProductBuild): Kitch
       hinges: design.frame.hinges ?? build.hinges ?? [],
       tubeSize: pipe,
       paintColor: paint,
-      autoMembers: build.members,
+      autoMembers: applyTweaks(build.members, design.frame.tweaks),
       supports: [],
     },
   };

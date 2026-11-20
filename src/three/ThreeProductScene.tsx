@@ -12,6 +12,18 @@ import { getValidHinges } from '../utils/frameHinges';
 import { getFrameMembers } from '../utils/frameLayout';
 
 type ViewPreset = 'iso' | 'front' | 'side' | 'top' | 'bottom';
+type DimAxis = 'x' | 'y' | 'z';
+
+/** Satu ukuran utama yang bisa ditarik langsung di 3D */
+export interface DimHandle {
+  label: string; // "Panjang"
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  marks?: number[];
+  onChange: (v: number) => void;
+}
 
 interface Props {
   host: KitchenConfig; // konfigurasi inang rangka (lihat products/common.toFrameHost)
@@ -21,6 +33,61 @@ interface Props {
   fitKey: string; // ganti nilai ini (mis. id produk) untuk mengepaskan kamera ulang
   selectedId?: string | null; // batang yang disorot
   onSelect?: (memberId: string | null) => void; // ketuk batang (null = ketuk area kosong)
+  hintIds?: string[]; // batang yang terkait pilihan di bawah kursor (sorot lembut)
+  flash?: { ids: string[]; at: number }; // batang yang baru berubah: berkedip lalu memudar
+  dims?: Partial<Record<DimAxis, DimHandle>>; // panah tarik untuk panjang (x), tinggi (y), lebar (z)
+}
+
+const AXES: DimAxis[] = ['x', 'z', 'y'];
+const FLASH_MS = 1300;
+const LS_DIMS = 'studiorangka_dims';
+const LS_HUMAN = 'studiorangka_human';
+const lsBool = (k: string, d: boolean) => {
+  try {
+    const v = localStorage.getItem(k);
+    return v === null ? d : v === '1';
+  } catch {
+    return d;
+  }
+};
+const lsPut = (k: string, v: boolean) => {
+  try {
+    localStorage.setItem(k, v ? '1' : '0');
+  } catch {
+    // abaikan
+  }
+};
+
+/**
+ * Garis ukuran satu sumbu (meter, koordinat dunia; model berpusat di x/z dan berdiri di lantai).
+ * handle = titik yang ditarik, dir = arah membesar, factor = perubahan ukuran per cm geseran
+ * (panjang & lebar bertambah ke dua sisi sehingga ujungnya hanya bergeser setengahnya → factor 2).
+ */
+function dimSegment(ax: DimAxis, s: { W: number; D: number; H: number }) {
+  const o = 0.07;
+  const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
+  if (ax === 'x') return { a: V(-s.W / 2, 0.003, s.D / 2 + o), b: V(s.W / 2, 0.003, s.D / 2 + o), handle: V(-s.W / 2, 0.003, s.D / 2 + o), dir: V(-1, 0, 0), factor: 2 };
+  if (ax === 'z') return { a: V(s.W / 2 + o, 0.003, -s.D / 2), b: V(s.W / 2 + o, 0.003, s.D / 2), handle: V(s.W / 2 + o, 0.003, -s.D / 2), dir: V(0, 0, -1), factor: 2 };
+  return { a: V(s.W / 2 + o, 0, s.D / 2 + o), b: V(s.W / 2 + o, s.H, s.D / 2 + o), handle: V(s.W / 2 + o, s.H, s.D / 2 + o), dir: V(0, 1, 0), factor: 1 };
+}
+
+/** Figur orang 165 cm sederhana sebagai pembanding skala */
+function buildHuman(): THREE.Group {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color: 0x9aa3ad, roughness: 0.85, transparent: true, opacity: 0.55, depthWrite: false });
+  const add = (geo: THREE.BufferGeometry, x: number, y: number) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, 0);
+    g.add(m);
+  };
+  const limb = (r: number, len: number) => new THREE.CapsuleGeometry(r, len, 4, 10);
+  add(limb(0.055, 0.68), -0.1, 0.42); // kaki
+  add(limb(0.055, 0.68), 0.1, 0.42);
+  add(limb(0.15, 0.36), 0, 1.08); // badan
+  add(limb(0.04, 0.5), -0.22, 1.05); // lengan
+  add(limb(0.04, 0.5), 0.22, 1.05);
+  add(new THREE.SphereGeometry(0.1, 16, 12), 0, 1.53); // kepala
+  return g;
 }
 
 function disposeHierarchy(node: THREE.Object3D) {
@@ -37,7 +104,7 @@ function disposeHierarchy(node: THREE.Object3D) {
 }
 
 /** Scene 3D ringan untuk produk rangka (meja, rak, troli): rangka + engsel, papan, roda */
-export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMaterial, fitKey, selectedId, onSelect }) => {
+export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMaterial, fitKey, selectedId, onSelect, hintIds, flash, dims }) => {
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
   const mountRef = useRef<HTMLDivElement>(null);
@@ -53,6 +120,22 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
   const isDark = useIsDark();
   const [glError, setGlError] = useState(false);
   const [view, setView] = useState<ViewPreset>('iso');
+  const [showDims, setShowDims] = useState(() => lsBool(LS_DIMS, true));
+  const [showHuman, setShowHuman] = useState(() => lsBool(LS_HUMAN, false));
+  const [drag, setDrag] = useState<{ axis: DimAxis; value: number } | null>(null);
+  const humanRef = useRef<THREE.Group | null>(null);
+  const showDimsRef = useRef(showDims);
+  showDimsRef.current = showDims;
+  const dimsRef = useRef(dims);
+  dimsRef.current = dims;
+  const overlayRef = useRef<SVGSVGElement>(null);
+  const labelRefs = useRef<Partial<Record<DimAxis, HTMLDivElement | null>>>({});
+  const handleRefs = useRef<Partial<Record<DimAxis, HTMLButtonElement | null>>>({});
+  const projRef = useRef<((p: THREE.Vector3) => { x: number; y: number; ok: boolean }) | null>(null);
+  // sorotan: batang terpilih, batang terkait pilihan di bawah kursor, batang yang baru berubah
+  const hiRef = useRef({ selected: null as string | null, hint: new Set<string>(), flash: new Set<string>(), flashUntil: 0 });
+  const applyHiRef = useRef<() => void>(() => {});
+  const flashMatRef = useRef<THREE.MeshStandardMaterial | null>(null);
 
   // ---------- Setup sekali ----------
   useEffect(() => {
@@ -128,6 +211,51 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
     scene.add(group);
     groupRef.current = group;
 
+    // Proyeksi titik dunia → piksel layar (untuk garis ukuran & panah tarik)
+    const tmp = new THREE.Vector3();
+    const proj = (p: THREE.Vector3) => {
+      tmp.copy(p).project(camera);
+      return { x: (tmp.x * 0.5 + 0.5) * container.clientWidth, y: (-tmp.y * 0.5 + 0.5) * container.clientHeight, ok: tmp.z < 1 && tmp.z > -1 };
+    };
+    projRef.current = proj;
+    const updateOverlay = () => {
+      const svg = overlayRef.current;
+      if (!svg) return;
+      const on = showDimsRef.current;
+      svg.style.display = on ? '' : 'none';
+      AXES.forEach((ax) => {
+        const lab = labelRefs.current[ax];
+        const hd = handleRefs.current[ax];
+        if (!on) {
+          if (lab) lab.style.display = 'none';
+          if (hd) hd.style.display = 'none';
+          return;
+        }
+        const seg = dimSegment(ax, sizeRef.current);
+        const a = proj(seg.a);
+        const b = proj(seg.b);
+        const len = Math.hypot(b.x - a.x, b.y - a.y);
+        const visible = a.ok && b.ok && len > 28; // garis yang tampak sangat pendek (dilihat dari ujungnya) disembunyikan
+        const line = svg.querySelector(`[data-ax="${ax}"]`) as SVGLineElement | null;
+        if (line) {
+          line.setAttribute('x1', String(a.x));
+          line.setAttribute('y1', String(a.y));
+          line.setAttribute('x2', String(b.x));
+          line.setAttribute('y2', String(b.y));
+          line.style.display = visible ? '' : 'none';
+        }
+        if (lab) {
+          lab.style.display = visible ? '' : 'none';
+          lab.style.transform = `translate(${(a.x + b.x) / 2}px, ${(a.y + b.y) / 2}px) translate(-50%, -50%)`;
+        }
+        if (hd) {
+          const p = proj(seg.handle);
+          hd.style.display = visible && dimsRef.current?.[ax] ? '' : 'none';
+          hd.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, -50%)`;
+        }
+      });
+    };
+
     let raf = 0;
     const clock = new THREE.Clock();
     const animate = () => {
@@ -140,6 +268,14 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
         if (camera.position.distanceTo(g.pos) < 0.005) g.active = false;
       }
       controls.update();
+      const hi = hiRef.current;
+      if (hi.flash.size && flashMatRef.current) {
+        const left = hi.flashUntil - performance.now();
+        if (left <= 0) {
+          hi.flash.clear();
+          applyHiRef.current();
+        } else flashMatRef.current.emissiveIntensity = 0.15 + 0.85 * Math.min(1, left / FLASH_MS);
+      }
       hingePartsRef.current.forEach((part) => {
         const st = hingeAnimRef.current.get(part.id);
         if (!st) return;
@@ -150,6 +286,7 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
         part.pivot.quaternion.setFromAxisAngle(part.axis, st.angle);
       });
       renderer.render(scene, camera);
+      updateOverlay();
     };
     animate();
 
@@ -235,6 +372,8 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
       renderer.dispose();
       renderer.forceContextLoss();
       groupRef.current = null;
+      projRef.current = null;
+      humanRef.current = null;
       if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
     };
   }, []);
@@ -262,32 +401,119 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
     buildProductModel(group, host, build, paint, boardMaterial, hingePartsRef.current, hingeAnimRef.current);
   }, [host, build, paint, boardMaterial]);
 
-  // ---------- Sorot batang terpilih ----------
+  // ---------- Figur orang (pembanding skala), berdiri di sebelah kiri produk ----------
   useEffect(() => {
-    const group = groupRef.current;
-    if (!group) return;
-    const hi = new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0xb45309, emissiveIntensity: 0.45, metalness: 0.3, roughness: 0.45 });
-    group.traverse((o) => {
-      const mesh = o as THREE.Mesh;
-      if (!mesh.isMesh || !mesh.userData.memberId) return;
-      if (!mesh.userData.origMat) mesh.userData.origMat = mesh.material;
-      mesh.material = mesh.userData.memberId === selectedId ? hi : (mesh.userData.origMat as THREE.Material);
-    });
-    return () => hi.dispose();
-  }, [selectedId, host, build, paint, boardMaterial]);
+    const scene = sceneRef.current;
+    if (!scene) return;
+    if (!humanRef.current) humanRef.current = buildHuman();
+    const h = humanRef.current;
+    h.position.set(-build.W / 200 - 0.38, 0, 0);
+    if (showHuman && !h.parent) scene.add(h);
+    if (!showHuman && h.parent) scene.remove(h);
+  }, [showHuman, build.W]);
+
+  // ---------- Sorot batang: terpilih (oranye), terkait pilihan (biru muda), baru berubah (biru berkedip) ----------
+  useEffect(() => {
+    const sel = new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0xb45309, emissiveIntensity: 0.45, metalness: 0.3, roughness: 0.45 });
+    const hint = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0369a1, emissiveIntensity: 0.35, metalness: 0.3, roughness: 0.45 });
+    const fl = new THREE.MeshStandardMaterial({ color: 0x0ea5e9, emissive: 0x0284c7, emissiveIntensity: 1, metalness: 0.3, roughness: 0.4 });
+    flashMatRef.current = fl;
+    applyHiRef.current = () => {
+      const group = groupRef.current;
+      if (!group) return;
+      const h = hiRef.current;
+      group.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (!mesh.isMesh || !mesh.userData.memberId) return;
+        if (!mesh.userData.origMat) mesh.userData.origMat = mesh.material;
+        const id = mesh.userData.memberId as string;
+        mesh.material = id === h.selected ? sel : h.hint.has(id) ? hint : h.flash.has(id) ? fl : (mesh.userData.origMat as THREE.Material);
+      });
+    };
+    return () => {
+      applyHiRef.current = () => {};
+      sel.dispose();
+      hint.dispose();
+      fl.dispose();
+      flashMatRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    hiRef.current.selected = selectedId || null;
+    hiRef.current.hint = new Set(hintIds || []);
+    applyHiRef.current();
+  }, [selectedId, hintIds, host, build, paint, boardMaterial]);
+
+  useEffect(() => {
+    if (!flash || !flash.ids.length || Date.now() - flash.at > 1500) return;
+    hiRef.current.flash = new Set(flash.ids);
+    hiRef.current.flashUntil = performance.now() + FLASH_MS;
+    applyHiRef.current();
+  }, [flash]);
+
+  // ---------- Tarik panah ukuran ----------
+  const startDrag = (ax: DimAxis, e: React.PointerEvent<HTMLButtonElement>) => {
+    const d = dimsRef.current?.[ax];
+    const proj = projRef.current;
+    if (!d || !proj) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const seg = dimSegment(ax, sizeRef.current);
+    const p0 = proj(seg.handle);
+    const p1 = proj(seg.handle.clone().addScaledVector(seg.dir, 0.01)); // 1 cm ke arah membesar
+    const sx = p1.x - p0.x;
+    const sy = p1.y - p0.y;
+    const pxPerCm = Math.hypot(sx, sy);
+    if (pxPerCm < 0.05) return; // dilihat lurus dari ujungnya: tidak bisa ditarik
+    const ux = sx / pxPerCm;
+    const uy = sy / pxPerCm;
+    const el = e.currentTarget;
+    el.setPointerCapture(e.pointerId);
+    const start = { x: e.clientX, y: e.clientY, value: d.value };
+    const ctl = controlsRef.current;
+    if (ctl) ctl.enabled = false;
+    setDrag({ axis: ax, value: d.value });
+    const move = (ev: PointerEvent) => {
+      const cur = dimsRef.current?.[ax];
+      if (!cur) return;
+      const cm = ((ev.clientX - start.x) * ux + (ev.clientY - start.y) * uy) / pxPerCm;
+      let v = start.value + cm * seg.factor;
+      v = Math.min(cur.max, Math.max(cur.min, Math.round(v / cur.step) * cur.step));
+      // menempel ke ukuran umum (mis. tinggi meja makan 75) bila dekat
+      const snap = (cur.marks || []).find((m) => Math.abs(m - v) <= Math.max(2, cur.step));
+      if (snap !== undefined) v = snap;
+      setDrag({ axis: ax, value: v });
+      if (v !== cur.value) cur.onChange(v);
+    };
+    const up = () => {
+      el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerup', up);
+      el.removeEventListener('pointercancel', up);
+      if (ctl) ctl.enabled = true;
+      setDrag(null);
+    };
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+  };
 
   // ---------- Kamera ----------
   const goTo = (v: ViewPreset, instant = false) => {
     const cam = cameraRef.current;
     const ctl = controlsRef.current;
     if (!cam || !ctl) return;
-    const { W, D, H } = sizeRef.current;
+    const sz = sizeRef.current;
+    const human = humanRef.current?.parent ? 1 : 0;
+    const W = sz.W + human * 0.9;
+    const D = sz.D;
+    const H = Math.max(sz.H, human * 1.65);
     // Jarak kamera dari bola pembungkus produk: r / sin(setengah sudut pandang tersempit)
     const r = 0.5 * Math.sqrt(W * W + D * D + H * H);
     const fv = THREE.MathUtils.degToRad(cam.fov);
     const fh = 2 * Math.atan(Math.tan(fv / 2) * cam.aspect);
     const dist = (r / Math.sin(Math.min(fv, fh) / 2)) * 1.08;
-    const look = new THREE.Vector3(0, H / 2, 0);
+    const look = new THREE.Vector3(-human * 0.45, H / 2, 0);
     const dir =
       v === 'front'
         ? new THREE.Vector3(0, 0.12, 1)
@@ -313,6 +539,19 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fitKey]);
 
+  const toggleHuman = () => {
+    const v = !showHuman;
+    setShowHuman(v);
+    lsPut(LS_HUMAN, v);
+    setTimeout(() => goTo(view), 0);
+  };
+  const toggleDims = () => {
+    const v = !showDims;
+    setShowDims(v);
+    lsPut(LS_DIMS, v);
+  };
+  const sizeCm: Record<DimAxis, number> = { x: build.W, y: build.H, z: build.D };
+
   const hasHinges = getValidHinges(host, getFrameMembers(host)).length > 0;
   const views: { id: ViewPreset; label: string }[] = [
     { id: 'iso', label: '3D' },
@@ -330,16 +569,82 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
           Tampilan 3D tidak bisa dimuat di browser ini. Pengaturan, tampilan 2D dan potongan besi tetap bisa dipakai.
         </div>
       )}
-      <div className="absolute top-2 left-2 flex gap-1 p-1 rounded-xl bg-white/85 backdrop-blur border border-stone-300 shadow-sm">
+
+      {/* Garis ukuran + panah tarik (posisinya diperbarui tiap frame mengikuti kamera) */}
+      <svg ref={overlayRef} className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden>
+        {AXES.map((ax) => (
+          <line key={ax} data-ax={ax} stroke="#0284c7" strokeWidth={1.5} strokeDasharray="5 4" style={{ display: 'none' }} />
+        ))}
+      </svg>
+      {AXES.map((ax) => {
+        const d = dims?.[ax];
+        const dragging = drag?.axis === ax;
+        return (
+          <React.Fragment key={ax}>
+            <div
+              ref={(el) => {
+                labelRefs.current[ax] = el;
+              }}
+              className={`absolute left-0 top-0 pointer-events-none rounded-md font-bold tabular-nums whitespace-nowrap shadow-sm ${
+                dragging ? 'bg-sky-600 text-white text-sm px-2.5 py-1' : 'bg-white/90 text-sky-800 border border-sky-200 text-[11px] px-1.5 py-0.5'
+              }`}
+              style={{ display: 'none' }}
+            >
+              {dragging && d ? `${d.label} ${drag!.value} cm` : `${Math.round(sizeCm[ax])} cm`}
+            </div>
+            {d && (
+              <button
+                ref={(el) => {
+                  handleRefs.current[ax] = el;
+                }}
+                type="button"
+                onPointerDown={(e) => startDrag(ax, e)}
+                title={`Tarik untuk mengubah ${d.label.toLowerCase()}`}
+                aria-label={`Tarik untuk mengubah ${d.label.toLowerCase()} (${d.value} cm)`}
+                className="absolute left-0 top-0 w-11 h-11 flex items-center justify-center rounded-full touch-none cursor-grab active:cursor-grabbing"
+                style={{ display: 'none' }}
+              >
+                <span
+                  className={`w-6 h-6 rounded-full border-[3px] border-white shadow-md flex items-center justify-center text-[11px] leading-none font-black text-white transition-transform ${
+                    dragging ? 'bg-sky-700 scale-125' : 'bg-sky-500'
+                  }`}
+                >
+                  {ax === 'y' ? '↕' : '↔'}
+                </span>
+              </button>
+            )}
+          </React.Fragment>
+        );
+      })}
+
+      <div className="absolute top-2 left-2 max-w-[calc(100%-158px)] overflow-x-auto no-scrollbar flex gap-1 p-1 rounded-xl bg-white/85 backdrop-blur border border-stone-300 shadow-sm">
         {views.map((v) => (
           <button
             key={v.id}
             onClick={() => goTo(v.id)}
-            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer ${view === v.id ? 'bg-stone-800 text-white' : 'text-stone-600 hover:bg-stone-200'}`}
+            className={`shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer ${view === v.id ? 'bg-stone-800 text-white' : 'text-stone-600 hover:bg-stone-200'}`}
           >
             {v.label}
           </button>
         ))}
+      </div>
+      <div className="absolute top-2 right-2 flex gap-1 p-1 rounded-xl bg-white/85 backdrop-blur border border-stone-300 shadow-sm">
+        <button
+          onClick={toggleDims}
+          aria-pressed={showDims}
+          title="Garis ukuran & titik biru yang bisa ditarik"
+          className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer ${showDims ? 'bg-sky-600 text-white' : 'text-stone-600 hover:bg-stone-200'}`}
+        >
+          Ukuran
+        </button>
+        <button
+          onClick={toggleHuman}
+          aria-pressed={showHuman}
+          title="Orang setinggi 165 cm sebagai pembanding"
+          className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer ${showHuman ? 'bg-sky-600 text-white' : 'text-stone-600 hover:bg-stone-200'}`}
+        >
+          Orang
+        </button>
       </div>
       {hasHinges && (
         <div className="absolute bottom-2 left-2 px-2.5 py-1.5 rounded-lg bg-amber-100/90 border border-amber-300 text-[11px] font-semibold text-amber-900 pointer-events-none">
@@ -347,7 +652,7 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
         </div>
       )}
       <div className="absolute bottom-2 right-2 px-2 py-1 rounded-lg bg-white/80 text-[10px] text-stone-500 pointer-events-none hidden sm:block">
-        Seret: putar · Scroll / cubit: zoom · Klik kanan / 2 jari: geser
+        Seret: putar · Scroll / cubit: zoom · Klik kanan / 2 jari: geser · Tarik titik biru: ubah ukuran
       </div>
     </div>
   );

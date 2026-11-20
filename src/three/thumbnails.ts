@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { PRODUCTS, ProductId, newDesign } from '../products';
+import { PRODUCTS, Params, ProductId, newDesign } from '../products';
 import { toFrameHost } from '../products/common';
 import { buildProductModel } from './productModel';
 
@@ -64,14 +64,18 @@ const keyOf = (product: ProductId, preset?: string, size = 0) => `${product}:${p
 export const cachedThumbnail = (product: ProductId, preset?: string, size = 0) => cache.get(keyOf(product, preset, size)) || null;
 
 function render(product: ProductId, preset: string | undefined, size: number): string | null {
+  const def = PRODUCTS[product];
+  const design = newDesign(product, preset);
+  const pr = def.presets.find((p) => p.id === preset);
+  return renderParams(product, { ...design.params, ...(pr?.sizes?.[size]?.params || {}) });
+}
+
+function renderParams(product: ProductId, params: Params): string | null {
   if (ctx === null) ctx = init();
   if (!ctx) return null;
   const { renderer, scene, camera, group } = ctx;
   const def = PRODUCTS[product];
-  const design = newDesign(product, preset);
-  const pr = def.presets.find((p) => p.id === preset);
-  const params = { ...design.params, ...(pr?.sizes?.[size]?.params || {}) };
-  const d = { ...design, params };
+  const d = { ...newDesign(product), params };
   const build = def.build(params);
   const host = toFrameHost(d, build);
   clear(group);
@@ -99,7 +103,17 @@ function render(product: ProductId, preset: string | undefined, size: number): s
  * gambar dilewati supaya antrean tidak macet oleh kartu yang tidak terlihat.
  */
 export function productThumbnail(product: ProductId, preset?: string, size = 0, wanted?: () => boolean): Promise<string | null> {
-  const key = keyOf(product, preset, size);
+  return enqueue(keyOf(product, preset, size), () => render(product, preset, size), wanted);
+}
+
+/** Gambar kecil untuk sekumpulan pilihan apa saja (mis. pratinjau satu pilihan model kaki) */
+export const paramsThumbKey = (product: ProductId, params: Params) => `${product}#${JSON.stringify(params)}`;
+export const cachedParamsThumbnail = (product: ProductId, params: Params) => cache.get(paramsThumbKey(product, params)) || null;
+export function paramsThumbnail(product: ProductId, params: Params, wanted?: () => boolean): Promise<string | null> {
+  return enqueue(paramsThumbKey(product, params), () => renderParams(product, params), wanted);
+}
+
+function enqueue(key: string, make: () => string | null, wanted?: () => boolean): Promise<string | null> {
   const hit = cache.get(key);
   if (hit) return Promise.resolve(hit);
   let set = wanters.get(key);
@@ -117,7 +131,7 @@ export function productThumbnail(product: ProductId, preset?: string, size = 0, 
         return null;
       }
       try {
-        const url = render(product, preset, size);
+        const url = make();
         if (url) cache.set(key, url);
         return url;
       } catch {

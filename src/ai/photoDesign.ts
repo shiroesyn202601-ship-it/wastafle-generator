@@ -50,7 +50,7 @@ Answer with JSON only:
 {"product": "...", "group": "...", "seen": "...", "confidence": 0.0}`;
 }
 
-function describeParam(p: ParamDef) {
+export function describeParam(p: ParamDef) {
   const head = `- ${p.key} (${p.label})`;
   const help = p.help ? ` — ${p.help}` : '';
   if (p.type === 'number') return `${head}: number ${p.min ?? ''}–${p.max ?? ''}${p.unit ? ` ${p.unit}` : ''}${help}`;
@@ -118,7 +118,7 @@ function coerce(def: ParamDef, raw: unknown): ParamValue | undefined {
   return hit?.value;
 }
 
-function cleanParams(id: ProductId, raw: unknown): Params {
+export function cleanParams(id: ProductId, raw: unknown): Params {
   const out: Params = {};
   if (!raw || typeof raw !== 'object') return out;
   for (const def of PRODUCTS[id].params) {
