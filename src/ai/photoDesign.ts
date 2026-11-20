@@ -61,7 +61,9 @@ function describeParam(p: ParamDef) {
 
 function paramsPrompt(id: ProductId, group: string | null, seen: string, note: string) {
   const def = PRODUCTS[id];
-  const presets = def.presets.filter((p) => !p.group || p.group === group);
+  // Template sub-kategori yang terlihat; bila sub-kategori tidak jelas, satu contoh per sub-kategori
+  const inGroup = def.presets.filter((p) => !p.group || p.group === group);
+  const presets = group && inGroup.length ? inGroup : def.presets.filter((p, i, all) => !p.group || all.findIndex((q) => q.group === p.group) === i);
   return `You are an expert in steel hollow-tube frame furniture. The photo shows a ${def.name} (${def.tagline}).
 Someone already described it as: "${seen}"
 
