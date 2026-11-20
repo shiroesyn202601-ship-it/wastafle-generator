@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { ArrowRight, FolderOpen, History } from 'lucide-react';
-import { CATEGORIES, PRODUCTS, ProductId } from '../../products';
-
+import React, { useMemo, useState } from 'react';
+import { ArrowRight, FolderOpen, History, LayoutGrid, List, Layers, Search, X } from 'lucide-react';
+import { CATEGORIES, PRODUCTS, PRODUCT_LIST, ProductId } from '../../products';
+import { ProductThumb } from './ProductThumb';
 
 interface Props {
   onPick: (id: ProductId, presetId?: string) => void;
@@ -11,16 +11,158 @@ interface Props {
 }
 
 const KITCHEN_ICON = 'M4 10h52M8 10v26M52 10v26M24 14a6 4 0 1 0 12 0';
+const VIEW_KEY = 'studiorangka_home_view';
 
-const Icon: React.FC<{ d: string }> = ({ d }) => (
-  <svg viewBox="0 0 60 40" className="w-full h-full" aria-hidden="true">
-    <path d={d} fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
+type Layout = 'besar' | 'daftar';
+interface ViewPref {
+  group: boolean;
+  layout: Layout;
+}
 
-/** Beranda: "Mau bikin apa?" → pilih produk → pilih contoh jadi */
+const loadView = (): ViewPref => {
+  try {
+    const v = JSON.parse(localStorage.getItem(VIEW_KEY) || '{}');
+    return { group: v.group !== false, layout: v.layout === 'daftar' ? 'daftar' : 'besar' };
+  } catch {
+    return { group: true, layout: 'besar' };
+  }
+};
+
+/** Satu kartu desain (template) yang bisa diklik */
+interface Card {
+  key: string;
+  product: ProductId;
+  preset?: string;
+  title: string;
+  subtitle: string;
+  sizes?: string[];
+  icon: string;
+  expandable?: boolean; // kartu produk tanpa template tertentu: buka daftar contoh
+}
+
+const allDesigns = (): Card[] =>
+  PRODUCT_LIST.flatMap((def) =>
+    def.presets.map((pr) => ({
+      key: `${def.id}:${pr.id}`,
+      product: def.id,
+      preset: pr.id,
+      title: pr.name,
+      subtitle: `${def.name} · ${pr.desc}`,
+      sizes: pr.sizes?.map((s) => s.label),
+      icon: def.icon,
+    }))
+  );
+
+const matches = (c: Card, q: string) => {
+  const t = `${c.title} ${c.subtitle} ${(c.sizes || []).join(' ')}`.toLowerCase();
+  return q
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((w) => t.includes(w));
+};
+
+/** Beranda: pilih desain (dikelompokkan / semua), tampilan gambar besar / daftar, cari */
 export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImport }) => {
+  const [view, setViewState] = useState<ViewPref>(loadView);
   const [open, setOpen] = useState<{ cat: number; id: ProductId } | null>(null);
+  const [q, setQ] = useState('');
+  const setView = (v: Partial<ViewPref>) => {
+    const next = { ...view, ...v };
+    setViewState(next);
+    try {
+      localStorage.setItem(VIEW_KEY, JSON.stringify(next));
+    } catch {
+      // abaikan
+    }
+  };
+  const designs = useMemo(allDesigns, []);
+  const searching = q.trim().length > 0;
+  const found = searching ? designs.filter((c) => matches(c, q)) : [];
+
+  const kitchenCard = (
+    <button
+      key="kitchen"
+      onClick={onKitchen}
+      className={
+        view.layout === 'besar'
+          ? 'p-3 rounded-2xl border bg-white border-stone-200 hover:border-stone-400 text-left cursor-pointer'
+          : 'w-full flex items-center gap-3 p-2.5 rounded-xl border bg-white border-stone-200 hover:border-stone-400 text-left cursor-pointer'
+      }
+    >
+      <div className={view.layout === 'besar' ? 'aspect-[4/3] rounded-xl bg-stone-100 text-stone-500 p-6 mb-2' : 'w-24 h-18 shrink-0 rounded-lg bg-stone-100 text-stone-500 p-3'}>
+        <svg viewBox="0 0 60 40" className="w-full h-full" aria-hidden="true">
+          <path d={KITCHEN_ICON} fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" />
+        </svg>
+      </div>
+      <div className="min-w-0">
+        <div className="font-bold">Meja dapur</div>
+        <div className="text-xs text-stone-500">wastafel · kompor · laci</div>
+      </div>
+    </button>
+  );
+
+  const renderCard = (c: Card, onClick: () => void, active = false) =>
+    view.layout === 'besar' ? (
+      <button
+        key={c.key}
+        onClick={onClick}
+        aria-expanded={c.expandable ? active : undefined}
+        className={`p-3 rounded-2xl border text-left cursor-pointer transition ${active ? 'bg-sky-50 border-sky-600 ring-1 ring-sky-600' : 'bg-white border-stone-200 hover:border-stone-400'}`}
+      >
+        <div className="aspect-[4/3] rounded-xl bg-stone-100 mb-2 overflow-hidden">
+          <ProductThumb product={c.product} preset={c.preset} fallbackIcon={c.icon} alt={c.title} />
+        </div>
+        <div className="font-bold leading-tight">{c.title}</div>
+        <div className="text-xs text-stone-500 mt-0.5">{c.subtitle}</div>
+      </button>
+    ) : (
+      <button
+        key={c.key}
+        onClick={onClick}
+        aria-expanded={c.expandable ? active : undefined}
+        className={`w-full flex items-center gap-3 p-2.5 rounded-xl border text-left cursor-pointer transition ${active ? 'bg-sky-50 border-sky-600 ring-1 ring-sky-600' : 'bg-white border-stone-200 hover:border-stone-400'}`}
+      >
+        <div className="w-24 h-[72px] shrink-0 rounded-lg bg-stone-100 overflow-hidden">
+          <ProductThumb product={c.product} preset={c.preset} fallbackIcon={c.icon} alt={c.title} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold leading-tight">{c.title}</div>
+          <div className="text-xs text-stone-500">{c.subtitle}</div>
+          {c.sizes && c.sizes.length > 1 && <div className="text-[11px] text-sky-700 mt-0.5 truncate">{c.sizes.join(' · ')}</div>}
+        </div>
+        <ArrowRight className="w-4 h-4 text-stone-300 shrink-0" />
+      </button>
+    );
+
+  const wrap = (children: React.ReactNode) =>
+    view.layout === 'besar' ? (
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">{children}</div>
+    ) : (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">{children}</div>
+    );
+
+  /** Daftar contoh (template) satu produk */
+  const presetPanel = (id: ProductId) => {
+    const def = PRODUCTS[id];
+    return (
+      <div className="p-4 rounded-2xl bg-white border border-stone-200 space-y-3">
+        <div className="flex items-baseline justify-between gap-2">
+          <h3 className="text-lg font-bold">Pilih desain {def.name.toLowerCase()}</h3>
+          <button onClick={() => onPick(id)} className="text-sm font-semibold text-sky-700 hover:underline cursor-pointer">
+            Mulai dari ukuran standar →
+          </button>
+        </div>
+        {wrap(
+          designs
+            .filter((c) => c.product === id)
+            .map((c) => renderCard({ ...c, subtitle: PRODUCTS[id].presets.find((p) => p.id === c.preset)?.desc || '' }, () => onPick(c.product, c.preset)))
+        )}
+      </div>
+    );
+  };
+
+  const seg = (on: boolean) => `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold cursor-pointer ${on ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-600 hover:text-stone-900'}`;
 
   return (
     <div className="min-h-[100dvh] w-full overflow-y-auto bg-stone-100 text-stone-900">
@@ -42,12 +184,12 @@ export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImpor
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div className="space-y-1">
-            <h1 className="text-2xl sm:text-3xl font-bold">Mau bikin apa?</h1>
-            <p className="text-stone-600">Pilih jenis barang, lalu mulai dari contoh yang paling mirip. Semua ukuran bisa diubah nanti.</p>
-          </div>
+      <main className="max-w-5xl mx-auto px-4 py-6 space-y-5">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-bold">Mau bikin apa?</h1>
+          <p className="text-stone-600">
+            {designs.length} desain siap pakai. Pilih yang paling mirip, semua ukuran bisa diubah nanti.
+          </p>
         </div>
 
         {resume && (
@@ -61,80 +203,81 @@ export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImpor
           </button>
         )}
 
-        {CATEGORIES.map((cat, ci) => {
-          const openHere = open && open.cat === ci ? PRODUCTS[open.id] : null;
-          return (
-            <section key={cat.title} className="space-y-2.5">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-stone-500">{cat.title}</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                {cat.items.map((it) => {
-                  const def = PRODUCTS[it.product];
-                  const isOpen = !it.preset && open?.cat === ci && open.id === it.product;
-                  return (
-                    <button
-                      key={`${it.product}-${it.preset || ''}`}
-                      onClick={() => (it.preset ? onPick(it.product, it.preset) : setOpen(isOpen ? null : { cat: ci, id: it.product }))}
-                      aria-expanded={it.preset ? undefined : isOpen}
-                      className={`p-3 rounded-2xl border text-left cursor-pointer transition ${
-                        isOpen ? 'bg-sky-50 border-sky-600 ring-1 ring-sky-600' : 'bg-white border-stone-200 hover:border-stone-400'
-                      }`}
-                    >
-                      <div className="h-20 rounded-xl bg-stone-100 text-stone-700 p-3 mb-2">
-                        <Icon d={it.icon || def.icon} />
-                      </div>
-                      <div className="font-bold">{it.title}</div>
-                      <div className="text-xs text-stone-500">{it.subtitle}</div>
-                    </button>
-                  );
-                })}
-                {ci === CATEGORIES.length - 1 && (
-                  <button onClick={onKitchen} className="p-3 rounded-2xl border bg-white border-stone-200 hover:border-stone-400 text-left cursor-pointer">
-                    <div className="h-20 rounded-xl bg-stone-100 text-stone-700 p-3 mb-2">
-                      <Icon d={KITCHEN_ICON} />
-                    </div>
-                    <div className="font-bold">Meja dapur</div>
-                    <div className="text-xs text-stone-500">wastafel · kompor · laci</div>
-                  </button>
-                )}
-              </div>
+        {/* Cari + pengaturan tampilan */}
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Cari desain, mis. stool bar, rak buku, meja lipat"
+              className="w-full pl-9 pr-9 py-2 rounded-xl border border-stone-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-sky-300"
+              aria-label="Cari desain"
+            />
+            {searching && (
+              <button onClick={() => setQ('')} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-stone-400 hover:text-stone-700 cursor-pointer" aria-label="Hapus pencarian">
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </label>
+          <div className="flex p-1 rounded-xl bg-stone-200" role="radiogroup" aria-label="Kelompokkan">
+            <button role="radio" aria-checked={view.group} onClick={() => setView({ group: true })} className={seg(view.group)}>
+              <Layers className="w-4 h-4" /> Per kategori
+            </button>
+            <button role="radio" aria-checked={!view.group} onClick={() => setView({ group: false })} className={seg(!view.group)}>
+              Semua desain
+            </button>
+          </div>
+          <div className="flex p-1 rounded-xl bg-stone-200" role="radiogroup" aria-label="Tampilan">
+            <button role="radio" aria-checked={view.layout === 'besar'} onClick={() => setView({ layout: 'besar' })} className={seg(view.layout === 'besar')} title="Gambar besar">
+              <LayoutGrid className="w-4 h-4" /> <span className="hidden sm:inline">Gambar besar</span>
+            </button>
+            <button role="radio" aria-checked={view.layout === 'daftar'} onClick={() => setView({ layout: 'daftar' })} className={seg(view.layout === 'daftar')} title="Daftar dengan keterangan">
+              <List className="w-4 h-4" /> <span className="hidden sm:inline">Daftar</span>
+            </button>
+          </div>
+        </div>
 
-              {openHere && (
-                <div className="p-4 rounded-2xl bg-white border border-stone-200 space-y-3">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <h3 className="text-lg font-bold">Contoh {openHere.name.toLowerCase()}</h3>
-                    <button onClick={() => onPick(openHere.id)} className="text-sm font-semibold text-sky-700 hover:underline cursor-pointer">
-                      Mulai dari ukuran standar →
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {openHere.presets.map((pr) => (
-                      <button
-                        key={pr.id}
-                        onClick={() => onPick(openHere.id, pr.id)}
-                        className="flex items-center gap-3 p-3 rounded-xl border border-stone-200 hover:border-sky-600 hover:bg-sky-50 text-left cursor-pointer"
-                      >
-                        <span className="w-12 h-9 shrink-0 text-stone-600">
-                          <Icon d={openHere.icon} />
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block font-semibold text-sm">{pr.name}</span>
-                          <span className="block text-xs text-stone-500">{pr.desc}</span>
-                          {pr.sizes && pr.sizes.length > 1 && (
-                            <span className="block text-[11px] text-sky-700 mt-0.5">{pr.sizes.map((s) => s.label).join(' · ')}</span>
-                          )}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </section>
-          );
-        })}
+        {searching ? (
+          <section className="space-y-2.5">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-stone-500">{found.length} hasil untuk “{q.trim()}”</h2>
+            {found.length ? wrap(found.map((c) => renderCard(c, () => onPick(c.product, c.preset)))) : <p className="text-sm text-stone-500">Belum ada desain yang cocok. Coba kata lain.</p>}
+          </section>
+        ) : view.group ? (
+          CATEGORIES.map((cat, ci) => {
+            const openHere = open && open.cat === ci ? open.id : null;
+            return (
+              <section key={cat.title} className="space-y-2.5">
+                <h2 className="text-sm font-bold uppercase tracking-wider text-stone-500">{cat.title}</h2>
+                {wrap([
+                  ...cat.items.map((it) => {
+                    const def = PRODUCTS[it.product];
+                    const card: Card = {
+                      key: `${it.product}-${it.preset || ''}`,
+                      product: it.product,
+                      preset: it.preset || def.presets[0]?.id,
+                      title: it.title,
+                      subtitle: it.preset ? it.subtitle : `${it.subtitle} · ${def.presets.length} desain`,
+                      icon: it.icon || def.icon,
+                      expandable: !it.preset,
+                    };
+                    const active = !it.preset && openHere === it.product;
+                    return renderCard(card, () => (it.preset ? onPick(it.product, it.preset) : setOpen(active ? null : { cat: ci, id: it.product })), active);
+                  }),
+                  ...(ci === CATEGORIES.length - 1 ? [kitchenCard] : []),
+                ])}
+                {openHere && presetPanel(openHere)}
+              </section>
+            );
+          })
+        ) : (
+          <section className="space-y-2.5">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-stone-500">Semua desain</h2>
+            {wrap([...designs.map((c) => renderCard(c, () => onPick(c.product, c.preset))), kitchenCard])}
+          </section>
+        )}
 
-        <p className="text-xs text-stone-500">
-          Desain tersimpan otomatis di browser ini. Simpan file desain untuk dipindah ke HP / komputer lain.
-        </p>
+        <p className="text-xs text-stone-500">Desain tersimpan otomatis di browser ini. Simpan file desain untuk dipindah ke HP / komputer lain.</p>
       </main>
     </div>
   );

@@ -10,6 +10,8 @@ import { BOOTH } from './booth';
 import { RAK_DINDING } from './rakDinding';
 import { PAPAN_MENU } from './papanMenu';
 import { PEMBATAS } from './pembatas';
+import { RAK_BAJU } from './rakBaju';
+import { DIPAN } from './dipan';
 import { FurnitureDesign, Params, ProductDef, ProductId } from './types';
 import { DEFAULT_KITCHEN_CONFIG } from '../types/kitchen';
 
@@ -26,8 +28,10 @@ export const PRODUCTS: Record<ProductId, ProductDef> = {
   'rak-dinding': RAK_DINDING,
   'papan-menu': PAPAN_MENU,
   pembatas: PEMBATAS,
+  'rak-baju': RAK_BAJU,
+  dipan: DIPAN,
 };
-export const PRODUCT_LIST: ProductDef[] = [MEJA, KURSI, RAK, RAK_TANAMAN, TROLI, MEJA_PIKNIK, MEJA_DINDING, MEJA_BAR, BOOTH, RAK_DINDING, PAPAN_MENU, PEMBATAS];
+export const PRODUCT_LIST: ProductDef[] = [MEJA, KURSI, RAK, RAK_TANAMAN, TROLI, MEJA_PIKNIK, MEJA_DINDING, MEJA_BAR, BOOTH, RAK_DINDING, PAPAN_MENU, PEMBATAS, RAK_BAJU, DIPAN];
 
 /** Kategori di Beranda: produk atau jalan pintas ke contoh jadi tertentu */
 export interface CategoryItem {
@@ -67,6 +71,17 @@ export const CATEGORIES: { title: string; items: CategoryItem[] }[] = [
       { product: 'meja-dinding', title: 'Meja dinding', subtitle: 'dilipat menempel tembok' },
       { product: 'meja-piknik', title: 'Meja + bangku menyatu', subtitle: 'piknik · taman · cafe' },
       { product: 'kursi', preset: 'bangku-bilah', title: 'Bangku + meja samping', subtitle: 'tempat duduk & taruh minum', icon: 'M4 24h32M8 24v12M32 24v12M40 12a9 3 0 1 0 18 0a9 3 0 1 0 -18 0M49 15v21' },
+    ],
+  },
+  {
+    title: 'Kamar & rumah',
+    items: [
+      { product: 'dipan', title: 'Dipan / ranjang', subtitle: 'single · queen · king' },
+      { product: 'rak-baju', title: 'Rak gantungan baju', subtitle: 'kamar · butik · beroda' },
+      { product: 'kursi', preset: 'bangku-rak', title: 'Bangku sepatu', subtitle: 'bangku + rak bawah' },
+      { product: 'rak', preset: 'tangga', title: 'Rak tangga', subtitle: 'bersandar tembok' },
+      { product: 'meja', preset: 'rak-atas', title: 'Meja belajar + rak', subtitle: 'rak di atas meja' },
+      { product: 'kursi', preset: 'kursi-tangan', title: 'Kursi bersandaran tangan', subtitle: 'kerja · santai' },
     ],
   },
   {

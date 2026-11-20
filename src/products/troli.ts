@@ -11,7 +11,7 @@ export const TROLI: ProductDef = {
   icon: 'M12 10h34M12 24h34M12 10v14M46 4v20M18 28a3 3 0 1 0 .1 0M40 28a3 3 0 1 0 .1 0',
   steps: [
     { id: 'ukuran', title: 'Ukuran', keys: ['panjang', 'lebar', 'tinggiRak'] },
-    { id: 'bentuk', title: 'Bentuk', keys: ['tingkat', 'pegangan', 'tinggiPegangan', 'palang'] },
+    { id: 'bentuk', title: 'Bentuk', keys: ['tingkat', 'pegangan', 'tinggiPegangan', 'bibir', 'palang'] },
     { id: 'bahan', title: 'Bahan', keys: ['pipa', 'papan', 'warna'] },
     { id: 'tambahan', title: 'Roda', keys: ['ukuranRoda', 'remRoda'] },
   ],
@@ -22,13 +22,14 @@ export const TROLI: ProductDef = {
     { key: 'tingkat', label: 'Jumlah rak', type: 'number', unit: 'rak', min: 1, max: 5, step: 1 },
     { key: 'pegangan', label: 'Pegangan dorong', type: 'toggle', help: 'Pipa pegangan di sisi kiri.' },
     { key: 'tinggiPegangan', label: 'Tinggi pegangan', type: 'number', unit: 'cm', min: 70, max: 115, step: 1, marks: [{ value: 97, label: 'ergonomis' }], showIf: (p) => p.pegangan === true },
+    { key: 'bibir', label: 'Bibir penahan barang', type: 'toggle', help: 'Pagar rendah ±5 cm di keliling tiap rak supaya barang tidak jatuh saat didorong.' },
     { key: 'palang', label: 'Pipa penyangga papan', type: 'choice', options: [{ value: '20x20', label: '20×20 mm', desc: 'Beban ringan' }, { value: '20x40', label: '20×40 mm', desc: 'Beban berat / panjang' }] },
     ...materialParams(true),
     { key: 'ukuranRoda', label: 'Ukuran roda', type: 'choice', options: CASTER_OPTIONS },
     { key: 'remRoda', label: 'Roda dengan rem', type: 'toggle', help: 'Troli tidak meluncur sendiri.' },
   ],
   defaults: {
-    panjang: 70, lebar: 45, tinggiRak: 85, tingkat: 3, pegangan: true, tinggiPegangan: 97, palang: '20x20',
+    panjang: 70, lebar: 45, tinggiRak: 85, tingkat: 3, pegangan: true, tinggiPegangan: 97, palang: '20x20', bibir: false,
     pipa: '20', papan: 'kayu', warna: '#1f2226', ukuranRoda: '3', remRoda: true,
   },
   presets: [
@@ -42,6 +43,16 @@ export const TROLI: ProductDef = {
         { label: 'Bengkel', desc: '90 × 55 cm, 3 rak, roda 4"', params: { panjang: 90, lebar: 55, tinggiRak: 85, tingkat: 3, tinggiPegangan: 97, palang: '20x40', pipa: '30', ukuranRoda: '4' } },
         { label: 'Dapur ramping', desc: '45 × 30 cm, 4 rak', params: { panjang: 45, lebar: 30, tinggiRak: 90, tingkat: 4, tinggiPegangan: 102, pipa: '20', palang: '20x20', ukuranRoda: '3' } },
         { label: 'Barang (platform)', desc: '100 × 60 cm, 1 rak, roda 5"', params: { panjang: 100, lebar: 60, tinggiRak: 25, tingkat: 1, tinggiPegangan: 95, palang: '20x40', pipa: '40', ukuranRoda: '5' } },
+      ],
+    },
+    {
+      id: 'bibir',
+      name: 'Troli rak berbibir',
+      desc: 'pagar rendah keliling tiap rak + pegangan',
+      params: { pegangan: true, bibir: true },
+      sizes: [
+        { label: 'Troli piring / saji', desc: '75 × 45 cm, 3 rak, roda 3"', params: { panjang: 75, lebar: 45, tinggiRak: 85, tingkat: 3, tinggiPegangan: 100, pipa: '20', palang: '20x20', ukuranRoda: '3' } },
+        { label: 'Troli bengkel / alat', desc: '90 × 50 cm, 3 rak, roda 4"', params: { panjang: 90, lebar: 50, tinggiRak: 85, tingkat: 3, tinggiPegangan: 100, palang: '20x40', pipa: '30', ukuranRoda: '4' } },
       ],
     },
     {
@@ -71,7 +82,8 @@ export const TROLI: ProductDef = {
     const topSurface = Math.max(c + rh + b + 2, num(p, 'tinggiRak', 85));
     const postTop = topSurface - b; // ujung tiang = bidang bawah papan teratas
     const handle = bool(p, 'pegangan');
-    const hh = Math.max(postTop + 5, num(p, 'tinggiPegangan', 97));
+    const lip = bool(p, 'bibir') ? 6 : 0; // tiang diteruskan 6 cm untuk bibir rak teratas
+    const hh = Math.max(postTop + 5 + lip, num(p, 'tinggiPegangan', 97));
 
     const { list, add } = memberFactory();
     const xl = L / 2;
@@ -83,7 +95,7 @@ export const TROLI: ProductDef = {
       [xr, zb, 'Tiang kanan belakang', false],
       [xl, zf, 'Tiang kiri depan', handle],
       [xr, zf, 'Tiang kanan depan', false],
-    ].forEach(([x, z, label, tall], i) => add(`tiang-${i}`, 'y', x as number, c, z as number, (tall ? hh : postTop) - c, 'post', label as string, post));
+    ].forEach(([x, z, label, tall], i) => add(`tiang-${i}`, 'y', x as number, c, z as number, (tall ? hh : postTop + lip) - c, 'post', label as string, post));
     if (handle) add('pegangan', 'z', xl, hh - L / 2, L, D - 2 * L, 'rail-z', 'Pegangan dorong', post);
 
     const yBottom = c + rh / 2;
@@ -97,6 +109,14 @@ export const TROLI: ProductDef = {
       add(`r${t}-kiri`, 'z', xl, y, L, D - 2 * L, 'rail-z', `Palang rak ${t} kiri`, rail);
       add(`r${t}-kanan`, 'z', xr, y, L, D - 2 * L, 'rail-z', `Palang rak ${t} kanan`, rail);
       if (b > 0) boards.push(board(`papan-${t}`, `Papan rak ${t}`, L, W - L, y + rh / 2, y + rh / 2 + b, 0, D));
+      if (lip) {
+        const yl = y + rh / 2 + b + 4;
+        const lt: [number, number] = [15, 15];
+        add(`bibir-${t}-depan`, 'x', L, yl, zf, W - 2 * L, 'rail-x', `Bibir rak ${t} depan`, lt);
+        add(`bibir-${t}-belakang`, 'x', L, yl, zb, W - 2 * L, 'rail-x', `Bibir rak ${t} belakang`, lt);
+        add(`bibir-${t}-kiri`, 'z', xl, yl, L, D - 2 * L, 'rail-z', `Bibir rak ${t} kiri`, lt);
+        add(`bibir-${t}-kanan`, 'z', xr, yl, L, D - 2 * L, 'rail-z', `Bibir rak ${t} kanan`, lt);
+      }
     }
 
     return {

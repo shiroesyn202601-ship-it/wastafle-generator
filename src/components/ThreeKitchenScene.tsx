@@ -151,7 +151,7 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
     controls.dampingFactor = 0.05;
     controls.minDistance = 0.8;
     controls.maxDistance = 7.0;
-    controls.maxPolarAngle = Math.PI / 2 + 0.05;
+    controls.maxPolarAngle = Math.PI - 0.01; // boleh melihat dari bawah lantai
     controls.target.set(0, 0.45, 0);
     controlsRef.current = controls;
 

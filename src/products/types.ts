@@ -13,7 +13,9 @@ export type ProductId =
   | 'booth'
   | 'rak-dinding'
   | 'papan-menu'
-  | 'pembatas';
+  | 'pembatas'
+  | 'rak-baju'
+  | 'dipan';
 export type ParamValue = number | boolean | string;
 export type Params = Record<string, ParamValue>;
 
