@@ -123,7 +123,7 @@ export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImpor
     const on = openKeys.has(k);
     const id = `acc-${k.replace(/[^a-z0-9]/gi, '-')}`;
     return (
-      <section key={k} className={`rounded-2xl border transition ${on ? 'bg-white border-stone-300' : 'bg-white/60 border-stone-200'}`}>
+      <section key={k} className={`rounded-2xl border transition ${on ? 'bg-white border-stone-300' : 'bg-white border-stone-200'}`}>
         <h2>
           <button
             onClick={() => toggleSection(k)}
