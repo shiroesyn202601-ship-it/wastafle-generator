@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowRight, Camera, FolderOpen, History, LayoutGrid, List, Layers, Search, X } from 'lucide-react';
+import { ArrowRight, Camera, ChevronDown, ChevronsDownUp, ChevronsUpDown, FolderOpen, History, LayoutGrid, List, Layers, Search, X } from 'lucide-react';
 import { CATEGORIES, PRODUCTS, PRODUCT_LIST, ProductId } from '../../products';
 import { ProductThumb } from './ProductThumb';
 import { ThemeToggle } from '../ThemeToggle';
@@ -14,6 +14,17 @@ interface Props {
 
 const KITCHEN_ICON = 'M4 10h52M8 10v26M52 10v26M24 14a6 4 0 1 0 12 0';
 const VIEW_KEY = 'studiorangka_home_view';
+const OPEN_KEY = 'studiorangka_home_open'; // bagian accordion yang terbuka (per kategori / semua desain)
+
+/** Bagian accordion yang terbuka; belum pernah diatur = hanya bagian pertama yang terbuka */
+const loadOpen = (): Record<string, string[]> | null => {
+  try {
+    const v = JSON.parse(localStorage.getItem(OPEN_KEY) || 'null');
+    return v && typeof v === 'object' ? v : null;
+  } catch {
+    return null;
+  }
+};
 
 type Layout = 'besar' | 'daftar';
 interface ViewPref {
@@ -85,6 +96,56 @@ export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImpor
     }
   };
   const designs = useMemo(allDesigns, []);
+
+  // ---------- Accordion: kunci bagian per mode tampilan ----------
+  const mode = view.group ? 'kategori' : 'semua';
+  const sectionKeys = useMemo(
+    () => (view.group ? CATEGORIES.map((c) => `cat:${c.title}`) : [...PRODUCT_LIST.map((d) => `prod:${d.id}`), 'dapur']),
+    [view.group]
+  );
+  const [openMap, setOpenMap] = useState<Record<string, string[]>>(() => loadOpen() || {});
+  const openKeys = new Set((openMap[mode] ?? sectionKeys.slice(0, 1)).filter((k) => sectionKeys.includes(k)));
+  const saveOpen = (keys: string[]) => {
+    const next = { ...openMap, [mode]: keys };
+    setOpenMap(next);
+    try {
+      localStorage.setItem(OPEN_KEY, JSON.stringify(next));
+    } catch {
+      // abaikan
+    }
+  };
+  const toggleSection = (k: string) => saveOpen(openKeys.has(k) ? [...openKeys].filter((x) => x !== k) : [...openKeys, k]);
+  const allOpen = openKeys.size === sectionKeys.length;
+  const allClosed = openKeys.size === 0;
+
+  /** Satu bagian accordion: judul yang bisa diketuk + isi */
+  const accordion = (k: string, title: React.ReactNode, meta: string, body: () => React.ReactNode) => {
+    const on = openKeys.has(k);
+    const id = `acc-${k.replace(/[^a-z0-9]/gi, '-')}`;
+    return (
+      <section key={k} className={`rounded-2xl border transition ${on ? 'bg-white border-stone-300' : 'bg-white/60 border-stone-200'}`}>
+        <h2>
+          <button
+            onClick={() => toggleSection(k)}
+            aria-expanded={on}
+            aria-controls={id}
+            className="w-full flex items-center gap-3 px-4 py-3 text-left cursor-pointer rounded-2xl hover:bg-stone-50"
+          >
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm font-bold uppercase tracking-wider text-stone-700">{title}</span>
+              <span className="block text-xs text-stone-500 truncate">{meta}</span>
+            </span>
+            <ChevronDown className={`w-5 h-5 shrink-0 text-stone-500 transition-transform ${on ? 'rotate-180' : ''}`} />
+          </button>
+        </h2>
+        {on && (
+          <div id={id} className="px-3 sm:px-4 pb-4 pt-1 space-y-3">
+            {body()}
+          </div>
+        )}
+      </section>
+    );
+  };
   const searching = q.trim().length > 0;
   const found = searching ? designs.filter((c) => matches(c, q)) : [];
 
@@ -289,66 +350,94 @@ export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImpor
           </div>
         </div>
 
+        {!searching && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-stone-500">
+              {allClosed ? `${sectionKeys.length} ${view.group ? 'kategori' : 'produk'}, semua tertutup` : `${openKeys.size} dari ${sectionKeys.length} ${view.group ? 'kategori' : 'produk'} terbuka`}
+            </span>
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => saveOpen(sectionKeys)}
+                disabled={allOpen}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-stone-300 bg-white text-xs font-semibold text-stone-700 whitespace-nowrap hover:bg-stone-50 disabled:opacity-40 cursor-pointer disabled:cursor-default"
+              >
+                <ChevronsUpDown className="w-4 h-4" /> Buka semua
+              </button>
+              <button
+                onClick={() => saveOpen([])}
+                disabled={allClosed}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-stone-300 bg-white text-xs font-semibold text-stone-700 whitespace-nowrap hover:bg-stone-50 disabled:opacity-40 cursor-pointer disabled:cursor-default"
+              >
+                <ChevronsDownUp className="w-4 h-4" /> Tutup semua
+              </button>
+            </div>
+          </div>
+        )}
+
         {searching ? (
           <section className="space-y-2.5">
             <h2 className="text-sm font-bold uppercase tracking-wider text-stone-500">{found.length} hasil untuk “{q.trim()}”</h2>
             {found.length ? wrap(found.map((c) => renderCard(c, () => onPick(c.product, c.preset)))) : <p className="text-sm text-stone-500">Belum ada desain yang cocok. Coba kata lain.</p>}
           </section>
         ) : view.group ? (
-          CATEGORIES.map((cat, ci) => {
-            const openHere = open && open.cat === ci ? open : null;
-            return (
-              <section key={cat.title} className="space-y-2.5">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-stone-500">{cat.title}</h2>
-                {wrap([
-                  ...cat.items.map((it) => {
-                    const def = PRODUCTS[it.product];
-                    const key = `${it.product}-${it.preset || ''}-${it.group || ''}`;
-                    const inGroup = it.group ? def.presets.filter((p) => p.group === it.group) : [];
-                    const card: Card = {
-                      key,
-                      product: it.product,
-                      preset: it.preset || inGroup[0]?.id || def.presets[0]?.id,
-                      title: it.title,
-                      subtitle: it.preset ? it.subtitle : `${it.subtitle} · ${it.group ? inGroup.length : def.presets.length} desain`,
-                      icon: it.icon || def.icon,
-                      expandable: !it.preset,
-                    };
-                    const active = !it.preset && openHere?.key === key;
-                    const firstGroup = groupsOf(it.product)[0]?.id ?? BASIC;
-                    return renderCard(
-                      card,
-                      () => (it.preset ? onPick(it.product, it.preset) : setOpen(active ? null : { cat: ci, id: it.product, key, group: it.group ?? firstGroup })),
-                      active
-                    );
-                  }),
-                  ...(ci === CATEGORIES.length - 1 ? [kitchenCard] : []),
-                ])}
-                {openHere && presetPanel(openHere.id, openHere.group, (g) => setOpen({ ...openHere, group: g }))}
-              </section>
-            );
-          })
+          <div className="space-y-2.5">
+            {CATEGORIES.map((cat, ci) => {
+              const openHere = open && open.cat === ci ? open : null;
+              const count = cat.items.length + (ci === CATEGORIES.length - 1 ? 1 : 0);
+              const names = cat.items.map((it) => it.title);
+              return accordion(
+                `cat:${cat.title}`,
+                cat.title,
+                `${count} pilihan · ${names.slice(0, 4).join(', ')}${names.length > 4 ? ', dll.' : ''}`,
+                () => (
+                  <>
+                    {wrap([
+                      ...cat.items.map((it) => {
+                        const def = PRODUCTS[it.product];
+                        const key = `${it.product}-${it.preset || ''}-${it.group || ''}`;
+                        const inGroup = it.group ? def.presets.filter((p) => p.group === it.group) : [];
+                        const card: Card = {
+                          key,
+                          product: it.product,
+                          preset: it.preset || inGroup[0]?.id || def.presets[0]?.id,
+                          title: it.title,
+                          subtitle: it.preset ? it.subtitle : `${it.subtitle} · ${it.group ? inGroup.length : def.presets.length} desain`,
+                          icon: it.icon || def.icon,
+                          expandable: !it.preset,
+                        };
+                        const active = !it.preset && openHere?.key === key;
+                        const firstGroup = groupsOf(it.product)[0]?.id ?? BASIC;
+                        return renderCard(
+                          card,
+                          () => (it.preset ? onPick(it.product, it.preset) : setOpen(active ? null : { cat: ci, id: it.product, key, group: it.group ?? firstGroup })),
+                          active
+                        );
+                      }),
+                      ...(ci === CATEGORIES.length - 1 ? [kitchenCard] : []),
+                    ])}
+                    {openHere && presetPanel(openHere.id, openHere.group, (g) => setOpen({ ...openHere, group: g }))}
+                  </>
+                )
+              );
+            })}
+          </div>
         ) : (
           <>
-            {PRODUCT_LIST.map((def) => (
-              <section key={def.id} className="space-y-3">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-stone-500">
-                  {def.name} <span className="font-semibold normal-case tracking-normal">· {def.presets.length} desain</span>
-                </h2>
-                {groupsOf(def.id).map((g) => (
-                  <div key={g.id || 'dasar'} className="space-y-2">
-                    <h3 className="font-bold text-stone-800">
-                      {g.name} <span className="text-sm font-normal text-stone-500">· {g.desc}</span>
-                    </h3>
-                    {wrap(designs.filter((c) => c.product === def.id && c.group === g.id).map((c) => renderCard(c, () => onPick(c.product, c.preset))))}
-                  </div>
-                ))}
-              </section>
-            ))}
-            <section className="space-y-2.5">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-stone-500">Dapur</h2>
-              {wrap([kitchenCard])}
-            </section>
+            <div className="space-y-2.5">
+              {PRODUCT_LIST.map((def) =>
+                accordion(`prod:${def.id}`, def.name, `${def.presets.length} desain · ${def.tagline}`, () =>
+                  groupsOf(def.id).map((g) => (
+                    <div key={g.id || 'dasar'} className="space-y-2">
+                      <h3 className="font-bold text-stone-800">
+                        {g.name} <span className="text-sm font-normal text-stone-500">· {g.desc}</span>
+                      </h3>
+                      {wrap(designs.filter((c) => c.product === def.id && c.group === g.id).map((c) => renderCard(c, () => onPick(c.product, c.preset))))}
+                    </div>
+                  ))
+                )
+              )}
+              {accordion('dapur', 'Dapur', 'meja dapur · wastafel · kompor', () => wrap([kitchenCard]))}
+            </div>
           </>
         )}
 
