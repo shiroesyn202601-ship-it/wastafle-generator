@@ -3,6 +3,7 @@ import { CheckCircle } from 'lucide-react';
 import { KitchenStudio } from './KitchenStudio';
 import { HomeScreen } from './components/studio/HomeScreen';
 import { ProductStudio } from './components/studio/ProductStudio';
+import { PhotoDesignModal } from './components/studio/PhotoDesignModal';
 import { FurnitureDesign, PRODUCTS, ProductId, newDesign, normalizeDesign } from './products';
 import { designFromShare } from './products/share';
 
@@ -60,6 +61,7 @@ export default function App() {
     return r === 'kitchen' || r === 'product' ? r : 'home';
   });
   const [toast, setToast] = useState<string | null>(null);
+  const [photoOpen, setPhotoOpen] = useState(false);
 
   useEffect(() => lsSet(LS_ROUTE, route), [route]);
 
@@ -130,11 +132,23 @@ export default function App() {
 
   return (
     <>
-      {route === 'home' && <HomeScreen onPick={openProduct} onKitchen={openKitchen} resume={resume} onImport={handleImport} />}
+      {route === 'home' && <HomeScreen onPick={openProduct} onKitchen={openKitchen} resume={resume} onImport={handleImport} onPhoto={() => setPhotoOpen(true)} />}
       {route === 'product' && design && (
         <ProductStudio design={design} onChange={updateDesign} onHome={() => setRoute('home')} onToast={showToast} />
       )}
       {route === 'kitchen' && <KitchenStudio onHome={() => setRoute('home')} />}
+
+      {photoOpen && (
+        <PhotoDesignModal
+          onClose={() => setPhotoOpen(false)}
+          onOpen={(d, msg) => {
+            updateDesign(d);
+            setPhotoOpen(false);
+            setRoute('product');
+            showToast(msg);
+          }}
+        />
+      )}
 
       {toast && (
         <div role="status" className="fixed top-3 left-3 right-3 sm:left-auto sm:right-4 sm:max-w-sm z-[70] flex items-center gap-2 px-4 py-2.5 rounded-xl bg-stone-900 text-white text-sm shadow-xl">

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowRight, FolderOpen, History, LayoutGrid, List, Layers, Search, X } from 'lucide-react';
+import { ArrowRight, Camera, FolderOpen, History, LayoutGrid, List, Layers, Search, X } from 'lucide-react';
 import { CATEGORIES, PRODUCTS, PRODUCT_LIST, ProductId } from '../../products';
 import { ProductThumb } from './ProductThumb';
 
@@ -8,6 +8,7 @@ interface Props {
   onKitchen: () => void;
   resume: { title: string; subtitle: string; onClick: () => void } | null;
   onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onPhoto: () => void;
 }
 
 const KITCHEN_ICON = 'M4 10h52M8 10v26M52 10v26M24 14a6 4 0 1 0 12 0';
@@ -69,7 +70,7 @@ const matches = (c: Card, q: string) => {
 };
 
 /** Beranda: pilih desain (dikelompokkan / semua), tampilan gambar besar / daftar, cari */
-export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImport }) => {
+export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImport, onPhoto }) => {
   const [view, setViewState] = useState<ViewPref>(loadView);
   const [open, setOpen] = useState<{ cat: number; id: ProductId; key: string; group: string } | null>(null);
   const [q, setQ] = useState('');
@@ -228,6 +229,17 @@ export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImpor
             {designs.length} desain siap pakai. Pilih yang paling mirip, semua ukuran bisa diubah nanti.
           </p>
         </div>
+
+        <button onClick={onPhoto} className="w-full flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-sky-600 to-sky-500 text-white text-left cursor-pointer hover:from-sky-700 hover:to-sky-600 shadow-sm">
+          <span className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <Camera className="w-5 h-5" />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block font-bold">Punya foto furnitur? Buat desain dari foto</span>
+            <span className="block text-sm text-sky-100">Upload gambar meja / kursi / rak, AI membuatkan desain yang mirip</span>
+          </span>
+          <ArrowRight className="w-5 h-5 shrink-0" />
+        </button>
 
         {resume && (
           <button onClick={resume.onClick} className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-stone-200 hover:border-sky-500 text-left cursor-pointer">
