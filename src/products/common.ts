@@ -255,9 +255,21 @@ export function estimateCost(host: KitchenConfig, design: FurnitureDesign, build
 
   // Roda / karet kaki
   if (build.casters.length) {
-    const inch = build.casters[0].sizeInch;
-    const price = Math.round((prices.caster[String(inch)] ?? 80000) * (build.casters[0].brake ? 1.15 : 1));
-    lines.push({ group: 'Roda & aksesori', label: `Roda ${inch}"${build.casters[0].brake ? ' dengan rem' : ''}`, qty: build.casters.length, unit: 'buah', price, subtotal: build.casters.length * price });
+    // dikelompokkan per ukuran & rem (mis. gerobak saji: 2 roda sepeda + 2 roda putar)
+    const kinds = new Map<string, { inch: number; brake: boolean; qty: number }>();
+    build.casters.forEach((c) => {
+      const k = `${c.sizeInch}-${c.brake}`;
+      const e = kinds.get(k) || { inch: c.sizeInch, brake: c.brake, qty: 0 };
+      e.qty++;
+      kinds.set(k, e);
+    });
+    kinds.forEach(({ inch, brake, qty }) => {
+      // roda besar (angkong / sepeda) belum ada di daftar harga: perkiraan harga roda + ban
+      const base = prices.caster[String(inch)] ?? (inch >= 12 ? 175000 : inch >= 8 ? 90000 : 80000);
+      const price = Math.round(base * (brake ? 1.15 : 1));
+      const label = inch >= 12 ? `Roda sepeda ${inch}" + ban` : `Roda ${inch}"${brake ? ' dengan rem' : ''}`;
+      lines.push({ group: 'Roda & aksesori', label, qty, unit: 'buah', price, subtotal: qty * price });
+    });
   } else {
     const feet = members.filter((m) => m.axis === 'y' && m.y <= 0.5).length;
     if (feet) lines.push({ group: 'Roda & aksesori', label: 'Karet / dop kaki', qty: feet, unit: 'buah', price: prices.feet, subtotal: feet * prices.feet });

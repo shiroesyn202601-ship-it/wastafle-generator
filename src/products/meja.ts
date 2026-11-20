@@ -57,6 +57,7 @@ export const MEJA: ProductDef = {
         { value: 'z', label: 'Kaki Z', desc: 'Tapak lantai + kaki miring + rangka atas, bentuk Z' },
         { value: 'hairpin', label: 'Kaki V (hairpin)', desc: 'Kaki ramping bentuk V di tiap sudut' },
         { value: 'c', label: 'Rangka C (samping sofa)', desc: 'Tiang hanya di belakang, tapak masuk ke bawah sofa' },
+        { value: 'diagonal', label: 'Rangka melayang (2 tiang diagonal)', desc: 'Rangka atas & lantai membingkai papan, 2 tiang di sudut berseberangan' },
         { value: 'konsol', label: 'Konsol 2 kaki (menempel tembok)', desc: 'Kaki hanya di depan, belakang dibaut ke tembok' },
         { value: 'kotak', label: 'Rangka kotak akuarium', desc: 'Ring atas + ring lantai, tiang tambahan di tengah' },
         { value: 'silang', label: 'Rangka akuarium bersilang', desc: 'Panel samping & belakang diberi silang X' },
@@ -250,6 +251,18 @@ export const MEJA: ProductDef = {
         { label: 'Samping sofa', desc: '50 × 35 × 60 cm', params: { panjang: 50, lebar: 35, tinggi: 60, pipa: '20' } },
         { label: 'Meja laptop sofa', desc: '60 × 40 × 65 cm', params: { panjang: 60, lebar: 40, tinggi: 65, pipa: '20' } },
         { label: 'Samping ranjang', desc: '45 × 35 × 55 cm', params: { panjang: 45, lebar: 35, tinggi: 55, pipa: '20' } },
+      ],
+    },
+    {
+      id: 'kopi-melayang',
+      group: 'kopi',
+      name: 'Meja kopi rangka melayang (2 tiang diagonal)',
+      desc: 'rangka atas & rangka lantai membingkai papan, disambung hanya 2 tiang di sudut kiri-depan dan kanan-belakang',
+      params: { modelKaki: 'diagonal', bentukDaun: 'kotak', panjang: 80, lebar: 60, tinggi: 45, pipa: '40' },
+      sizes: [
+        { label: 'Meja kopi', desc: '80 × 60 × 45 cm', params: { panjang: 80, lebar: 60, tinggi: 45, pipa: '40' } },
+        { label: 'Meja kopi panjang', desc: '110 × 60 × 40 cm', params: { panjang: 110, lebar: 60, tinggi: 40, pipa: '40' } },
+        { label: 'Meja samping kotak', desc: '50 × 50 × 50 cm', params: { panjang: 50, lebar: 50, tinggi: 50, pipa: '40' } },
       ],
     },
     {
@@ -562,6 +575,29 @@ export const MEJA: ProductDef = {
       add('atas-depan', 'x', xs[0] + L / 2, ya, fz1 - 1, xs[1] - xs[0] - L, 'rail-x', 'Rangka atas depan', apron);
       add('atas-belakang', 'x', xs[0] + L / 2, ya, fz0 + 1, xs[1] - xs[0] - L, 'rail-x', 'Rangka atas belakang', apron);
       add('palang-panjang', 'x', xs[0] + 1, yc, zc, xs[1] - xs[0] - 2, 'rail-x', 'Palang penghubung kaki trapesium', rail);
+    } else if (model === 'diagonal') {
+      // Rangka melayang: rangka kotak atas + rangka kotak lantai (sama besar) membingkai papan,
+      // disambung hanya 2 tiang di sudut berseberangan (kiri-depan & kanan-belakang)
+      const ring = (prefix: string, name: string, y: number) => {
+        add(`${prefix}-depan`, 'x', 0, y, D - L / 2, W, 'rail-x', `${name} depan`, leg);
+        add(`${prefix}-belakang`, 'x', 0, y, L / 2, W, 'rail-x', `${name} belakang`, leg);
+        add(`${prefix}-kiri`, 'z', L / 2, y, L, D - 2 * L, 'rail-z', `${name} kiri`, leg);
+        add(`${prefix}-kanan`, 'z', W - L / 2, y, L, D - 2 * L, 'rail-z', `${name} kanan`, leg);
+      };
+      ring('ring-atas', 'Rangka atas', H - L / 2);
+      ring('ring-bawah', 'Rangka lantai', L / 2);
+      add('tiang-kiri-depan', 'y', L / 2, L, D - L / 2, H - 2 * L, 'post', 'Tiang kiri depan', leg);
+      add('tiang-kanan-belakang', 'y', W - L / 2, L, L / 2, H - 2 * L, 'post', 'Tiang kanan belakang', leg);
+      // papan masuk ke dalam bingkai, permukaannya rata dengan atas rangka; ditahan siku 20×20 di sisi dalam rangka kiri & kanan
+      const inset = (id: string, label: string, surface: number) => {
+        const yl = Math.max(1, surface - b - 1); // as siku penahan
+        const y0 = Math.max(yl + 1, surface - b);
+        add(`${id}-siku-kiri`, 'z', L + 1, yl, L, D - 2 * L, 'rail-z', `Siku penahan ${label.toLowerCase()} kiri`, rail);
+        add(`${id}-siku-kanan`, 'z', W - L - 1, yl, L, D - 2 * L, 'rail-z', `Siku penahan ${label.toLowerCase()} kanan`, rail);
+        if (b > 0) boards.push(board(id, label, L, W - L, y0, y0 + b, L, D - L));
+      };
+      inset('papan-atas', 'Papan atas', H);
+      inset('papan-bawah', 'Papan bawah', L);
     } else if (model === 'c') {
       // Rangka C di tiap ujung: tapak lantai, tiang tegak hanya di belakang, rangka atas menjorok ke depan
       const xs = [fx0 + L / 2, fx1 - L / 2];
@@ -771,7 +807,7 @@ export const MEJA: ProductDef = {
       }
     }
 
-    if (b > 0) {
+    if (b > 0 && model !== 'diagonal') {
       const top = board('daun-meja', round ? 'Daun meja bundar' : 'Daun meja', 0, W, yTop, H, 0, D);
       if (round) top.shape = 'round';
       boards.unshift(top);
@@ -824,6 +860,12 @@ export const MEJA: ProductDef = {
         out.push({ level: 'warn', message: 'Kaki Z memikul beban lewat batang miring; pipa 20×20 bisa melentur.', fix: { label: 'Pakai pipa 40×40', params: { pipa: '40' } } });
       if (model === 'trapesium' && H > 95)
         out.push({ level: 'warn', message: 'Kaki trapesium terbalik makin sempit di lantai; untuk meja setinggi bar mudah goyang ke depan.', fix: { label: 'Pakai kaki U', params: { modelKaki: 'u' } } });
+      if (model === 'diagonal') {
+        if (str(p, 'pipa') !== '40') out.push({ level: 'warn', message: 'Rangka melayang hanya ditopang 2 tiang: pakai pipa 40×40 supaya tidak goyang dan papan bisa dibingkai.', fix: { label: 'Pakai pipa 40×40', params: { pipa: '40' } } });
+        if (H > 60) out.push({ level: 'warn', message: 'Rangka 2 tiang diagonal paling kokoh untuk meja rendah (meja kopi / samping), maksimal ±60 cm.', fix: { label: 'Tinggi 45 cm', params: { tinggi: 45 } } });
+        if (round) out.push({ level: 'warn', message: 'Rangka melayang membingkai papan kotak; daun bundar tidak bisa dipakai.', fix: { label: 'Daun kotak', params: { bentukDaun: 'kotak' } } });
+        out.push({ level: 'info', message: 'Papan atas & bawah masuk ke dalam bingkai rangka, ditahan siku 20×20 di sisi dalam rangka kiri & kanan.' });
+      }
       if (model === 'c') {
         if (D > 55) out.push({ level: 'warn', message: `Rangka C hanya bertiang di belakang; daun sedalam ${D} cm mudah melentur di depan.`, fix: { label: 'Lebar 40 cm', params: { lebar: 40 } } });
         if (W > 100) out.push({ level: 'warn', message: 'Meja samping rangka C sebaiknya tidak lebih dari 100 cm.', fix: { label: 'Panjang 60 cm', params: { panjang: 60 } } });

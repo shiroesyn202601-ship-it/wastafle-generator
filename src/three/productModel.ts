@@ -86,6 +86,31 @@ export function buildProductModel(
       const top = c.topY / 100;
       const x = leftX + c.x / 100;
       const z = backZ + c.z / 100;
+      // Roda sepeda (≥ 12"): ban + velg + jari-jari + hub, tanpa dudukan roda putar
+      if (c.sizeInch >= 12) {
+        const wheel = new THREE.Group();
+        const tube = Math.max(0.016, r * 0.1);
+        const tire = new THREE.Mesh(new THREE.TorusGeometry(r - tube, tube, 12, 48), rubber);
+        tire.castShadow = true;
+        wheel.add(tire);
+        wheel.add(new THREE.Mesh(new THREE.TorusGeometry(r - tube * 2.2, tube * 0.35, 8, 48), metal));
+        const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.06, 16), metal);
+        hub.rotation.x = Math.PI / 2; // as roda tegak lurus bidang roda
+        wheel.add(hub);
+        const spokeLen = r - tube * 2.2;
+        for (let k = 0; k < 16; k++) {
+          const a = (k / 16) * Math.PI * 2;
+          const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.0015, 0.0015, spokeLen, 4), metal);
+          spoke.position.set((Math.cos(a) * spokeLen) / 2, (Math.sin(a) * spokeLen) / 2, 0);
+          spoke.rotation.z = a - Math.PI / 2;
+          wheel.add(spoke);
+        }
+        // bidang roda: as z → bidang XY (bawaan torus); as x → diputar 90° supaya menggelinding depan–belakang
+        if (c.axle !== 'z') wheel.rotation.y = Math.PI / 2;
+        wheel.position.set(x, r, z);
+        group.add(wheel);
+        return;
+      }
       const plate = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.005, 0.07), metal);
       plate.position.set(x, top - 0.0025, z);
       group.add(plate);

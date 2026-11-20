@@ -90,6 +90,7 @@ export const CATEGORIES: { title: string; items: CategoryItem[] }[] = [
       { product: 'kursi', preset: 'bangku-meja', title: 'Bangku cafe + meja kecil', subtitle: 'depan toko · trotoar' },
       { product: 'meja-piknik', preset: 'trapesium', title: 'Meja taman rangka miring', subtitle: 'rooftop · teras · satu sisi' },
       { product: 'meja-bar', group: 'meja-kasir', title: 'Meja kasir', subtitle: 'toko · warung · minimarket' },
+      { product: 'troli', group: 'gerobak-saji', title: 'Gerobak saji roda sepeda', subtitle: 'bar cart · kopi keliling · kabinet / laci' },
     ],
   },
   {
@@ -99,7 +100,7 @@ export const CATEGORIES: { title: string; items: CategoryItem[] }[] = [
       { product: 'meja', group: 'makan', title: 'Meja makan', subtitle: '2 – 8 orang' },
       { product: 'meja', group: 'kerja', title: 'Meja kerja / belajar', subtitle: 'rak atas · kaki Z · trapesium' },
       { product: 'meja', group: 'akuarium', title: 'Meja akuarium', subtitle: 'rangka kotak · bersilang' },
-      { product: 'meja', group: 'kopi', title: 'Meja kopi, samping & konsol', subtitle: 'kaki X · hairpin · rangka C' },
+      { product: 'meja', group: 'kopi', title: 'Meja kopi, samping & konsol', subtitle: 'kaki X · hairpin · rangka C · melayang' },
       { product: 'meja', preset: 'bundar', title: 'Meja bundar', subtitle: 'makan · cafe', icon: 'M10 12a20 5 0 1 0 40 0a20 5 0 1 0 -40 0M30 17v17M20 36h20' },
       { product: 'kursi', title: 'Kursi & stool', subtitle: 'sled · silang X · kantilever' },
       { product: 'kursi', preset: 'bangku', title: 'Bangku', subtitle: 'panjang · taman · bilah', icon: 'M4 18h52M8 18v18M52 18v18M8 30h44' },

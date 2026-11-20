@@ -98,6 +98,7 @@ export interface Caster {
   topY: number;
   sizeInch: number;
   brake: boolean;
+  axle?: 'x' | 'z'; // arah as roda: x (bawaan) = menggelinding depan–belakang, z = menggelinding kiri–kanan (roda sepeda gerobak)
 }
 
 export interface ProductBuild {
