@@ -498,10 +498,17 @@ export const RAK_PARTISI: ProductDef = {
       for (let i = 0; i < m - 1; i++) {
         for (let j = 0; j < ns; j++) {
           const up = (i + j) % 2 === 0;
-          const xL = xa + ((xb - xa) * j) / ns;
-          const xR = xa + ((xb - xa) * (j + 1)) / ns;
           const yA = up ? ys[i] : ys[i + 1];
           const yB = up ? ys[i + 1] : ys[i];
+          // Ujung dipotong rata mendatar (menempel di palang). Dua batang yang bertemu di satu titik puncak
+          // tidak boleh saling tembus: ujung tiap batang digeser menjauh dari titik puncak sejauh setengah
+          // lebar tapak potongannya, sehingga kedua potongan duduk bersebelahan dan dilas di sisi masing-masing.
+          const dxN = (xb - xa) / ns;
+          const dyN = Math.abs(ys[i + 1] - ys[i]);
+          const sin = dyN / Math.hypot(dxN, dyN);
+          const sh = sin >= 0.35 ? thin[0] / 10 / 2 / sin + 0.1 : 0;
+          const xL = xa + dxN * j + sh;
+          const xR = xa + dxN * (j + 1) - sh;
           [
             [zf + 1 + 0.75, 'depan'],
             [zb - 1 - 0.75, 'belakang'],

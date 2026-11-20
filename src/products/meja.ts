@@ -1,8 +1,29 @@
 import { FrameHinge } from '../types/kitchen';
 import { Board, Params, ProductCheck, ProductDef } from './types';
 import { BOARD_THICK, CASTER_OPTIONS, board, bool, casterHeight, materialParams, memberFactory, num, str } from './common';
+import { angledFrame, cutAxisIndex, memberFromPoints } from '../utils/frameLayout';
 
 type P3 = [number, number, number];
+
+/**
+ * Setengah lebar tapak ujung batang miring a→b (penampang t cm), diukur sepanjang sumbu dunia k (0 x, 1 y, 2 z).
+ * Ujung batang miring dipotong rata pada bidang potongnya (lantai / sisi batang); tapak potongan itu lebih lebar
+ * dari pipanya. Dipakai supaya ujung batang menempel di SISI batang lain, tidak masuk ke dalamnya.
+ */
+function cutHalf(a: P3, b: P3, t: number, k: number): number {
+  const m = memberFromPoints({ id: 'tmp', role: 'custom', label: '' }, a, b);
+  if (!m.end) return t / 2;
+  const f = angledFrame(m, t, t);
+  const di = cutAxisIndex(m);
+  let e = 0;
+  for (const s of [-1, 1])
+    for (const q of [-1, 1]) {
+      const off = [0, 1, 2].map((i) => (f.wd[i] * s * t) / 2 + (f.hd[i] * q * t) / 2);
+      const lam = -off[di] / f.u[di];
+      e = Math.max(e, Math.abs(off[k] + lam * f.u[k]));
+    }
+  return e;
+}
 
 /** Model kaki yang memakai 4 kaki di sudut (boleh rak bawah, palang, roda, rak atas) */
 const isFour = (p: Params) => p.modelKaki === 'lurus' || p.modelKaki === 'melebar';
@@ -383,6 +404,8 @@ export const MEJA: ProductDef = {
     const ya = yTop - ah / 2; // as rangka atas
     const rail: [number, number] = [20, 20];
     const leg: [number, number] = [L * 10, L * 10];
+    const aw = apron[0] / 20; // setengah lebar (mendatar) pipa rangka atas
+    const rw = rail[0] / 20; // setengah lebar pipa palang
     const { list, add, line } = memberFactory();
     const boards: Board[] = [];
     const hinges: FrameHinge[] = [];
@@ -407,23 +430,42 @@ export const MEJA: ProductDef = {
       const span = Math.min(num(p, 'bentangAlas', 56), Math.min(W, D) - 2);
       const arm = Math.min(W, D) * 0.7;
       const alas = str(p, 'alas', 'silang');
+      // laba-laba silang: kiri–kanan menerus, depan–belakang dipotong dua dan dilas di kedua sisinya
       add('laba-x', 'x', cx - arm / 2, ya, cz, arm, 'rail-x', 'Laba-laba atas kiri–kanan', apron);
-      add('laba-z', 'z', cx, ya, cz - arm / 2, arm, 'rail-z', 'Laba-laba atas depan–belakang', apron);
+      add('laba-z', 'z', cx, ya, cz - arm / 2, arm / 2 - aw, 'rail-z', 'Laba-laba atas depan–belakang', apron);
+      add('laba-z2', 'z', cx, ya, cz + aw, arm / 2 - aw, 'rail-z', 'Laba-laba atas depan–belakang (2)', apron);
       let colBottom = 0;
       if (alas === 'silang') {
         add('alas-x', 'x', cx - span / 2, L / 2, cz, span, 'rail-x', 'Alas silang kiri–kanan', leg);
-        add('alas-z', 'z', cx, L / 2, cz - span / 2, span, 'rail-z', 'Alas silang depan–belakang', leg);
+        add('alas-z', 'z', cx, L / 2, cz - span / 2, span / 2 - L / 2, 'rail-z', 'Alas silang depan–belakang', leg);
+        add('alas-z2', 'z', cx, L / 2, cz + L / 2, span / 2 - L / 2, 'rail-z', 'Alas silang depan–belakang (2)', leg);
         colBottom = L;
       } else if (alas === 'bintang') {
-        const yh = 14;
-        const r = span / 2 / Math.SQRT2;
+        // Kaki bintang dilas di bawah plat dudukan; tiang berdiri di atas plat (ujung atas kaki dipotong rata plat,
+        // keempat kaki bertemu sisi-ke-sisi di tengah, tidak saling tembus). Pola sama dengan alas plat.
+        const tp = 0.8; // tebal plat dudukan (8 mm)
+        const rEnd = span / 2; // jarak ujung kaki di lantai dari as tiang (arah diagonal)
+        let t0 = L; // jarak ujung atas as kaki dari as tiang (arah diagonal)
+        let ext = L / 2;
+        let yh = 14;
+        for (let k = 0; k < 4; k++) {
+          yh = Math.max(14, 0.45 * (rEnd - t0)); // alas lebar: kaki tetap cukup curam supaya ujungnya dipotong rata lantai
+          ext = cutHalf([t0, yh, 0], [rEnd, 0, 0], L, 0);
+          t0 = L / 2 + ext + 0.1; // ujung dalam keempat kaki bertemu sisi-ke-sisi di tengah
+        }
+        const d0 = t0 / Math.SQRT2;
+        const r = rEnd / Math.SQRT2;
         [
           [-1, -1],
           [1, -1],
           [-1, 1],
           [1, 1],
-        ].forEach(([sx, sz], i) => line(`alas-bintang-${i}`, [cx, yh, cz], [cx + sx * r, 0, cz + sz * r], 'post', `Kaki bintang ${i + 1}`, leg));
-        colBottom = yh - 4;
+        ].forEach(([sx, sz], i) => line(`alas-bintang-${i}`, [cx + sx * d0, yh, cz + sz * d0], [cx + sx * r, 0, cz + sz * r], 'post', `Kaki bintang ${i + 1}`, leg));
+        const ph = Math.ceil((t0 + ext + L / 2) / Math.SQRT2);
+        const pl = board('plat-bintang', 'Plat dudukan tiang', cx - ph, cx + ph, yh, yh + tp, cz - ph, cz + ph);
+        pl.steelMm = 8;
+        boards.push(pl);
+        colBottom = yh + tp;
       } else {
         const pl = board('alas-plat', 'Plat alas bundar', cx - span / 2, cx + span / 2, 0, 0.8, cz - span / 2, cz + span / 2);
         pl.shape = 'round';
@@ -440,7 +482,9 @@ export const MEJA: ProductDef = {
         add('pijakan-belakang', 'x', cx - h, yr, cz - h, 2 * h, 'rail-x', 'Ring pijakan belakang', rail);
         add('pijakan-kiri', 'z', cx - h - 1, yr, cz - h - 1, 2 * h + 2, 'rail-z', 'Ring pijakan kiri', rail);
         add('pijakan-kanan', 'z', cx + h + 1, yr, cz - h - 1, 2 * h + 2, 'rail-z', 'Ring pijakan kanan', rail);
-        add('pijakan-lengan', 'x', cx - h, yr, cz, 2 * h, 'rail-x', 'Lengan ring pijakan', rail);
+        // lengan dipotong dua, dilas di kedua sisi tiang
+        add('pijakan-lengan', 'x', cx - h, yr, cz, h - col / 2, 'rail-x', 'Lengan ring pijakan', rail);
+        add('pijakan-lengan-2', 'x', cx + col / 2, yr, cz, h - col / 2, 'rail-x', 'Lengan ring pijakan (2)', rail);
       }
     } else if (model === 'u') {
       // Rangka U / sled di kedua ujung: palang lantai + 2 tiang + palang atas, disambung gelagar
@@ -469,17 +513,22 @@ export const MEJA: ProductDef = {
       const yc = 25;
       xs.forEach((x, i) => {
         const side = i ? 'kanan' : 'kiri';
-        line(`kaki-a-${i}-b`, [x, 0, fz0 + L / 2], [x, yLeg, zc - topHalf], 'post', `Kaki A ${side} belakang`, leg);
-        line(`kaki-a-${i}-d`, [x, 0, fz1 - L / 2], [x, yLeg, zc + topHalf], 'post', `Kaki A ${side} depan`, leg);
+        const kb: P3 = [x, 0, fz0 + L / 2];
+        const kd: P3 = [x, 0, fz1 - L / 2];
+        const tb: P3 = [x, yLeg, zc - topHalf];
+        const td: P3 = [x, yLeg, zc + topHalf];
+        line(`kaki-a-${i}-b`, kb, tb, 'post', `Kaki A ${side} belakang`, leg);
+        line(`kaki-a-${i}-d`, kd, td, 'post', `Kaki A ${side} depan`, leg);
         add(`atas-${side}`, 'z', x, ya, fz0, fz1 - fz0, 'rail-z', `Rangka atas ${side}`, apron);
-        // palang datar kaki A (menyentuh kedua kaki pada ketinggian yc)
-        const t = yc / yLeg;
-        const zbAt = fz0 + L / 2 + (zc - topHalf - (fz0 + L / 2)) * t;
-        const zfAt = fz1 - L / 2 + (zc + topHalf - (fz1 - L / 2)) * t;
-        add(`palang-a-${side}`, 'z', x, yc, zbAt, zfAt - zbAt, 'rail-z', `Palang kaki A ${side}`, rail);
+        // palang datar kaki A: ujungnya menempel rata di sisi dalam kedua kaki (diukur di tepi atas palang,
+        // karena kaki makin ke atas makin masuk ke tengah)
+        const yt = yc + rw;
+        const zbIn = kb[2] + (tb[2] - kb[2]) * (yt / yLeg) + cutHalf(kb, tb, L, 2);
+        const zfIn = kd[2] + (td[2] - kd[2]) * (yt / yLeg) - cutHalf(kd, td, L, 2);
+        add(`palang-a-${side}`, 'z', x, yc, zbIn, zfIn - zbIn, 'rail-z', `Palang kaki A ${side}`, rail);
       });
-      add('atas-depan', 'x', xs[0] + L / 2, ya, fz1 - 1, xs[1] - xs[0] - L, 'rail-x', 'Rangka atas depan', apron);
-      add('atas-belakang', 'x', xs[0] + L / 2, ya, fz0 + 1, xs[1] - xs[0] - L, 'rail-x', 'Rangka atas belakang', apron);
+      add('atas-depan', 'x', xs[0] + aw, ya, fz1 - 1, xs[1] - xs[0] - 2 * aw, 'rail-x', 'Rangka atas depan', apron);
+      add('atas-belakang', 'x', xs[0] + aw, ya, fz0 + 1, xs[1] - xs[0] - 2 * aw, 'rail-x', 'Rangka atas belakang', apron);
       add('palang-panjang', 'x', xs[0] + 1, yc, zc, xs[1] - xs[0] - 2, 'rail-x', 'Palang penghubung kaki A', rail);
     } else if (model === 'hairpin') {
       // Kaki V ramping di tiap sudut: dua batang dari bawah rangka atas bertemu di satu titik lantai
@@ -490,6 +539,9 @@ export const MEJA: ProductDef = {
       add('atas-kiri', 'z', fx0 + 1, ya, fz0 + 2, fz1 - fz0 - 4, 'rail-z', 'Rangka atas kiri', apron);
       add('atas-kanan', 'z', fx1 - 1, ya, fz0 + 2, fz1 - fz0 - 4, 'rail-z', 'Rangka atas kanan', apron);
       const spread = 7;
+      // kedua batang V dipotong rata lantai dan bertemu sisi-ke-sisi di ujung bawah (tidak saling tembus)
+      let hx = 0.75;
+      for (let k = 0; k < 3; k++) hx = cutHalf([-spread, yLeg, 0], [-hx, 0, 0], 1.5, 0);
       [
         [fx0 + 3 + spread, fz0 + 1, 'kiri belakang'],
         [fx1 - 3 - spread, fz0 + 1, 'kanan belakang'],
@@ -498,22 +550,27 @@ export const MEJA: ProductDef = {
       ].forEach(([x, z, nm], i) => {
         const fx = x as number;
         const fz = z as number;
-        line(`hairpin-${i}-a`, [fx - spread, yLeg, fz], [fx, 0, fz], 'post', `Kaki V ${nm} (1)`, rod);
-        line(`hairpin-${i}-b`, [fx + spread, yLeg, fz], [fx, 0, fz], 'post', `Kaki V ${nm} (2)`, rod);
+        line(`hairpin-${i}-a`, [fx - spread, yLeg, fz], [fx - hx, 0, fz], 'post', `Kaki V ${nm} (1)`, rod);
+        line(`hairpin-${i}-b`, [fx + spread, yLeg, fz], [fx + hx, 0, fz], 'post', `Kaki V ${nm} (2)`, rod);
       });
     } else if (model === 'x') {
-      // Kaki silang X di kedua ujung (bidang depan–belakang), rangka atas keliling
-      const xs = [fx0 + L / 2, fx1 - L / 2];
+      // Kaki silang X di kedua ujung (bidang depan–belakang), rangka atas keliling.
+      // Kedua kaki X dipasang bersebelahan (geser setebal pipa) dan dilas di titik silangnya, tidak saling tembus;
+      // rangka atas samping berada di atas sambungan kedua kaki.
+      const xs = [fx0 + L, fx1 - L];
       const yLeg = yTop - ah;
+      let hz = L / 2;
+      for (let k = 0; k < 3; k++) hz = cutHalf([0, 0, fz0 + hz], [0, yLeg, fz1 - hz], L, 2);
       xs.forEach((x, i) => {
         const side = i ? 'kanan' : 'kiri';
-        line(`kaki-x-${i}-a`, [x, 0, fz0 + L / 2], [x, yLeg, fz1 - L / 2], 'post', `Kaki silang ${side} A`, leg);
-        line(`kaki-x-${i}-b`, [x, 0, fz1 - L / 2], [x, yLeg, fz0 + L / 2], 'post', `Kaki silang ${side} B`, leg);
+        const out = i ? 1 : -1; // arah keluar meja
+        line(`kaki-x-${i}-a`, [x + (out * L) / 2, 0, fz0 + hz], [x + (out * L) / 2, yLeg, fz1 - hz], 'post', `Kaki silang ${side} A`, leg);
+        line(`kaki-x-${i}-b`, [x - (out * L) / 2, 0, fz1 - hz], [x - (out * L) / 2, yLeg, fz0 + hz], 'post', `Kaki silang ${side} B`, leg);
         add(`atas-${side}`, 'z', x, ya, fz0, fz1 - fz0, 'rail-z', `Rangka atas ${side}`, apron);
       });
-      add('atas-depan', 'x', xs[0] + L / 2, ya, fz1 - 1, xs[1] - xs[0] - L, 'rail-x', 'Rangka atas depan', apron);
-      add('atas-belakang', 'x', xs[0] + L / 2, ya, fz0 + 1, xs[1] - xs[0] - L, 'rail-x', 'Rangka atas belakang', apron);
-      add('palang-silang', 'x', xs[0] + L / 2, yLeg / 2, (fz0 + fz1) / 2, xs[1] - xs[0] - L, 'rail-x', 'Palang penghubung kaki silang', rail);
+      add('atas-depan', 'x', xs[0] + aw, ya, fz1 - 1, xs[1] - xs[0] - 2 * aw, 'rail-x', 'Rangka atas depan', apron);
+      add('atas-belakang', 'x', xs[0] + aw, ya, fz0 + 1, xs[1] - xs[0] - 2 * aw, 'rail-x', 'Rangka atas belakang', apron);
+      add('palang-silang', 'x', xs[0] + L, yLeg / 2, (fz0 + fz1) / 2, xs[1] - xs[0] - 2 * L, 'rail-x', 'Palang penghubung kaki silang', rail);
     } else if (model === 'tiang-ganda') {
       // Dua tiang di tengah lebar meja, masing-masing tapak T di lantai + lengan T di bawah daun, disambung balok
       const col = Math.max(5, L + 1);
@@ -526,7 +583,8 @@ export const MEJA: ProductDef = {
         const side = i ? 'kanan' : 'kiri';
         add(`tapak-${side}`, 'z', x, L / 2, zc - footL / 2, footL, 'rail-z', `Tapak T ${side} (lantai)`, leg);
         add(`tiang-${side}`, 'y', x, L, zc, yTop - ah - L, 'post', `Tiang ${side}`, colT);
-        add(`lengan-${side}`, 'z', x, ya, fz0, fz1 - fz0, 'rail-z', `Lengan atas T ${side}`, apron);
+        // lengan T dipotong di antara rangka atas depan & belakang (yang menerus)
+        add(`lengan-${side}`, 'z', x, ya, fz0 + 2 * aw, fz1 - fz0 - 4 * aw, 'rail-z', `Lengan atas T ${side}`, apron);
       });
       add('atas-depan', 'x', fx0, ya, fz1 - 1, fx1 - fx0, 'rail-x', 'Rangka atas depan', apron);
       add('atas-belakang', 'x', fx0, ya, fz0 + 1, fx1 - fx0, 'rail-x', 'Rangka atas belakang', apron);
@@ -678,22 +736,37 @@ export const MEJA: ProductDef = {
         add(`${prefix}-kanan`, 'z', xr, y, zb + L / 2, zf - zb - L, 'rail-z', `${name} kanan`, t);
       };
       ringBox('ring-atas', 'Ring atas', yr, leg);
-      ringBox('ring-bawah', 'Ring bawah', yb, rail);
+      // ring bawah dari pipa kecil di tengah tinggi kaki: dipotong per bentang, ujungnya menempel di sisi kaki
+      for (let i = 0; i < pxs.length - 1; i++) {
+        const sfx = i ? `-${i + 1}` : '';
+        const nm = i ? ` (${i + 1})` : '';
+        add(`ring-bawah-depan${sfx}`, 'x', pxs[i] + L / 2, yb, zf, pxs[i + 1] - pxs[i] - L, 'rail-x', `Ring bawah depan${nm}`, rail);
+        add(`ring-bawah-belakang${sfx}`, 'x', pxs[i] + L / 2, yb, zb, pxs[i + 1] - pxs[i] - L, 'rail-x', `Ring bawah belakang${nm}`, rail);
+      }
+      add('ring-bawah-kiri', 'z', xl, yb, zb + L / 2, zf - zb - L, 'rail-z', 'Ring bawah kiri', rail);
+      add('ring-bawah-kanan', 'z', xr, yb, zb + L / 2, zf - zb - L, 'rail-z', 'Ring bawah kanan', rail);
       if (twoBay) add('dudukan-tengah', 'z', W / 2, yr, zb + L / 2, zf - zb - L, 'rail-z', 'Palang dudukan tangki', leg);
-      const yLo = yb + 1;
-      const yHi = yr - L / 2 - 1;
+      // Silang X: kedua batang bersebelahan (geser setebal pipa, masih di dalam lebar kaki) dan dilas di titik silang;
+      // ujung bawah duduk di atas ring bawah, ujung atas menempel di bawah ring atas, sisi tapaknya rata dengan sisi kaki.
+      const yLo = yb + rw;
+      const yHi = yr - L / 2;
+      const t = rail[0] / 10;
       // silang di panel samping (bidang depan–belakang)
+      let hz = rw;
+      for (let k = 0; k < 3; k++) hz = cutHalf([0, yLo, zb + L / 2 + hz], [0, yHi, zf - L / 2 - hz], t, 2);
       [xl, xr].forEach((x, i) => {
         const side = i ? 'kanan' : 'kiri';
-        line(`silang-${side}-a`, [x, yLo, zb + L / 2], [x, yHi, zf - L / 2], 'custom', `Silang samping ${side} A`, rail);
-        line(`silang-${side}-b`, [x, yLo, zf - L / 2], [x, yHi, zb + L / 2], 'custom', `Silang samping ${side} B`, rail);
+        line(`silang-${side}-a`, [x - rw, yLo, zb + L / 2 + hz], [x - rw, yHi, zf - L / 2 - hz], 'custom', `Silang samping ${side} A`, rail);
+        line(`silang-${side}-b`, [x + rw, yLo, zf - L / 2 - hz], [x + rw, yHi, zb + L / 2 + hz], 'custom', `Silang samping ${side} B`, rail);
       });
       // silang di panel belakang (tiap bentang)
       for (let i = 0; i < pxs.length - 1; i++) {
-        const a = pxs[i] + L / 2;
-        const c2 = pxs[i + 1] - L / 2;
-        line(`silang-belakang-${i}-a`, [a, yLo, zb], [c2, yHi, zb], 'custom', `Silang belakang ${i + 1} A`, rail);
-        line(`silang-belakang-${i}-b`, [c2, yLo, zb], [a, yHi, zb], 'custom', `Silang belakang ${i + 1} B`, rail);
+        let hx = rw;
+        for (let k = 0; k < 3; k++) hx = cutHalf([pxs[i] + L / 2 + hx, yLo, 0], [pxs[i + 1] - L / 2 - hx, yHi, 0], t, 0);
+        const a = pxs[i] + L / 2 + hx;
+        const c2 = pxs[i + 1] - L / 2 - hx;
+        line(`silang-belakang-${i}-a`, [a, yLo, zb - rw], [c2, yHi, zb - rw], 'custom', `Silang belakang ${i + 1} A`, rail);
+        line(`silang-belakang-${i}-b`, [c2, yLo, zb + rw], [a, yHi, zb + rw], 'custom', `Silang belakang ${i + 1} B`, rail);
       }
       if (bool(p, 'rakBawah') && b > 0) boards.push(board('papan-bawah', 'Papan bawah (filter / sump)', xl + L / 2, xr - L / 2, yb + 1, yb + 1 + b, zb + 1.5, zf + L / 2));
     } else if (lipat) {
@@ -720,8 +793,16 @@ export const MEJA: ProductDef = {
         const yS = yLeg * 0.5;
         const zc = (zb + zf) / 2;
         add(`dudukan-penyangga-${side}`, 'z', xs, ya, fz0 + 2, fz1 - fz0 - 4, 'rail-z', `Dudukan penyangga lipat ${side}`, rail);
-        line(`penyangga-${side}-b`, [x, yS, zb + L / 2], [xs, ya - 1, zc - 3], 'custom', `Penyangga lipat ${side} belakang`, rail);
-        line(`penyangga-${side}-d`, [x, yS, zf - L / 2], [xs, ya - 1, zc + 3], 'custom', `Penyangga lipat ${side} depan`, rail);
+        // ujung bawah penyangga menempel rata di sisi dalam kaki (tapak potongannya di luar kaki)
+        const yE = ya - rw; // menempel di bawah dudukan penyangga
+        let hb = rw;
+        let hd = rw;
+        for (let k = 0; k < 3; k++) {
+          hb = cutHalf([x, yS, zb + L / 2 + hb], [xs, yE, zc - 3], rail[0] / 10, 2);
+          hd = cutHalf([x, yS, zf - L / 2 - hd], [xs, yE, zc + 3], rail[0] / 10, 2);
+        }
+        line(`penyangga-${side}-b`, [x, yS, zb + L / 2 + hb], [xs, yE, zc - 3], 'custom', `Penyangga lipat ${side} belakang`, rail);
+        line(`penyangga-${side}-d`, [x, yS, zf - L / 2 - hd], [xs, yE, zc + 3], 'custom', `Penyangga lipat ${side} depan`, rail);
         hinges.push({
           id: `engsel-kaki-${side}`,
           memberId: `kaki-${side}-d`,
@@ -787,7 +868,10 @@ export const MEJA: ProductDef = {
         for (let k = 0; k < nT; k++) {
           const yk = H + (hTop * (k + 1)) / nT - 1;
           backXs.forEach((x, i) => add(`lengan-atas-${i}-${k + 1}`, 'z', x, yk, zb + L / 2, dR - L, 'rail-z', `Lengan rak atas ${k + 1}`, rail));
-          add(`rak-atas-belakang-${k + 1}`, 'x', xl + L / 2, yk, zb, xr - xl - L, 'rail-x', `Palang rak atas ${k + 1}`, rail);
+          // palang belakang dipotong di tiap tiang rak atas (ujungnya menempel di sisi tiang)
+          const bx = [...backXs].sort((u, v) => u - v);
+          for (let j = 0; j < bx.length - 1; j++)
+            add(`rak-atas-belakang-${k + 1}${j ? `-${j + 1}` : ''}`, 'x', bx[j] + L / 2, yk, zb, bx[j + 1] - bx[j] - L, 'rail-x', `Palang rak atas ${k + 1}${j ? ` (${j + 1})` : ''}`, rail);
           if (b > 0) boards.push(board(`papan-atas-${k + 1}`, `Papan rak atas ${k + 1}`, fx0, fx1, yk + 1, yk + 1 + b, zb - L / 2, zb - L / 2 + dR));
         }
       }
@@ -797,8 +881,14 @@ export const MEJA: ProductDef = {
         const [lb, rb, lf] = [0, 1, 2].map((i) => at(i, yp));
         add('palang-kiri', 'z', lb[0], yp, lb[2] + L / 2, lf[2] - lb[2] - L, 'rail-z', 'Palang kaki kiri', rail);
         add('palang-kanan', 'z', rb[0], yp, rb[2] + L / 2, lf[2] - lb[2] - L, 'rail-z', 'Palang kaki kanan', rail);
-        add('palang-tengah', 'x', lb[0] + 1, yp, D / 2, rb[0] - lb[0] - 2, 'rail-x', 'Palang kaki tengah', rail);
-        if (model === 'lurus' && !round && bool(p, 'kakiTengah')) {
+        const hTengah = model === 'lurus' && !round && bool(p, 'kakiTengah');
+        if (!hTengah) add('palang-tengah', 'x', lb[0] + rw, yp, D / 2, rb[0] - lb[0] - 2 * rw, 'rail-x', 'Palang kaki tengah', rail);
+        else {
+          // palang panjang dipotong dua di palang melintang kaki tengah (yang menerus)
+          add('palang-tengah', 'x', lb[0] + rw, yp, D / 2, W / 2 - lb[0] - 2 * rw, 'rail-x', 'Palang kaki tengah', rail);
+          add('palang-tengah-2', 'x', W / 2 + rw, yp, D / 2, rb[0] - W / 2 - 2 * rw, 'rail-x', 'Palang kaki tengah (2)', rail);
+        }
+        if (hTengah) {
           // kaki tengah ikut diperkuat: palang melintang menyambung ke palang panjang (bentuk H ganda)
           const zbm = zb + (L / 2 + 1); // as kaki tengah belakang (sama dengan posisi kaki tengah)
           const zfm = zf - (L / 2 + 1); // as kaki tengah depan

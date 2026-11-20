@@ -174,6 +174,11 @@ export const RAK_TV: ProductDef = {
     /** n tinggi as palang merata dari y0 sampai y1 */
     const levels = (n: number, y0: number, y1: number) => (n <= 1 ? [y1] : Array.from({ length: n }, (_, i) => r1(y0 + ((y1 - y0) * i) / (n - 1))));
     /**
+     * Tingkat menara yang terlalu dekat dengan tingkat bufet digeser tepat ke tingkat bufet itu, supaya
+     * palang samping di tiang bersama jadi satu batang (tidak dua palang bertumpuk saling tembus).
+     */
+    const snapLevels = (tl: number[], bl: number[]) => tl.map((y, i) => (i === tl.length - 1 ? y : bl.find((v) => Math.abs(v - y) < rh + 6) ?? y));
+    /**
      * Satu tingkat untuk deretan tiang xs (as, urut kiri→kanan): palang depan & belakang di antara tiap pasang tiang,
      * palang samping di setiap tiang. Papan per ruang (di antara muka tiang) atau satu papan menerus (bx).
      */
@@ -237,7 +242,7 @@ export const RAK_TV: ProductDef = {
       const bx = xMid ? [xi, xMid, xe] : [xi, xe];
       const nT = Math.max(3, Math.round((Hp - b - yb) / 35) + 1);
       const bl = levels(n, yb, yTop - rh / 2);
-      const tl = levels(nT, yb, Hp - b - rh / 2);
+      const tl = snapLevels(levels(nT, yb, Hp - b - rh / 2), bl);
       const same = (a: number) => (y: number) => Math.abs(a - y) < 0.5;
       bl.forEach((y, i) => {
         const top = i === n - 1;
@@ -260,7 +265,7 @@ export const RAK_TV: ProductDef = {
       const n = Math.max(2, num(p, 'tingkat', 2));
       const nT = Math.max(3, Math.round((Ht - yb) / 35) + 1);
       const bl = levels(n, yb, yTop - rh / 2);
-      const tl = levels(nT, yb, Ht - rh / 2);
+      const tl = snapLevels(levels(nT, yb, Ht - rh / 2), bl);
       const same = (a: number) => (y: number) => Math.abs(a - y) < 0.5;
       bl.forEach((y, i) => {
         if (tl.some(same(y))) run(`bawah-${i + 1}`, `susun ${i + 1}`, xs, zb, zf, y, 'bay');
@@ -274,12 +279,14 @@ export const RAK_TV: ProductDef = {
           run(`menara-kanan-${i + 1}`, `menara kanan ${i + 1}`, [xs[2], xs[3]], zb, zf, y, 'bay');
         }
       });
-      // silang X di punggung tiap menara (di belakang tiang)
-      const zx = -0.75;
+      // silang X di punggung tiap menara (di belakang tiang); batang kedua ditumpuk di belakang batang pertama
+      // setebal pipa (las di titik silang), tidak saling tembus
+      const zx = -thin[0] / 20;
+      const zx2 = zx - thin[0] / 10;
       [[xs[0], xs[1]], [xs[2], xs[3]]].forEach(([xa, xb], k) => {
         const nm = k ? 'kanan' : 'kiri';
         line(`silang-${nm}-a`, [xa, yb, zx], [xb, Ht - rh, zx], 'custom', `Silang punggung menara ${nm} 1`, thin);
-        line(`silang-${nm}-b`, [xb, yb, zx], [xa, Ht - rh, zx], 'custom', `Silang punggung menara ${nm} 2`, thin);
+        line(`silang-${nm}-b`, [xb, yb, zx2], [xa, Ht - rh, zx2], 'custom', `Silang punggung menara ${nm} 2`, thin);
       });
       outH = Hp;
     } else if (m === 'kubus') {
@@ -322,7 +329,9 @@ export const RAK_TV: ProductDef = {
       add('palang-kaki', 'x', xl + L / 2, c + L / 2, zc, xr - xl - L, 'rail-x', 'Palang kaki tengah', pt);
       add('tiang', 'y', xc, c + L, zc, Hp - c - L, 'post', 'Tiang tunggal tengah', col);
       // penguat miring tiang ke palang kaki
-      [-1, 1].forEach((s, i) => line(`penguat-${i}`, [xc + s * (cw / 2 + 12), c + L, zc], [xc + (s * cw) / 2, c + L + 22, zc], 'custom', `Penguat tiang ${i ? 'kanan' : 'kiri'}`, thin));
+      // ujung atas dipotong rata dan menempel sisi tiang: as digeser keluar setengah lebar mendatar penguat
+      const gx = r1((thin[0] / 20) * (Math.hypot(12, 22) / 22) + 0.05);
+      [-1, 1].forEach((s, i) => line(`penguat-${i}`, [xc + s * (cw / 2 + 12 + gx), c + L, zc], [xc + s * (cw / 2 + gx), c + L + 22, zc], 'custom', `Penguat tiang ${i ? 'kanan' : 'kiri'}`, thin));
       // braket TV menempel muka depan tiang
       const zB = zc + cw / 2 + 1;
       const bw = Math.max(30, Math.min(70, r1(tw * 0.5)));
@@ -342,6 +351,9 @@ export const RAK_TV: ProductDef = {
       // Dua batang miring dari lantai depan ke tembok atas; rak ditopang kaki belakang pendek
       wall = true;
       const zr = (y: number) => r1(D - L / 2 - ((D - L) * y) / Hp);
+      // muka belakang batang miring pada ketinggian y (setengah lebar mendatar batang = L/2 / cos sudut)
+      const hwB = (L / 2) * (Math.hypot(Hp, D - L) / Hp);
+      const zBack = (y: number) => D - L / 2 - ((D - L) * y) / Hp - hwB;
       const xs = [L / 2, W - L / 2];
       xs.forEach((x, i) => line(`batang-${i}`, [x, 0, D - L / 2], [x, Hp, L / 2], 'post', `Batang miring ${i ? 'kanan' : 'kiri'} (bersandar)`, pt));
       const yTop = Htot - b;
@@ -351,7 +363,9 @@ export const RAK_TV: ProductDef = {
       ysh.forEach((y, k) => {
         const nm = k === ysh.length - 1 ? 'rak atas' : 'rak bawah';
         const zfr = zr(y);
-        xs.forEach((x, i) => add(`${k}-lengan-${i}`, 'z', x, y, L, zfr - L, 'rail-z', `Lengan ${nm} ${i ? 'kanan' : 'kiri'}`, rail));
+        // lengan dipotong rata, ujungnya menempel muka belakang batang miring (tidak masuk ke dalamnya)
+        const zl = r1(zBack(y + rh / 2) - 0.05);
+        xs.forEach((x, i) => add(`${k}-lengan-${i}`, 'z', x, y, L, zl - L, 'rail-z', `Lengan ${nm} ${i ? 'kanan' : 'kiri'}`, rail));
         add(`${k}-belakang`, 'x', L, y, zb, W - 2 * L, 'rail-x', `Palang ${nm} belakang`, rail);
         add(`${k}-depan`, 'x', L, y, zfr, W - 2 * L, 'rail-x', `Palang ${nm} depan`, rail);
         pushBoard(board(`papan-${k}`, `Papan ${nm}`, L, W - L, y + rh / 2, y + rh / 2 + b, 0, zfr + 1));

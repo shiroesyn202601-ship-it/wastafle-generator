@@ -512,6 +512,22 @@ export const ALAT_GYM: ProductDef = {
     const pasakOn = bool(p, 'pasak');
     const ySafe = Math.max(35, yJ - 50);
 
+    /**
+     * Ujung batang miring dipotong DATAR (rata lantai / rata bawah palang) dan menempel di muka tegak batang lain.
+     * Jejak potongan datar melebar s/2/|uy| dari as, jadi as ujung digeser sejauh itu dari muka supaya sudut
+     * potongan tepat menyentuh muka (tidak masuk ke dalam batang). idx = sumbu datar yang digeser (0 = x, 2 = z),
+     * side = di sisi mana batang miring berada terhadap muka (+1 = koordinat lebih besar).
+     */
+    const touch = (fixed: V3, moving: V3, idx: 0 | 2, face: number, side: number, s: number): V3 => {
+      const e: V3 = [...moving];
+      e[idx] = face;
+      for (let k = 0; k < 10; k++) {
+        const uy = Math.abs(e[1] - fixed[1]) / Math.hypot(e[0] - fixed[0], e[1] - fixed[1], e[2] - fixed[2]);
+        e[idx] = face + (side * s) / 2 / uy;
+      }
+      return e;
+    };
+
     /** J-hook: lidah menjulur ke depan dari muka tiang + bibir penahan */
     const jhook = (id: string, x: number, y: number, zFace: number, nm: string) => {
       add(id, 'z', x, y, zFace, 9, 'custom', `J-hook ${nm}`, bar);
@@ -540,7 +556,7 @@ export const ALAT_GYM: ProductDef = {
       xs.forEach((x, i) => zs.forEach((z, j) => add(`tiang-${i}-${j}`, 'y', x, P, z, Hh - 2 * P, 'post', `Tiang berlubang ${i ? 'kanan' : 'kiri'} ${j ? 'depan' : 'belakang'}`, pt)));
       zs.forEach((z, j) => add(`atas-x-${j}`, 'x', 0, Hh - P / 2, z, W0, 'rail-x', `Palang atas ${j ? 'depan' : 'belakang'}`, pt));
       xs.forEach((x, i) => add(`atas-z-${i}`, 'z', x, Hh - P / 2, P, Dd - 2 * P, 'rail-z', `Palang atas ${i ? 'kanan' : 'kiri'}`, pt));
-      xs.forEach((x, i) => add(`lengan-pullup-${i}`, 'z', x, Hh - P / 2, Dd, 15, 'custom', `Lengan pull-up ${i ? 'kanan' : 'kiri'}`, pt));
+      xs.forEach((x, i) => add(`lengan-pullup-${i}`, 'z', x, Hh - P / 2, Dd, 15 - mid[0] / 20, 'custom', `Lengan pull-up ${i ? 'kanan' : 'kiri'}`, pt));
       add('pullup', 'x', -10, Hh - P / 2, Dd + 15, W0 + 20, 'custom', 'Palang pull-up (pegangan)', mid);
       xs.forEach((x, i) => jhook(`jhook-${i}`, x, yJ, Dd, i ? 'kanan' : 'kiri'));
       if (safeOn) xs.forEach((x, i) => add(`pengaman-${i}`, 'z', x, ySafe, P, Dd - 2 * P, 'custom', `Bar pengaman ${i ? 'kanan' : 'kiri'}`, [50, 50]));
@@ -552,12 +568,15 @@ export const ALAT_GYM: ProductDef = {
       const xs = [P / 2, W0 - P / 2];
       const zp = r1(Dd * 0.42);
       const yTop = r1(Hh * 0.55);
+      // topang: kaki dipotong rata di atas tapak, ujung atas dipotong datar menempel di muka belakang tiang
+      const tA: V3 = [0, P, P * 1.5];
+      const tB = touch(tA, [0, yTop, 0], 2, zp - P / 2, -1, P);
       xs.forEach((x, i) => add(`tapak-${i}`, 'z', x, P / 2, 0, Dd, 'rail-z', `Tapak memanjang ${i ? 'kanan' : 'kiri'}`, pt));
       add('tapak-belakang', 'x', P, P / 2, P / 2, W0 - 2 * P, 'rail-x', 'Tapak belakang', pt);
       xs.forEach((x, i) => {
         const nm = i ? 'kanan' : 'kiri';
         add(`tiang-${i}`, 'y', x, P, zp, Hh - 2 * P, 'post', `Tiang berlubang ${nm}`, pt);
-        line(`topang-${i}`, [x, P, P * 1.5], [x, yTop, zp - P / 2], 'post', `Topang miring belakang ${nm}`, pt);
+        line(`topang-${i}`, [x, tA[1], tA[2]], [x, tB[1], tB[2]], 'post', `Topang miring belakang ${nm}`, pt);
         jhook(`jhook-${i}`, x, yJ, zp + P / 2, nm);
         if (safeOn) {
           add(`lengan-pengaman-${i}`, 'z', x, ySafe, zp + P / 2, 60, 'custom', `Lengan pengaman ${nm}`, [50, 50]);
@@ -566,7 +585,7 @@ export const ALAT_GYM: ProductDef = {
         if (pasakOn) [45, 85].forEach((y, k) => pasakX(`pasak-${i}-${k}`, i ? W0 : 0, i ? 1 : -1, y, zp, `${nm} ${k + 1}`));
       });
       const my = (P + yTop) / 2;
-      const mz = (P * 1.5 + zp - P / 2) / 2;
+      const mz = (tA[2] + tB[2]) / 2;
       add('ikat-topang', 'x', P, my, mz, W0 - 2 * P, 'rail-x', 'Palang ikat topang', pt);
       add('pullup', 'x', -15, Hh - P / 2, zp, W0 + 30, 'rail-x', 'Palang pull-up atas', pt);
     } else if (m === 'power-tower') {
@@ -577,11 +596,20 @@ export const ALAT_GYM: ProductDef = {
         const nm = i ? 'kanan' : 'kiri';
         add(`tapak-${i}`, 'z', x, P / 2, 0, Dd, 'rail-z', `Tapak memanjang ${nm}`, pt);
         add(`tiang-${i}`, 'y', x, P, zt, Hh - 2 * P, 'post', `Tiang ${nm}`, pt);
-        line(`topang-belakang-${i}`, [x, P, P * 0.5], [x, 55, zt - P / 2], 'post', `Topang miring belakang ${nm}`, pt);
-        line(`topang-depan-${i}`, [x, P, Dd - P], [x, yb, zt + P / 2], 'post', `Topang miring depan ${nm}`, pt);
+        // kaki topang belakang rata dengan ujung tapak (tidak menonjol), ujung atas menempel di muka tiang
+        let bA: V3 = [x, P, P * 0.5];
+        let bB: V3 = [x, 55, 0];
+        for (let k = 0; k < 4; k++) {
+          bB = touch(bA, bB, 2, zt - P / 2, -1, P);
+          bA = touch(bB, bA, 2, 0, 1, P);
+        }
+        const dA: V3 = [x, P, Dd - P];
+        line(`topang-belakang-${i}`, bA, bB, 'post', `Topang miring belakang ${nm}`, pt);
+        line(`topang-depan-${i}`, dA, touch(dA, [x, yb, 0], 2, zt + P / 2, 1, P), 'post', `Topang miring depan ${nm}`, pt);
         add(`lengan-dip-${i}`, 'z', x, Hd, zt + P / 2, 50, 'custom', `Lengan sandaran + pegangan dip ${nm}`, pt);
         boards.push({ ...board(`busa-lengan-${i}`, `Busa lengan ${nm}`, x - 6, x + 6, Hd + P / 2, Hd + P / 2 + 6, zt + P / 2, zt + P / 2 + 30), color: jokC });
-        add(`lengan-atas-${i}`, 'z', x, Hh - P / 2, zt + P / 2, 30, 'custom', `Lengan pull-up ${nm}`, pt);
+        // lengan duduk di atas tiang, ujungnya berhenti di muka palang pull-up
+        add(`lengan-atas-${i}`, 'z', x, Hh - P / 2, zt - P / 2, 30 + P - mid[0] / 20, 'custom', `Lengan pull-up ${nm}`, pt);
       });
       [P / 2, Dd - P / 2].forEach((z, j) => add(`tapak-x-${j}`, 'x', P / 2, P / 2, z, Wi - P, 'rail-x', `Tapak ${j ? 'depan' : 'belakang'}`, pt));
       add('ikat-atas', 'x', P / 2, Hh - P / 2, zt, Wi - P, 'rail-x', 'Palang ikat atas', pt);
@@ -600,9 +628,22 @@ export const ALAT_GYM: ProductDef = {
         [-1, 1].forEach((s, j) => add(`ring-z-${i}-${j}`, 'z', xc + s * (B / 2 - P / 2), P / 2, P, B - 2 * P, 'rail-z', `Tapak ${nm} sisi ${j ? 'kanan' : 'kiri'}`, pt));
         add(`tapak-tengah-${i}`, 'z', xc, P / 2, P, B - 2 * P, 'rail-z', `Tapak tengah ${nm}`, pt);
         add(`tiang-${i}`, 'y', xc, P, B / 2, Hh - P, 'post', `Tiang berlubang ${nm}`, pt);
-        [-1, 1].forEach((s, j) => line(`siku-x-${i}-${j}`, [xc + s * (B / 2 - P), P, B / 2], [xc + s * (P / 2), 35, B / 2], 'custom', `Siku samping ${nm} ${j + 1}`, mid));
-        line(`siku-b-${i}`, [xc, P, P * 1.5], [xc, 35, B / 2 - P / 2], 'custom', `Siku belakang ${nm}`, mid);
-        line(`siku-d-${i}`, [xc, P, B - P * 1.5], [xc, 35, B / 2 + P / 2], 'custom', `Siku depan ${nm}`, mid);
+        // siku: kaki duduk di as tapak, ujung atas dipotong datar menempel di muka tiang
+        const sm = mid[0] / 10;
+        [-1, 1].forEach((s, j) => {
+          // kaki siku rata dengan tepi luar tapak (tidak menonjol keluar ring)
+          let a: V3 = [xc + s * (B / 2 - P / 2), P, B / 2];
+          let e: V3 = [0, 35, B / 2];
+          for (let k = 0; k < 4; k++) {
+            e = touch(a, e, 0, xc + s * (P / 2), s, sm);
+            a = touch(e, a, 0, xc + s * (B / 2), -s, sm);
+          }
+          line(`siku-x-${i}-${j}`, a, e, 'custom', `Siku samping ${nm} ${j + 1}`, mid);
+        });
+        const sb: V3 = [xc, P, P * 1.5];
+        const sd: V3 = [xc, P, B - P * 1.5];
+        line(`siku-b-${i}`, sb, touch(sb, [xc, 35, 0], 2, B / 2 - P / 2, -1, sm), 'custom', `Siku belakang ${nm}`, mid);
+        line(`siku-d-${i}`, sd, touch(sd, [xc, 35, 0], 2, B / 2 + P / 2, 1, sm), 'custom', `Siku depan ${nm}`, mid);
         jhook(`jhook-${i}`, xc, yJ, B / 2 + P / 2, nm);
         if (pasakOn) {
           add(`pasak-${i}`, 'z', xc, 55, B / 2 - P / 2 - 22, 22, 'custom', `Pasak plat ${nm}`, mid);
@@ -620,7 +661,8 @@ export const ALAT_GYM: ProductDef = {
         add(`tiang-depan-${i}`, 'y', x, 0, Dd, Hh - P, 'post', `Tiang depan berlubang ${nm}`, pt);
         add(`atas-${i}`, 'z', x, Hh - P / 2, P, Dd - P / 2, 'rail-z', `Palang atas ${nm} (berengsel)`, pt);
         add(`bawah-${i}`, 'z', x, yLo, P, Dd - P * 1.5, 'rail-z', `Palang bawah ${nm} (berengsel)`, pt);
-        line(`miring-${i}`, [x, yLo + P / 2, P * 1.5], [x, r1(Hh * 0.5), Dd - P / 2], 'custom', `Penguat miring ${nm}`, mid);
+        const mA: V3 = [x, yLo + P / 2, P * 1.5];
+        line(`miring-${i}`, mA, touch(mA, [x, r1(Hh * 0.5), 0], 2, Dd - P / 2, -1, mid[0] / 10), 'custom', `Penguat miring ${nm}`, mid);
         jhook(`jhook-${i}`, x, yJ, Dd + P / 2, nm);
         const sg = i ? -1 : 1;
         hinges.push({ id: `engsel-atas-${i}`, memberId: `atas-${i}`, type: 'barrel-weld', mode: 'point', pos: 0, side: 'end', foldAxis: 'x', foldSign: sg as 1 | -1, carry: true, label: `Engsel atas ${nm} (dilipat ke tembok)` });
@@ -636,8 +678,10 @@ export const ALAT_GYM: ProductDef = {
       xs.forEach((x, i) => {
         const nm = i ? 'kanan' : 'kiri';
         add(`tiang-tembok-${i}`, 'y', x, yLo, P / 2, Hh - yLo, 'post', `Tiang tembok ${nm} (dibaut)`, pt);
-        add(`lengan-${i}`, 'z', x, Hh - P / 2, P, Dd - P, 'custom', `Lengan pull-up ${nm}`, pt);
-        line(`topang-${i}`, [x, Hh - 55, P], [x, Hh - P, r1(Dd * 0.6)], 'custom', `Topang miring ${nm}`, pt);
+        add(`lengan-${i}`, 'z', x, Hh - P / 2, P, Dd - P - mid[0] / 20, 'custom', `Lengan pull-up ${nm}`, pt);
+        // topang: ujung atas dipotong datar rata bawah lengan, ujung bawah datar menempel di muka tiang tembok
+        const tB: V3 = [x, Hh - P, r1(Dd * 0.6)];
+        line(`topang-${i}`, touch(tB, [x, Hh - 55, 0], 2, P, 1, P), tB, 'custom', `Topang miring ${nm}`, pt);
         const id = `dip-${i}`;
         add(id, 'z', x, Hd, P, 45, 'custom', `Pegangan dip ${nm} (lipat)`, pt);
         hinges.push({ id: `engsel-dip-${i}`, memberId: id, type: 'barrel-weld', mode: 'point', pos: 0, side: 'end', foldAxis: 'y', foldSign: 1, label: `Engsel pegangan dip ${nm} (dilipat naik)` });
@@ -648,19 +692,28 @@ export const ALAT_GYM: ProductDef = {
     } else if (m === 'dip-paralel') {
       [0, Wi].forEach((xu, i) => {
         const nm = i ? 'kanan' : 'kiri';
-        add(`rel-${i}`, 'z', xu, P / 2, 0, Dd, 'rail-z', `Rel lantai ${nm}`, pt);
+        // tapak H: tapak melintang menerus, rel lantai dipotong di antara keduanya
+        add(`rel-${i}`, 'z', xu, P / 2, P, Dd - 2 * P, 'rail-z', `Rel lantai ${nm}`, pt);
         [P / 2, Dd - P / 2].forEach((z, j) => add(`tapak-${i}-${j}`, 'x', xu - 18, P / 2, z, 36, 'rail-x', `Tapak ${nm} ${j ? 'depan' : 'belakang'}`, pt));
         const z0 = Dd / 2 - 25;
         const z1 = Dd / 2 + 25;
         add(`pegangan-${i}`, 'z', xu, Hd, z0 - 5, 60, 'custom', `Pegangan dip ${nm}`, mid);
         const a: V3 = [xu, P, P + 3];
         const c: V3 = [xu, P, Dd - P - 3];
-        line(`kaki-b-${i}`, a, [xu, Hd - P / 2, z0], 'post', `Kaki miring belakang ${nm}`, pt);
-        line(`kaki-d-${i}`, c, [xu, Hd - P / 2, z1], 'post', `Kaki miring depan ${nm}`, pt);
+        const yK = Hd - mid[0] / 20;
+        line(`kaki-b-${i}`, a, [xu, yK, z0], 'post', `Kaki miring belakang ${nm}`, pt);
+        line(`kaki-d-${i}`, c, [xu, yK, z1], 'post', `Kaki miring depan ${nm}`, pt);
+        // palang tengah dipotong lurus, kedua ujung menempel di muka dalam kaki miring (titik terluar muka miring)
         const f = 0.4;
-        const ym = P + (Hd - P / 2 - P) * f;
-        const zA = a[2] + (z0 - a[2]) * f;
-        const zB = c[2] + (z1 - c[2]) * f;
+        const ym = P + (yK - P) * f;
+        const face = (s: V3, zt: number, y: number, side: number) => {
+          const dy = yK - s[1];
+          const dz = zt - s[2];
+          return s[2] + (dz * (y - s[1])) / dy + (side * P) / 2 / (Math.abs(dy) / Math.hypot(dy, dz));
+        };
+        const yHi = ym + mid[1] / 20;
+        const zA = face(a, z0, yHi, 1);
+        const zB = face(c, z1, yHi, -1);
         add(`tengah-${i}`, 'z', xu, ym, zA, zB - zA, 'rail-z', `Palang tengah ${nm}`, mid);
       });
     } else if (BENCH.includes(m)) {
@@ -679,7 +732,11 @@ export const ALAT_GYM: ProductDef = {
       /** Kaki V: dua kaki miring dari tapak lebar ke bawah balok */
       const kakiV = (id: string, z: number, yTo: number, nm: string) => {
         add(`tapak-${id}`, 'x', -Wt / 2 - 5, P / 2, z, Wt + 10, 'rail-x', `Tapak lebar ${nm}`, pt);
-        [-1, 1].forEach((s, k) => line(`kaki-${id}-${k}`, [s * (Wt / 2 + 5 - P), P, z], [s * 2.5, yTo, z], 'post', `Kaki miring ${nm} ${k ? 'kanan' : 'kiri'}`, pt));
+        // kedua kaki bertemu di bawah balok: ujung atas dipotong datar, sudutnya saling bertemu di as (tidak tumpang)
+        [-1, 1].forEach((s, k) => {
+          const a: V3 = [s * (Wt / 2 + 5 - P), P, z];
+          line(`kaki-${id}-${k}`, a, touch(a, [0, yTo, z], 0, 0, s, P), 'post', `Kaki miring ${nm} ${k ? 'kanan' : 'kiri'}`, pt);
+        });
       };
       const jok = (id: string, z0: number, z1: number, nm: string) => {
         if (b > 0) boards.push(board(`papan-${id}`, `Papan ${nm}`, -Wj / 2, Wj / 2, yTopRail, yTopRail + b, z0, z1));
@@ -687,7 +744,10 @@ export const ALAT_GYM: ProductDef = {
       };
       /** Penahan kaki rendah di ujung kaki balok */
       const penahanBawah = (zEnd: number) => {
-        line('batang-penahan', [0, yr - 5, zEnd - 3], [0, 14, zEnd + 15], 'custom', 'Batang penahan kaki', pt);
+        // ujung bawah dipotong datar, duduk di atas pipa roller
+        const yE = 14 + bar[0] / 20;
+        const zE = zEnd + 15 - (18 * (yE - 14)) / (yr - 5 - 14);
+        line('batang-penahan', [0, yr - 5, zEnd - 3], [0, yE, zE], 'custom', 'Batang penahan kaki', pt);
         roller('roller', 14, zEnd + 15);
       };
 
@@ -722,7 +782,9 @@ export const ALAT_GYM: ProductDef = {
         at(2.5 + b, busa, 'busa-sandaran', 'Busa sandaran', jokC);
         // batang penyangga sudut: dari bawah rangka sandaran tegak turun ke balok
         const S: V3 = [0, h0[1] + u[1] * Ls * 0.55, h0[2] + u[2] * Ls * 0.55];
-        if (S[1] - 2.5 - yTopRail > 3) line('penyangga', [0, yTopRail, S[2]], [0, S[1] - 2.5, S[2]], 'custom', 'Batang penyangga sudut (pin penyetel)', mid);
+        // ujung atas berhenti di titik terendah muka bawah rangka sandaran yang miring (tidak masuk ke rangka)
+        const yS = S[1] - 2.5 / Math.max(0.05, Math.cos(a)) - (mid[0] / 20) * Math.tan(a);
+        if (yS - yTopRail > 3) line('penyangga', [0, yTopRail, S[2]], [0, yS, S[2]], 'custom', 'Batang penyangga sudut (pin penyetel)', mid);
         penahanBawah(Lj);
       } else if (m === 'bench-situp') {
         const a = (Math.max(5, Math.min(40, num(p, 'sudut', 25))) * Math.PI) / 180;
@@ -734,8 +796,9 @@ export const ALAT_GYM: ProductDef = {
         const yAt = (z: number) => yLow + (rise * (zLow - z)) / Lh;
         line('balok', [0, yLow, zLow], [0, yLow + rise, zHigh], 'rail-z', 'Balok tengah miring 50×100', beam);
         const dyB = 5 / Math.cos(a);
-        kakiT('kepala', zLow - 12, yAt(zLow - 12) - dyB, 'ujung kepala');
-        kakiV('kaki', 20, yAt(20) - dyB, 'ujung kaki (tinggi)');
+        // kaki berhenti di titik terendah muka bawah balok miring selebar kaki
+        kakiT('kepala', zLow - 12, yAt(zLow - 12 + P / 2) - dyB, 'ujung kepala');
+        kakiV('kaki', 20, yAt(20 + P / 2) - dyB, 'ujung kaki (tinggi)');
         const deg = r1((a * 180) / Math.PI);
         const n: V3 = [0, Math.cos(a), Math.sin(a)];
         const mz = (zLow + zHigh) / 2;
@@ -749,9 +812,12 @@ export const ALAT_GYM: ProductDef = {
         if (b > 0) put(5, b, 'papan-jok', 'Papan jok miring');
         put(5 + b, busa, 'busa-jok', 'Busa jok miring', jokC);
         const zr = zHigh + 4;
-        const y0 = yAt(zr) + dyB;
-        add('tiang-roller', 'y', 0, y0 - 1, zr, b + busa + 20, 'custom', 'Tiang roller penahan kaki', pt);
-        roller('roller', y0 - 1 + b + busa + 20, zr);
+        // tiang duduk di titik tertinggi muka atas balok (atau di potongan datar ujung balok bila lebih rendah)
+        const cutFlat = rise / Lj >= 0.35;
+        const y0 = Math.min(yAt(zr - P / 2) + dyB, cutFlat ? yLow + rise : Infinity);
+        const yRc = yAt(zr) + dyB - 1 + b + busa + 20; // as pipa roller (tinggi tetap)
+        add('tiang-roller', 'y', 0, y0, zr, yRc - bar[0] / 20 - y0, 'custom', 'Tiang roller penahan kaki', pt);
+        roller('roller', yRc, zr);
       } else {
         // bench-press: bench di balok tengah + dua tiang J-hook di tapak H ujung kepala
         const Wr = Wi;

@@ -443,6 +443,14 @@ export const KURSI_TUNGGU: ProductDef = {
       const roleU: FrameMemberRole = along ? 'rail-x' : 'rail-z';
       const roleV: FrameMemberRole = along ? 'rail-z' : 'rail-x';
       const ln = (id: string, a: V3, c: V3, role: FrameMemberRole, label: string, tube: [number, number]) => line(id, P(...a), P(...c), role, label, tube);
+      /**
+       * Palang sepanjang u (u0→u1) yang memotong batang tegak lurus di uc (lebar 2·half): dipotong dua,
+       * kedua potongan menempel rata di sisi batang itu (tidak saling tembus).
+       */
+      const lnSplitU = (id: string, u0: number, u1: number, uc: number, half: number, y: number, v: number, role: FrameMemberRole, label: string, tube: [number, number]) => {
+        ln(`${id}-1`, [u0, y, v], [uc - half, y, v], role, `${label} (kiri)`, tube);
+        ln(`${id}-2`, [uc + half, y, v], [u1, y, v], role, `${label} (kanan)`, tube);
+      };
       const bx = (id: string, label: string, u0: number, u1: number, y0: number, y1: number, v0: number, v1: number): Board => {
         const a = P(u0, y0, v0);
         const c = P(u1, y1, v1);
@@ -455,7 +463,7 @@ export const KURSI_TUNGGU: ProductDef = {
           },
         };
       };
-      return { P, ln, bx, roleU, roleV };
+      return { P, ln, lnSplitU, bx, roleU, roleV };
     };
 
     /** Susunan dudukan + meja kecil dalam satu deret */
@@ -488,7 +496,11 @@ export const KURSI_TUNGGU: ProductDef = {
 
     /** Bangun dudukan, sandaran, balok & sandaran tangan satu deret; kembalikan posisi u tiap item & celah */
     const buildRow = (s: RowSpec) => {
-      const { ln, bx, roleU, roleV } = mapper(s.face, s.ox, s.oz);
+      const { ln, lnSplitU, bx, roleU, roleV } = mapper(s.face, s.ox, s.oz);
+      const armHalf = armT[0] / 20; // setengah lebar lengan 20×40 searah u
+      // Tiang sandaran tegak lurus (tanpa miring) selalu berprofil 20 searah x, 40 searah z:
+      // di deret sepanjang z (muka E/W) sisi 40-nya yang searah u.
+      const postHalf = s.tiltDeg === 0 && (s.face === 'E' || s.face === 'W') ? armT[1] / 20 : armT[0] / 20;
       const t = (s.tiltDeg * Math.PI) / 180;
       const vAt = (y: number) => s.postV - (y - yS0) * Math.tan(t);
       const starts: number[] = [];
@@ -512,8 +524,9 @@ export const KURSI_TUNGGU: ProductDef = {
         if (s.lipat && it.kind === 'seat') {
           hinges.push({ id: `${id}-engsel`, memberId: armId, mode: 'point', type: 'barrel-weld', pos: 0, side: 'end', foldAxis: 'y', foldSign: 1, label: `Engsel lipat${tag}` });
         } else {
-          ln(`${id}-rangka-b`, [u0 + 2, yS0 - 1, s.seatV0 + 2], [u0 + it.w - 2, yS0 - 1, s.seatV0 + 2], roleU, `Rangka belakang${tag}`, rail);
-          ln(`${id}-rangka-d`, [u0 + 2, yS0 - 1, D - 3], [u0 + it.w - 2, yS0 - 1, D - 3], roleU, `Rangka depan${tag}`, rail);
+          // Rangka dudukan sejajar lengan: dipotong dua, dilas menempel di kedua sisi lengan
+          lnSplitU(`${id}-rangka-b`, u0 + 2, u0 + it.w - 2, uc, armHalf, yS0 - 1, s.seatV0 + 2, roleU, `Rangka belakang${tag}`, rail);
+          lnSplitU(`${id}-rangka-d`, u0 + 2, u0 + it.w - 2, uc, armHalf, yS0 - 1, D - 3, roleU, `Rangka depan${tag}`, rail);
         }
         if (it.kind === 'meja') {
           const tt = b > 0 ? b : 0.3;
@@ -530,8 +543,9 @@ export const KURSI_TUNGGU: ProductDef = {
           ln(`${id}-tiang-sandaran`, [uc, yS0, s.postV], [uc, hTop - 1, vAt(hTop - 1)], 'post', `Tiang sandaran${tag}`, armT);
           const yT = hTop - 2;
           const yL = Math.min(yT - 10, Hs + 12);
-          ln(`${id}-sandaran-atas`, [u0 + 3, yT, vAt(yT)], [u0 + it.w - 3, yT, vAt(yT)], roleU, `Palang sandaran atas${tag}`, rail);
-          ln(`${id}-sandaran-bawah`, [u0 + 3, yL, vAt(yL)], [u0 + it.w - 3, yL, vAt(yL)], roleU, `Palang sandaran bawah${tag}`, rail);
+          // Palang sandaran dipotong dua, dilas di kedua sisi tiang sandaran
+          lnSplitU(`${id}-sandaran-atas`, u0 + 3, u0 + it.w - 3, uc, postHalf, yT, vAt(yT), roleU, `Palang sandaran atas${tag}`, rail);
+          lnSplitU(`${id}-sandaran-bawah`, u0 + 3, u0 + it.w - 3, uc, postHalf, yL, vAt(yL), roleU, `Palang sandaran bawah${tag}`, rail);
           if (hasSeatBoard) {
             const y0 = yL - 3;
             const hgt = (hTop - y0) / Math.cos(t);
@@ -589,16 +603,25 @@ export const KURSI_TUNGGU: ProductDef = {
         ln(`${id}-atas`, [us, beamBot - L / 2, f0], [us, beamBot - L / 2, f1], roleV, `Palang atas ${nm}`, pt);
       } else if (kind === 'kaki-x') {
         ln(`${id}-atas`, [us, beamBot - L / 2, f0], [us, beamBot - L / 2, f1], roleV, `Palang atas ${nm}`, pt);
-        ln(`${id}-silang-1`, [us, 0, f0 + L / 2], [us, beamBot - L, f1 - L / 2], 'post', `Kaki silang ${nm} 1`, pt);
-        ln(`${id}-silang-2`, [us, 0, f1 - L / 2], [us, beamBot - L, f0 + L / 2], 'post', `Kaki silang ${nm} 2`, pt);
+        // Dua kaki silang bersebelahan (geser setengah pipa ke kiri & kanan), saling menempel di persilangan,
+        // bukan saling tembus di bidang yang sama; keduanya tetap menumpu palang atas.
+        ln(`${id}-silang-1`, [us - L / 2, 0, f0 + L / 2], [us - L / 2, beamBot - L, f1 - L / 2], 'post', `Kaki silang ${nm} 1`, pt);
+        ln(`${id}-silang-2`, [us + L / 2, 0, f1 - L / 2], [us + L / 2, beamBot - L, f0 + L / 2], 'post', `Kaki silang ${nm} 2`, pt);
       } else if (kind === 'kaki-a') {
+        // Puncak A: kedua kaki dipotong rata di bawah balok dan saling menempel di as balok (tidak tumpang tindih).
+        // hw(top, bot) = setengah lebar mendatar kaki miring (dipotong rata lantai).
+        const hw = (vTop: number, vBot: number) => (L / 2) * (Math.hypot(beamBot, vTop - vBot) / beamBot);
         const vb0 = f0 + L / 2;
         const vf0 = f1 - L / 2;
-        ln(`${id}-kaki-b`, [us, beamBot, vB], [us, 0, vb0], 'post', `Kaki miring belakang ${nm}`, pt);
-        ln(`${id}-kaki-d`, [us, beamBot, vB], [us, 0, vf0], 'post', `Kaki miring depan ${nm}`, pt);
+        const tb0 = vB - hw(vB, vb0);
+        const tf0 = vB + hw(vB, vf0);
+        ln(`${id}-kaki-b`, [us, beamBot, tb0], [us, 0, vb0], 'post', `Kaki miring belakang ${nm}`, pt);
+        ln(`${id}-kaki-d`, [us, beamBot, tf0], [us, 0, vf0], 'post', `Kaki miring depan ${nm}`, pt);
+        // Perenggang: ujung dipotong rata menempel di sisi dalam kaki (dihitung di sisi atas palang)
         const yp = 14;
-        const k = 1 - yp / beamBot;
-        ln(`${id}-perenggang`, [us, yp, vB + (vb0 - vB) * k + L / 2], [us, yp, vB + (vf0 - vB) * k - L / 2], roleV, `Palang perenggang ${nm}`, rail);
+        const yq = yp + rail[1] / 20;
+        const at = (vTop: number, vBot: number, y: number) => vBot + (vTop - vBot) * (y / beamBot);
+        ln(`${id}-perenggang`, [us, yp, at(tb0, vb0, yq) + hw(tb0, vb0)], [us, yp, at(tf0, vf0, yq) - hw(tf0, vf0)], roleV, `Palang perenggang ${nm}`, rail);
       } else if (kind === 'kantilever') {
         ln(`${id}-tapak`, [us, L / 2, f0], [us, L / 2, f1], roleV, `Tapak menjorok ke depan ${nm}`, pt);
         ln(`${id}-tiang`, [us, L, vB], [us, beamBot, vB], 'post', `Tiang belakang ${nm}`, pt);
@@ -606,16 +629,19 @@ export const KURSI_TUNGGU: ProductDef = {
         boards.push({ ...bx(`${id}-plat`, `Plat dasar ${nm}`, us - 9, us + 9, 0, 0.8, vB - 9, vB + 9), steelMm: 8 });
         ln(`${id}-tiang`, [us, 0.8, vB], [us, beamBot, vB], 'post', `Tiang ${nm}`, pt);
       } else if (kind === 'tengah') {
+        // Kaki menyebar dilas di sisi kiri / kanan tiang tengah (ujung dipotong rata sisi tiang),
+        // pasangan depan–belakang dipisah sedikit supaya tidak saling tembus di pangkal.
         const y0 = 10;
-        ln(`${id}-tiang`, [us, y0, vB], [us, beamBot, vB], 'post', `Tiang tengah ${nm}`, pt);
+        ln(`${id}-tiang`, [us, y0 - L / 2, vB], [us, beamBot, vB], 'post', `Tiang tengah ${nm}`, pt);
         const sx = Math.min(32, us - 4);
         const sz = Math.min(vB - 2, D - 2 - vB);
+        const hz = L * 0.7;
         [
           [-1, -1],
           [1, -1],
           [-1, 1],
           [1, 1],
-        ].forEach(([a, c], k) => ln(`${id}-kaki-${k + 1}`, [us, y0, vB], [us + a * sx, 0, vB + c * sz], 'post', `Kaki menyebar ${k + 1}`, pt));
+        ].forEach(([a, c], k) => ln(`${id}-kaki-${k + 1}`, [us + (a * L) / 2, y0, vB + c * hz], [us + a * sx, 0, vB + c * sz], 'post', `Kaki menyebar ${k + 1}`, pt));
       } else if (kind === 'standar') {
         const yA = Hs + 20;
         const vf = D - 8;
@@ -669,7 +695,10 @@ export const KURSI_TUNGGU: ProductDef = {
       const vB = 4;
       const rowTop = m === 'tembok-lipat' ? Hs + Math.max(18, hB - 6) : hTop - 3;
       const postV = 9;
-      const tilt = m === 'tembok-kantilever' ? (Math.atan((postV - 5) / Math.max(10, rowTop - yS0)) * 180) / Math.PI : 0;
+      // Tiang sandaran condong ke tembok dan berhenti menempel di MUKA rel atas (rel di v 2–4), tidak menembusnya:
+      // as ujung atas = muka rel + setengah tebal tiang (40 mm) searah miring.
+      const vTopPost = 4 + armT[1] / 20 + 0.2;
+      const tilt = m === 'tembok-kantilever' ? (Math.atan((postV - vTopPost) / Math.max(10, hTop - 1 - yS0)) * 180) / Math.PI : 0;
       const row = buildRow({
         pre: '',
         nm: '',
@@ -738,10 +767,12 @@ export const KURSI_TUNGGU: ProductDef = {
         lipat: true,
       });
       const { ln } = mapper('S', e0, oz);
-      ln('balok', [-e0 / 2, beamC, vB], [row.R + e0 / 2, beamC, vB], 'rail-x', 'Balok bersama', beamT);
       const us = [-gs / 2];
       for (let k = 1; k < items.length - 1; k += 2) us.push(row.starts[k] + items[k].w + gaps[k] / 2);
       us.push(row.R + gs / 2);
+      // Balok bersama dipotong per bentang: ujungnya dilas rata di sisi tiang belakang rangka samping (tiang menerus)
+      for (let k = 0; k < us.length - 1; k++)
+        ln(us.length > 2 ? `balok-${k + 1}` : 'balok', [us[k] + L / 2, beamC, vB], [us[k + 1] - L / 2, beamC, vB], 'rail-x', us.length > 2 ? `Balok bersama ${k + 1}` : 'Balok bersama', beamT);
       us.forEach((u, k) => support('S', e0, oz, `rangka-samping-${k + 1}`, `rangka samping ${k + 1}`, 'standar', u, vB, 1, D - 4));
     } else if (m === 'punggung') {
       // Satu balok tengah, dua deret saling membelakangi

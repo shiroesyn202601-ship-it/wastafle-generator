@@ -353,6 +353,28 @@ export const RAK_DAPUR: ProductDef = {
     let outD = D;
     let outH = H;
     let wall = false;
+    let cz: number[] | undefined; // posisi z roda (bawaan: as tiang depan & belakang)
+    /**
+     * Silang X di bidang tegak z (pipa tube): batang 1 menerus, batang 2 dipotong dua dan kedua potongannya
+     * dilas di sisi batang 1. Ujung potongan (rata bidang potong) menyentuh sisi batang 1, tidak masuk ke dalamnya.
+     */
+    const silangX = (id: string, nm: string, xa: number, xb: number, y0: number, y1: number, z: number, tube: [number, number]) => {
+      line(`${id}-1`, [xa, y0, z], [xb, y1, z], 'custom', `${nm} 1`, tube);
+      const h = tube[0] / 20; // setengah lebar pipa (cm)
+      const len = Math.hypot(xb - xa, y1 - y0);
+      const u1 = [(xb - xa) / len, (y1 - y0) / len];
+      const u2 = [-(xb - xa) / len, (y1 - y0) / len]; // arah batang 2 (xb,y0) → (xa,y1)
+      const di = Math.abs(u2[1]) >= 0.35 ? 1 : 0; // sumbu bidang potong ujung (lihat cutAxisIndex)
+      const n2 = [-u2[1], u2[0]];
+      const v = [n2[0] - (n2[di] / u2[di]) * u2[0], n2[1] - (n2[di] / u2[di]) * u2[1]];
+      const n1 = [-u1[1], u1[0]];
+      const sinA = Math.abs(u1[0] * u2[1] - u1[1] * u2[0]);
+      const d = (h * (1 + Math.abs(v[0] * n1[0] + v[1] * n1[1]))) / sinA; // jarak ujung potongan dari titik silang
+      const cx = (xa + xb) / 2;
+      const cy = (y0 + y1) / 2;
+      line(`${id}-2a`, [xb, y0, z], [cx - u2[0] * d, cy - u2[1] * d, z], 'custom', `${nm} 2a`, tube);
+      line(`${id}-2b`, [cx + u2[0] * d, cy + u2[1] * d, z], [xa, y1, z], 'custom', `${nm} 2b`, tube);
+    };
 
     if (m === 'piring-jeruji') {
       W = clamp(W, 30, 120);
@@ -420,26 +442,27 @@ export const RAK_DAPUR: ProductDef = {
       W = clamp(W, 35, 100);
       D = clamp(D, 22, 40);
       H = clamp(H, 30, 60);
-      const xl = L / 2;
-      const xr = W - L / 2;
       const zb = L / 2;
       const zf = D - L / 2;
-      [xl, xr].forEach((x, j) => {
-        const nm = j ? 'kanan' : 'kiri';
-        line(`kaki-${nm}-1`, [x, 0, zb], [x, H, zf], 'post', `Kaki silang ${nm} 1`, pt);
-        line(`kaki-${nm}-2`, [x, 0, zf], [x, H, zb], 'post', `Kaki silang ${nm} 2`, pt);
+      // Gunting kaki silang: kedua kaki tiap ujung bersebelahan (kaki 1 di luar, kaki 2 di dalam), bertemu muka di poros baut.
+      // Palang yang menyambung kaki 1 kiri–kanan dipotong rata sisi dalam kaki 1; yang menyambung kaki 2 rata sisi dalam kaki 2.
+      const x1 = [L / 2, W - L / 2]; // kaki 1 (luar)
+      const x2 = [1.5 * L, W - 1.5 * L]; // kaki 2 (dalam)
+      ['kiri', 'kanan'].forEach((nm, j) => {
+        line(`kaki-${nm}-1`, [x1[j], 0, zb], [x1[j], H, zf], 'post', `Kaki silang ${nm} 1`, pt);
+        line(`kaki-${nm}-2`, [x2[j], 0, zf], [x2[j], H, zb], 'post', `Kaki silang ${nm} 2`, pt);
       });
-      add('poros', 'x', xl, H / 2, D / 2, W - L, 'rail-x', 'Poros silang (dibaut)', r2);
-      add('atas-belakang', 'x', xl, H, zb, W - L, 'rail-x', 'Palang atas belakang', r2);
-      add('atas-depan', 'x', xl, H, zf, W - L, 'rail-x', 'Palang atas depan', r2);
+      add('poros', 'x', 2 * L, H / 2, D / 2, W - 4 * L, 'rail-x', 'Poros silang (dibaut)', r2);
+      add('atas-belakang', 'x', 2 * L, H, zb, W - 4 * L, 'rail-x', 'Palang atas belakang', r2);
+      add('atas-depan', 'x', L, H, zf, W - 2 * L, 'rail-x', 'Palang atas depan', r2);
       const ya = r1(H * 0.3);
       const dz = zf - zb;
       const z1 = r1(zb + dz * 0.3);
       const z2 = r1(zf - dz * 0.3);
-      add('nampan-belakang', 'x', xl, ya, z1, W - L, 'rail-x', 'Palang nampan belakang', r2);
-      add('nampan-depan', 'x', xl, ya, z2, W - L, 'rail-x', 'Palang nampan depan', r2);
-      pushBoard(board('papan-nampan', 'Nampan tetes', L, W - L, ya + 1, ya + 1 + b, z1 - 1, z2 + 1));
-      jeruji('jeruji-b', 'Jeruji piring belakang', L, W - L, H + 1, zb, 15);
+      add('nampan-belakang', 'x', L, ya, z1, W - 2 * L, 'rail-x', 'Palang nampan belakang', r2);
+      add('nampan-depan', 'x', 2 * L, ya, z2, W - 4 * L, 'rail-x', 'Palang nampan depan', r2);
+      pushBoard(board('papan-nampan', 'Nampan tetes', 2 * L, W - 2 * L, ya + 1, ya + 1 + b, z1 - 1, z2 + 1));
+      jeruji('jeruji-b', 'Jeruji piring belakang', 2 * L, W - 2 * L, H + 1, zb, 15);
       jeruji('jeruji-d', 'Jeruji piring depan', L, W - L, H + 1, zf, 7);
       outW = W;
       outD = D;
@@ -451,8 +474,11 @@ export const RAK_DAPUR: ProductDef = {
       const nn = Math.max(2, n);
       const xl = L / 2;
       const xr = W - L / 2;
-      const zb = L / 2;
+      // Silang belakang (pipa tipis) dilas menempel di muka belakang tiang; rangka mundur setebal pipa silang
+      // supaya kedalaman luar tetap D.
+      const zb = tt + L / 2;
       const zf = D - L / 2;
+      cz = [zb, zf];
       const extra = b + 8;
       [xl, xr].forEach((x, j) =>
         [zb, zf].forEach((z, k) => add(`tiang-${j ? 'kanan' : 'kiri'}-${k ? 'd' : 'b'}`, 'y', x, c, z, H + extra - c, 'post', `Tiang ${j ? 'kanan' : 'kiri'} ${k ? 'depan' : 'belakang'}`, pt))
@@ -465,14 +491,13 @@ export const RAK_DAPUR: ProductDef = {
         add(`t${t}-belakang`, 'x', L, y, zb, W - 2 * L, 'rail-x', `Palang susun ${t} belakang`, rail);
         add(`t${t}-kiri`, 'z', xl, y, zb + L / 2, zf - zb - L, 'rail-z', `Palang susun ${t} kiri`, rail);
         add(`t${t}-kanan`, 'z', xr, y, zb + L / 2, zf - zb - L, 'rail-z', `Palang susun ${t} kanan`, rail);
-        pushBoard(board(`papan-${t}`, `Papan susun ${t}`, L, W - L, y + rh / 2, y + rh / 2 + b, L, D));
+        pushBoard(board(`papan-${t}`, `Papan susun ${t}`, L, W - L, y + rh / 2, y + rh / 2 + b, zb + L / 2, D));
         const yp = y + rh / 2 + b + 6;
         add(`t${t}-pagar-belakang`, 'x', L, yp, zb, W - 2 * L, 'custom', `Pagar susun ${t} belakang`, thin);
         add(`t${t}-pagar-kiri`, 'z', xl, yp, zb + L / 2, zf - zb - L, 'custom', `Pagar susun ${t} kiri`, thin);
         add(`t${t}-pagar-kanan`, 'z', xr, yp, zb + L / 2, zf - zb - L, 'custom', `Pagar susun ${t} kanan`, thin);
       });
-      line('silang-belakang-1', [xl, ys[0], zb], [xr, ys[ys.length - 1], zb], 'custom', 'Silang belakang 1', thin);
-      line('silang-belakang-2', [xr, ys[0], zb], [xl, ys[ys.length - 1], zb], 'custom', 'Silang belakang 2', thin);
+      silangX('silang-belakang', 'Silang belakang', xl, xr, ys[0], ys[ys.length - 1], tt / 2, thin);
       outW = W;
       if (bool(p, 'kait')) {
         const yk = ys[Math.floor((ys.length - 1) / 2)];
@@ -514,9 +539,10 @@ export const RAK_DAPUR: ProductDef = {
           const x1 = x0 + bw - tt;
           [x0, x1].forEach((x, q) => {
             const sd = q ? 'kanan' : 'kiri';
-            add(`k${K}-tiang-b-${sd}`, 'y', x, yb, zB0, yh - yb, 'custom', `Tiang belakang ${sd} ${nm}`, thin);
+            // tiang belakang berhenti di muka bawah kait; kait menumpang di atas rel, ujungnya rata muka depan tiang
+            add(`k${K}-tiang-b-${sd}`, 'y', x, yb, zB0, yh - tt / 2 - yb, 'custom', `Tiang belakang ${sd} ${nm}`, thin);
             add(`k${K}-tiang-d-${sd}`, 'y', x, yb, zB1, hb, 'custom', `Tiang depan ${sd} ${nm}`, thin);
-            add(`k${K}-kait-${sd}`, 'z', x, yh, zr - 1, zB0 - (zr - 1), 'custom', `Kait gantung ${sd} ${nm}`, thin);
+            add(`k${K}-kait-${sd}`, 'z', x, yh, zr - 1, zB0 + tt / 2 - (zr - 1), 'custom', `Kait gantung ${sd} ${nm}`, thin);
           });
           [yb, yt].forEach((y, q) => {
             const lv = q ? 'pagar' : 'bawah';
@@ -544,8 +570,9 @@ export const RAK_DAPUR: ProductDef = {
       const xs = [1, W - 1];
       xs.forEach((x, j) => {
         const sd = j ? 'kanan' : 'kiri';
-        add(`tiang-${sd}`, 'y', x, yb, zU, yt - yb, 'post', `Tiang ${sd}`, r2);
-        add(`kait-${sd}`, 'z', x, yt - 1, 0, zU, 'custom', `Kait atas pintu ${sd}`, r2);
+        // tiang berhenti di muka bawah kait; kait menumpang di pucuk tiang, ujungnya rata muka depan tiang
+        add(`tiang-${sd}`, 'y', x, yb, zU, yt - 2 - yb, 'post', `Tiang ${sd}`, r2);
+        add(`kait-${sd}`, 'z', x, yt - 1, 0, zU + 1, 'custom', `Kait atas pintu ${sd}`, r2);
         add(`kait-${sd}-ujung`, 'y', x, yt - 8, tt / 2, 6, 'custom', `Ujung kait ${sd} (di balik pintu)`, thin);
       });
       const ys = levels(clamp(n, 1, 8), yb + 1, Math.max(yb + 1, yt - 16));
@@ -608,8 +635,10 @@ export const RAK_DAPUR: ProductDef = {
       W = g * CELL_X;
       D = clamp(D, 22, 40);
       H = clamp(H, 25, 80);
-      const zb = L / 2;
-      const zf = D - L / 2;
+      // Tiap bingkai silang: kaki 1 di bidang luar, kaki 2 bersebelahan di dalamnya (bertemu muka di titik silang).
+      // Palang z dipotong rata sisi dalam kaki yang disambungnya.
+      const zo = [L / 2, D - L / 2]; // bidang kaki 1 (belakang, depan)
+      const zi = [1.5 * L, D - 1.5 * L]; // bidang kaki 2
       const xcs: number[] = [];
       for (let i = 0; i < g; i++) {
         const I = i + 1;
@@ -618,18 +647,24 @@ export const RAK_DAPUR: ProductDef = {
         const xc = (xl + xr) / 2;
         const half = (xr - xl) / 2;
         xcs.push(xc);
-        [zb, zf].forEach((z, k) => {
+        [0, 1].forEach((k) => {
           const zn = k ? 'depan' : 'belakang';
-          line(`silang-${I}-${zn}-1`, [xl, 0, z], [xr, H, z], 'post', `Kaki silang ${I} ${zn} 1`, pt);
-          line(`silang-${I}-${zn}-2`, [xr, 0, z], [xl, H, z], 'post', `Kaki silang ${I} ${zn} 2`, pt);
+          line(`silang-${I}-${zn}-1`, [xl, 0, zo[k]], [xr, H, zo[k]], 'post', `Kaki silang ${I} ${zn} 1`, pt);
+          line(`silang-${I}-${zn}-2`, [xr, 0, zi[k]], [xl, H, zi[k]], 'post', `Kaki silang ${I} ${zn} 2`, pt);
         });
-        add(`poros-${I}`, 'z', xc, H / 2, zb, zf - zb, 'rail-z', `Poros silang ${I}`, r2);
+        add(`poros-${I}`, 'z', xc, H / 2, 2 * L, D - 4 * L, 'rail-z', `Poros silang ${I}`, r2);
         const yc = r1(H / 2 + (H / 2) * 0.55);
         const off = half * 0.55;
-        [-1, 1].forEach((sg) => add(`buaian-${I}-${sg < 0 ? 'kiri' : 'kanan'}`, 'z', xc + sg * off, yc, zb, zf - zb, 'rail-z', `Palang buaian galon ${I} ${sg < 0 ? 'kiri' : 'kanan'}`, r2));
+        // buaian kanan menumpu di kaki 1 (luar), buaian kiri di kaki 2 (dalam)
+        add(`buaian-${I}-kiri`, 'z', xc - off, yc, 2 * L, D - 4 * L, 'rail-z', `Palang buaian galon ${I} kiri`, r2);
+        add(`buaian-${I}-kanan`, 'z', xc + off, yc, L, D - 2 * L, 'rail-z', `Palang buaian galon ${I} kanan`, r2);
       }
+      // palang sambung antar dudukan: menempel di sisi dalam kaki 2, ujungnya dilas rata di sisi poros silang
+      const hr = r2[0] / 20;
       if (g > 1)
-        [zb, zf].forEach((z, k) => add(`sambung-${k ? 'depan' : 'belakang'}`, 'x', xcs[0], H / 2, z, xcs[g - 1] - xcs[0], 'rail-x', `Palang sambung ${k ? 'depan' : 'belakang'}`, r2));
+        [2 * L + hr, D - 2 * L - hr].forEach((z, k) =>
+          add(`sambung-${k ? 'depan' : 'belakang'}`, 'x', xcs[0] + hr, H / 2, z, xcs[g - 1] - xcs[0] - 2 * hr, 'rail-x', `Palang sambung ${k ? 'depan' : 'belakang'}`, r2)
+        );
       outW = W;
       outD = D;
       outH = H + L / 2;
@@ -638,7 +673,7 @@ export const RAK_DAPUR: ProductDef = {
     return {
       members: list,
       boards,
-      casters: roda ? casterSet([L / 2, W - L / 2], [L / 2, D - L / 2], inch, bool(p, 'remRoda')) : [],
+      casters: roda ? casterSet([L / 2, W - L / 2], cz ?? [L / 2, D - L / 2], inch, bool(p, 'remRoda')) : [],
       W: r1(outW),
       D: r1(outD),
       H: r1(outH),

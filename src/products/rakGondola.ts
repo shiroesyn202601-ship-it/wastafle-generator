@@ -300,6 +300,7 @@ export const RAK_GONDOLA: ProductDef = {
     const rail: [number, number] = [20, 20];
     const rh = 2;
     const thin: [number, number] = [15, 15];
+    const tn = 1.5; // penampang batang tipis 15×15 (cm)
     const b = BOARD_THICK[str(p, 'papan', 'kayu')] ?? 2.5;
     const lip = bool(p, 'bibir');
     const lipH = num(p, 'tinggiBibir', 5);
@@ -410,9 +411,10 @@ export const RAK_GONDOLA: ProductDef = {
             const vl = vTip + dir * 1.8;
             const ylo = yt + rh / 2;
             const yhi = yt + ah / 2 + b + lipH;
+            // tiang bibir berdiri di atas palang depan, ujung atasnya rata dengan sisi bawah batang bibir
             lu.forEach((u, j) => {
               const uu = Math.min(w.uTo - 0.8, Math.max(w.lipFrom + 0.8, u));
-              line(`${key}-t${t}-bibir-tiang-${j + 1}`, mp(uu, ylo, vl), mp(uu, yhi, vl), 'custom', `Tiang bibir ${nm} tingkat ${t} no. ${j + 1}`, thin);
+              line(`${key}-t${t}-bibir-tiang-${j + 1}`, mp(uu, ylo, vl), mp(uu, yhi - tn / 2, vl), 'custom', `Tiang bibir ${nm} tingkat ${t} no. ${j + 1}`, thin);
             });
             line(`${key}-t${t}-bibir`, mp(w.lipFrom, yhi, vl), mp(w.uTo, yhi, vl), roleU, `Bibir penahan barang ${nm} tingkat ${t}`, thin);
           }
@@ -458,11 +460,13 @@ export const RAK_GONDOLA: ProductDef = {
           foot(`kaki-b-${j}`, `Kaki tapak ${nm}`, mapZ, z, 0, Dd);
           post(`tiang-b-${j}`, `Tiang ${nm}`, mapZ, z, v0);
         });
-        const uB = L + Dr + 2; // sayap B dimulai di depan papan sayap A
+        const uB = L + Dr + 2; // sayap B dimulai di depan papan sayap A (rata sisi palang depan rak A)
+        const baseB = v0 + Dd; // sisi luar palang dasar depan sayap A: palang dasar & punggung bawah B menempel di sini
+        const lipB = L + Dr + 1.8 + tn / 2; // sisi luar bibir sayap A
         panel('a', 'belakang', mapX, xs, v0, -1e9, -1e9);
-        panel('b', 'samping', mapZ, zs, v0, Dd, Math.max(Dd, uB));
+        panel('b', 'samping', mapZ, zs, v0, baseB, Math.max(baseB, uB));
         wing({ key: 'a', nm: 'sayap belakang', mp: mapX, us: xs, brackets: xs.map(() => true), vPost: v0, dir: 1, uFrom: 0, uTo: W, baseFrom: 0, lipFrom: L + 1.5, tilt: 0 });
-        wing({ key: 'b', nm: 'sayap samping', mp: mapZ, us: zs, brackets: zs.map((_, j) => j > 0), vPost: v0, dir: 1, uFrom: uB, uTo: Z, baseFrom: Dd, lipFrom: uB, tilt: 0, rearRail: true });
+        wing({ key: 'b', nm: 'sayap samping', mp: mapZ, us: zs, brackets: zs.map((_, j) => j > 0), vPost: v0, dir: 1, uFrom: uB, uTo: Z, baseFrom: baseB, lipFrom: lipB, tilt: 0, rearRail: true });
         wall = true;
       }
     } else if (m === 'segitiga') {
@@ -472,7 +476,24 @@ export const RAK_GONDOLA: ProductDef = {
       const zb = L / 2;
       const zf0 = D - L / 2;
       const yS = H - L; // ujung atas batang miring (menempel tiang belakang)
-      const zs = (y: number) => zf0 + ((L - zf0) * y) / yS;
+      // Batang miring dipotong rata lantai & rata atas; sisi belakangnya menempel muka depan tiang di ujung atas,
+      // jadi as ujung atasnya berada setengah lebar-datar batang di depan muka tiang (z = L).
+      let zTop = L;
+      let off = L / 2; // setengah lebar batang miring diukur mendatar (arah z)
+      for (let it = 0; it < 4; it++) {
+        off = ((L / 2) * Math.hypot(zf0 - zTop, yS)) / yS;
+        zTop = L + off;
+      }
+      const zs = (y: number) => zf0 + ((zTop - zf0) * y) / yS;
+      /** z sisi belakang batang miring pada ketinggian y */
+      const zBack = (y: number) => zs(y) - off;
+      /** palang dari muka tiang (z = L) ke depan, ujung depannya menempel sisi belakang batang miring.
+       *  y0 = tinggi as di z0 (as kaki miring), naik `slope` per cm ke belakang; hh = setengah tinggi penampang */
+      const toLeg = (z0: number, y0: number, slope: number, hh: number) => {
+        let z = z0;
+        for (let it = 0; it < 6; it++) z = zBack(y0 + (z0 - z) * slope + hh);
+        return z;
+      };
       const y0 = Math.max(14, L + 10);
       const yMax = (yS * (zf0 - zb - 14)) / (zf0 - L);
       const yN = Math.max(y0 + 10, Math.min(H - 14, yMax));
@@ -481,11 +502,12 @@ export const RAK_GONDOLA: ProductDef = {
       xs.forEach((x, j) => {
         const nm = j === 0 ? 'kiri' : j === k ? 'kanan' : `tengah ${j}`;
         add(`tiang-${j}`, 'y', x, 0, zb, H, 'post', `Tiang ${nm} belakang`, pt);
-        line(`miring-${j}`, [x, 0, zf0], [x, yS, L], 'post', `Kaki miring ${nm}`, pt);
-        line(`lantai-${j}`, [x, L / 2, L], [x, L / 2, zs(L / 2) - L / 2], 'rail-z', `Palang lantai ${nm}`, rail);
+        line(`miring-${j}`, [x, 0, zf0], [x, yS, zTop], 'post', `Kaki miring ${nm}`, pt);
+        line(`lantai-${j}`, [x, L / 2, L], [x, L / 2, toLeg(L, L / 2, 0, rh / 2)], 'rail-z', `Palang lantai ${nm}`, rail);
         lv.forEach((y, i) => {
           const zf = zs(y);
-          line(`t${i + 1}-samping-${j}`, [x, y, zf], [x, y + (zf - L) * tan, L], 'rail-z', `Palang nampan ${i + 1} ${nm}`, rail);
+          const ze = toLeg(zf, y, tan, rh / 2 / Math.cos(tilt * DEG));
+          line(`t${i + 1}-samping-${j}`, [x, y + (zf - ze) * tan, ze], [x, y + (zf - L) * tan, L], 'rail-z', `Palang nampan ${i + 1} ${nm}`, rail);
         });
       });
       for (let j = 0; j < k; j++) {
@@ -513,8 +535,13 @@ export const RAK_GONDOLA: ProductDef = {
         lv.forEach((y, i) => {
           const zl = zs(y) + 0.8;
           const yhi = y + rh / 2 + b + lipH;
-          xs.forEach((x, j) => add(`t${i + 1}-bibir-tiang-${j}`, 'y', x, y + rh / 2, zl, yhi - y - rh / 2, 'custom', `Tiang bibir nampan ${i + 1} no. ${j + 1}`, thin));
-          add(`t${i + 1}-bibir`, 'x', xs[0] + 0.75, yhi, zl, xs[k] - xs[0] - 1.5, 'rail-x', `Bibir penahan nampan ${i + 1}`, thin);
+          // tiang bibir berdiri di atas palang depan nampan, di samping kaki miring (tidak menembus kaki);
+          // ujung atasnya rata dengan sisi bawah batang bibir
+          xs.forEach((x, j) => {
+            const xx = j === k ? x - L / 2 - tn / 2 : x + L / 2 + tn / 2;
+            add(`t${i + 1}-bibir-tiang-${j}`, 'y', xx, y + rh / 2, zl, yhi - tn / 2 - y - rh / 2, 'custom', `Tiang bibir nampan ${i + 1} no. ${j + 1}`, thin);
+          });
+          add(`t${i + 1}-bibir`, 'x', xs[0] + L / 2, yhi, zl, xs[k] - xs[0] - L, 'rail-x', `Bibir penahan nampan ${i + 1}`, thin);
         });
     } else if (m === 'bak') {
       // ---------- Bak promo: kaki seluncur + bak dinding kisi ----------
@@ -596,7 +623,7 @@ export const RAK_GONDOLA: ProductDef = {
         });
         const yhi = yF + rh / 2 + b + lipH;
         if (lip) add(`t${t}-bibir`, 'x', L, yhi, zf, W - 2 * L, 'rail-x', `Bibir penahan susun ${t}`, thin);
-        for (let j = 1; j < k; j++) add(`t${t}-sekat-${j}`, 'y', xs[j], yF + rh / 2, zf, (lip ? yhi : yF + rh / 2 + b + 6) - yF - rh / 2, 'custom', `Sekat depan susun ${t} no. ${j}`, thin);
+        for (let j = 1; j < k; j++) add(`t${t}-sekat-${j}`, 'y', xs[j], yF + rh / 2, zf, (lip ? yhi - tn / 2 : yF + rh / 2 + b + 6) - yF - rh / 2, 'custom', `Sekat depan susun ${t} no. ${j}`, thin);
         if (b > 0)
           for (let j = 0; j < k; j++) {
             const a = j === 0 ? L : xs[j] + 0.8;

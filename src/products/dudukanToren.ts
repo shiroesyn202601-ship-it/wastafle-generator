@@ -1,5 +1,7 @@
 import { Board, Params, ProductCheck, ProductDef } from './types';
 import { BOARD_OPTIONS, BOARD_THICK, PAINT_OPTIONS, board, bool, memberFactory, num, r1, str } from './common';
+import { FrameMember, FrameMemberRole } from '../types/kitchen';
+import { angledFrame, cutAxisIndex, memberFromPoints } from '../utils/frameLayout';
 
 /**
  * Dudukan toren & tangki air: menara berbeban statis berat (500–2000 kg) dengan plat lantai di puncak.
@@ -68,6 +70,168 @@ const lerp = (a: V, b: V, t: number): V => [a[0] + (b[0] - a[0]) * t, a[1] + (b[
 const at = (leg: Leg, y: number): V => lerp(leg.a, leg.b, (y - leg.a[1]) / (leg.b[1] - leg.a[1] || 1));
 const mid = (a: V, b: V): V => lerp(a, b, 0.5);
 const levelsOf = (y0: number, y1: number, n: number) => Array.from({ length: n + 1 }, (_, k) => y0 + ((y1 - y0) * k) / n);
+const plus = (a: V, b: V): V => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const times = (a: V, k: number): V => [a[0] * k, a[1] * k, a[2] * k];
+const dist = (a: V, b: V) => Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+const unit = (a: V, b: V): V => times([b[0] - a[0], b[1] - a[1], b[2] - a[2]], 1 / (dist(a, b) || 1));
+
+// ---------- Cek sambungan las (sama dengan geometri batang di frameLayout) ----------
+// Batang tidak boleh saling tembus: ujung batang dipotong / digeser sampai menempel rata di sisi batang lain.
+const TOL = 0.1; // cm: boleh "masuk" sedikit (las) supaya tetap bersentuhan
+interface Solid {
+  inside: (p: V) => boolean;
+  lo: V;
+  hi: V;
+  /** Ada titik permukaan (grid 1 cm, sama dengan cek-sambungan) di dalam kotak lo..hi yang memenuhi `pred` */
+  some: (lo: V, hi: V, pred: (p: V) => boolean) => boolean;
+}
+const solidCache = new WeakMap<FrameMember, Solid>();
+function solidOf(m: FrameMember): Solid {
+  const hit = solidCache.get(m);
+  if (hit) return hit;
+  const w = (m.tubeSize ?? 40) / 10;
+  const h = m.tubeH ? m.tubeH / 10 : w;
+  const inBox = (p: V, lo: V, hi: V) => p[0] > lo[0] && p[0] < hi[0] && p[1] > lo[1] && p[1] < hi[1] && p[2] > lo[2] && p[2] < hi[2];
+  let s: Solid;
+  if (!m.end) {
+    const sec: V = m.axis === 'y' ? [w, w, h] : [w, h, w];
+    const i = m.axis === 'x' ? 0 : m.axis === 'y' ? 1 : 2;
+    const min: V = [m.x - sec[0] / 2, m.y - sec[1] / 2, m.z - sec[2] / 2];
+    const max: V = [m.x + sec[0] / 2, m.y + sec[1] / 2, m.z + sec[2] / 2];
+    min[i] = [m.x, m.y, m.z][i];
+    max[i] = min[i] + m.length;
+    const n = [0, 1, 2].map((k) => Math.max(2, Math.ceil(max[k] - min[k])));
+    const val = (k: number, a: number) => min[k] + ((max[k] - min[k]) * a) / n[k];
+    // rentang indeks grid yang jatuh di dalam kotak
+    const rng = (k: number, lo: V, hi: V): [number, number] => {
+      const d = (max[k] - min[k]) / n[k];
+      return [Math.max(0, Math.floor((lo[k] - min[k]) / d)), Math.min(n[k], Math.ceil((hi[k] - min[k]) / d))];
+    };
+    s = {
+      lo: min,
+      hi: max,
+      inside: (p) => p.every((v, k) => v > min[k] + TOL && v < max[k] - TOL),
+      some: (lo, hi, pred) => {
+        const [a0, a1] = rng(0, lo, hi);
+        const [b0, b1] = rng(1, lo, hi);
+        const [c0, c1] = rng(2, lo, hi);
+        for (let a = a0; a <= a1; a++)
+          for (let b = b0; b <= b1; b++)
+            for (let c = c0; c <= c1; c++) {
+              if (!(a === 0 || a === n[0] || b === 0 || b === n[1] || c === 0 || c === n[2])) continue;
+              const p: V = [val(0, a), val(1, b), val(2, c)];
+              if (inBox(p, lo, hi) && pred(p)) return true;
+            }
+        return false;
+      },
+    };
+  } else {
+    const f = angledFrame(m, w, h);
+    const di = cutAxisIndex(m);
+    const un = f.u[di] || 1e-6;
+    const e0 = f.c[di] - (f.u[di] * f.len) / 2;
+    const e1 = f.c[di] + (f.u[di] * f.len) / 2;
+    const clo = Math.min(e0, e1);
+    const chi = Math.max(e0, e1);
+    const dot = (a: V, b: V) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    const n = Math.max(2, Math.ceil(f.len));
+    // 8 garis rusuk/tengah sisi, masing-masing digeser supaya ujungnya jatuh di bidang potong
+    const edges = [[-1, -1], [-1, 1], [1, -1], [1, 1], [0, -1], [0, 1], [-1, 0], [1, 0]].map(([j, k]) => {
+      const off = [0, 1, 2].map((q) => (f.wd[q] * j * f.a) / 2 + (f.hd[q] * k * f.b) / 2);
+      const t0 = -off[di] / un;
+      const base: V = [0, 1, 2].map((q) => f.c[q] + f.u[q] * t0 + off[q]) as V;
+      return base;
+    });
+    const pt = (base: V, i: number): V => {
+      const tq = -f.len / 2 + (f.len * i) / n;
+      return [base[0] + f.u[0] * tq, base[1] + f.u[1] * tq, base[2] + f.u[2] * tq];
+    };
+    const lo: V = [Infinity, Infinity, Infinity];
+    const hi: V = [-Infinity, -Infinity, -Infinity];
+    edges.forEach((e) => [pt(e, 0), pt(e, n)].forEach((p) => p.forEach((v, k) => ((lo[k] = Math.min(lo[k], v)), (hi[k] = Math.max(hi[k], v))))));
+    s = {
+      lo,
+      hi,
+      inside: (p) => {
+        const d: V = [p[0] - f.c[0], p[1] - f.c[1], p[2] - f.c[2]];
+        return p[di] > clo + TOL && p[di] < chi - TOL && Math.abs(dot(d, f.wd)) < f.a / 2 - TOL && Math.abs(dot(d, f.hd)) < f.b / 2 - TOL;
+      },
+      some: (blo, bhi, pred) => {
+        for (const e of edges) {
+          // potong garis dengan kotak (slab) supaya hanya titik di dalam kotak yang diperiksa
+          let t0 = 0;
+          let t1 = n;
+          for (let q = 0; q < 3 && t0 <= t1; q++) {
+            const sp = (f.u[q] * f.len) / n; // perubahan koordinat per langkah
+            const s0 = e[q] - (f.u[q] * f.len) / 2; // koordinat di i = 0
+            if (Math.abs(sp) < 1e-9) {
+              if (s0 <= blo[q] || s0 >= bhi[q]) t1 = -1;
+              continue;
+            }
+            const ia = (blo[q] - s0) / sp;
+            const ib = (bhi[q] - s0) / sp;
+            t0 = Math.max(t0, Math.floor(Math.min(ia, ib)));
+            t1 = Math.min(t1, Math.ceil(Math.max(ia, ib)));
+          }
+          for (let i = t0; i <= t1; i++) {
+            const p = pt(e, i);
+            if (inBox(p, blo, bhi) && pred(p)) return true;
+          }
+        }
+        return false;
+      },
+    };
+  }
+  solidCache.set(m, s);
+  return s;
+}
+/** Dua batang saling tembus (menempati ruang yang sama), bukan sekadar bersentuhan */
+function overlaps(a: FrameMember, b: FrameMember) {
+  const A = solidOf(a);
+  const B = solidOf(b);
+  const lo: V = [0, 0, 0];
+  const hi: V = [0, 0, 0];
+  for (let k = 0; k < 3; k++) {
+    lo[k] = Math.max(A.lo[k], B.lo[k]) + TOL;
+    hi[k] = Math.min(A.hi[k], B.hi[k]) - TOL;
+    if (hi[k] <= lo[k]) return false;
+  }
+  // hanya titik di dalam irisan kotak pembatas yang mungkin tembus
+  return A.some(lo, hi, B.inside) || B.some(lo, hi, A.inside);
+}
+/**
+ * Cari t terdekat ke `bad` (masih tembus) yang sudah tidak tembus terhadap `obs`, di antara bad..good.
+ * Hasilnya batang yang tepat menempel di sisi batang lain.
+ */
+function boundary(f: (t: number) => FrameMember, obs: FrameMember[], bad: number, good: number) {
+  const clear = (t: number) => {
+    const m = f(t);
+    return !obs.some((o) => overlaps(m, o));
+  };
+  if (!obs.length || clear(bad)) return bad;
+  if (!clear(good)) return good;
+  for (let it = 0; it < 12; it++) {
+    const md = (bad + good) / 2;
+    if (clear(md)) good = md;
+    else bad = md;
+  }
+  return good;
+}
+/** Parameter (0..1) titik pada as P→Q yang paling dekat dengan as A→B (tempat dua batang bersilangan) */
+function crossParam(P: V, Q: V, A: V, B: V) {
+  const d1 = [Q[0] - P[0], Q[1] - P[1], Q[2] - P[2]];
+  const d2 = [B[0] - A[0], B[1] - A[1], B[2] - A[2]];
+  const r = [P[0] - A[0], P[1] - A[1], P[2] - A[2]];
+  const dt = (u: number[], v: number[]) => u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
+  const a = dt(d1, d1);
+  const e = dt(d2, d2);
+  const b = dt(d1, d2);
+  const c = dt(d1, r);
+  const f = dt(d2, r);
+  const den = a * e - b * b;
+  const s = den > 1e-9 ? (b * f - c * e) / den : 0.5;
+  return Math.max(0.05, Math.min(0.95, s));
+}
 
 /** Kebutuhan pipa minimum (mm) dari beban per kaki, tinggi, dan bentang plat */
 const needPipa = (p: Params) => {
@@ -303,20 +467,104 @@ export const DUDUKAN_TOREN: ProductDef = {
     let outH = H;
 
     // ---------- helper ----------
-    /** Ring tiap level + silang X tiap tingkat pada sisi-sisi (pasangan kaki) */
-    const frame = (pre: string, nm: string, legs: Leg[], faces: [number, number][], lv: number[], ringOnly: [number, number][] = []) => {
+    const mk = (id: string, a: V, b: V, role: FrameMemberRole, label: string, tube: [number, number]) =>
+      memberFromPoints({ id, role, label, tubeSize: tube[0], tubeH: tube[1] !== tube[0] ? tube[1] : undefined }, a, b);
+    const push = (m: FrameMember) => {
+      if (m.length >= 0.5) list.push(m);
+      return m;
+    };
+    /**
+     * Ujung batang P→Q dimundurkan (P searah dS, Q searah dE; bawaan: sepanjang as batang) sampai menempel
+     * rata di sisi batang yang ditemui di ujung itu (butt joint), tidak masuk ke dalamnya.
+     */
+    const trimEnds = (P: V, Q: V, tube: [number, number], startObs: FrameMember[], endObs: FrameMember[], dS?: V, dE?: V, startV: FrameMember[] = [], endV: FrameMember[] = []): [V, V] => {
+      const u = unit(P, Q);
+      const sDir = dS ?? u;
+      const eDir = dE ?? times(u, -1);
+      // ujung batang silang yang landai (dipotong tegak) juga digeser naik/turun supaya tidak masuk ke ring
+      const sUp: V = [0, Q[1] >= P[1] ? 1 : -1, 0];
+      const eUp = times(sUp, -1);
+      const mx = Math.min(dist(P, Q) * 0.45, 4 * L + 10);
+      let tS = 0;
+      let tE = 0;
+      let vS = 0;
+      let vE = 0;
+      const ps = () => plus(plus(P, times(sDir, tS)), times(sUp, vS));
+      const pe = () => plus(plus(Q, times(eDir, tE)), times(eUp, vE));
+      const cand = (a: V, b: V) => mk('_', a, b, 'custom', '', tube);
+      for (let pass = 0; pass < 2; pass++) {
+        if (startV.length) vS = boundary((t) => cand(plus(plus(P, times(sDir, tS)), times(sUp, t)), pe()), startV, 0, 2 * L);
+        tS = boundary((t) => cand(plus(plus(P, times(sDir, t)), times(sUp, vS)), pe()), startObs, 0, mx);
+        if (endV.length) vE = boundary((t) => cand(ps(), plus(plus(Q, times(eDir, tE)), times(eUp, t))), endV, 0, 2 * L);
+        tE = boundary((t) => cand(ps(), plus(plus(Q, times(eDir, t)), times(eUp, vE))), endObs, 0, mx);
+      }
+      return [ps(), pe()];
+    };
+    const bar = (id: string, P: V, Q: V, role: FrameMemberRole, label: string, tube: [number, number], startObs: FrameMember[], endObs: FrameMember[], dS?: V, dE?: V) => {
+      const [a, b] = trimEnds(P, Q, tube, startObs, endObs, dS, dE);
+      return push(mk(id, a, b, role, label, tube));
+    };
+    /** Batang P→Q yang bersilangan dengan batang menerus `cross`: dipotong dua, kedua potongan dilas di sisi `cross` */
+    const splitBar = (id: string, P: V, Q: V, role: FrameMemberRole, label: string, tube: [number, number], cross: FrameMember) => {
+      const A: V = [cross.x, cross.y, cross.z];
+      const B: V = cross.end ? [cross.end.x, cross.end.y, cross.end.z] : plus(A, cross.axis === 'x' ? [cross.length, 0, 0] : cross.axis === 'y' ? [0, cross.length, 0] : [0, 0, cross.length]);
+      const s = crossParam(P, Q, A, B);
+      const C = lerp(P, Q, s);
+      const u = unit(P, Q);
+      const l1 = dist(P, C);
+      const l2 = dist(C, Q);
+      const t1 = boundary((t) => mk('_', P, plus(C, times(u, -t)), role, '', tube), [cross], 0, l1 - 1);
+      push(mk(`${id}-1`, P, plus(C, times(u, -t1)), role, `${label} (potongan 1)`, tube));
+      const t2 = boundary((t) => mk('_', plus(C, times(u, t)), Q, role, '', tube), [cross], 0, l2 - 1);
+      push(mk(`${id}-2`, plus(C, times(u, t2)), Q, role, `${label} (potongan 2)`, tube));
+    };
+    /**
+     * Ring tiap level + silang X tiap tingkat pada sisi-sisi (pasangan kaki).
+     * Ring dipotong menempel rata di sisi kaki. Silang X duduk di atas ring bawah & di bawah ring atas, ujungnya
+     * digeser menjauhi kaki; satu batang silang menerus, yang lain dipotong dua dan dilas di sisinya.
+     * `ringOut`: sisi miring (denah segitiga) digeser keluar sedikit supaya dua ring yang bertemu di satu muka kaki
+     * hanya bersentuhan, tidak saling tembus.
+     */
+    const frame = (pre: string, nm: string, legs: Leg[], legM: FrameMember[], faces: [number, number][], lv: number[], ringOnly: [number, number][] = [], ringOut = false) => {
+      const rings = new Map<string, FrameMember>();
+      const geo = (i: number, j: number, y: number) => {
+        const d = unit([at(legs[i], y)[0], 0, at(legs[i], y)[2]], [at(legs[j], y)[0], 0, at(legs[j], y)[2]]);
+        let off: V = [0, 0, 0];
+        if (ringOut && Math.abs(d[0]) > 0.01 && Math.abs(d[2]) > 0.01) {
+          const pts = legs.map((lg) => at(lg, y));
+          const c: V = times(pts.reduce((s, p) => plus(s, p), [0, 0, 0] as V), 1 / pts.length);
+          const mp = mid(at(legs[i], y), at(legs[j], y));
+          let n: V = [d[2], 0, -d[0]];
+          if (n[0] * (mp[0] - c[0]) + n[2] * (mp[2] - c[2]) < 0) n = times(n, -1);
+          off = times(n, (L / 2) * (1 - Math.min(Math.abs(d[0]), Math.abs(d[2]))));
+        }
+        return { d, P: (yy: number) => plus(at(legs[i], yy), off), Q: (yy: number) => plus(at(legs[j], yy), off) };
+      };
       lv.forEach((y, k) => {
-        [...faces, ...(k === lv.length - 1 ? ringOnly : [])].forEach(([i, j]) => line(`${pre}ring-${k}-${i}${j}`, at(legs[i], y), at(legs[j], y), 'custom', `${nm}ring tingkat ${k + 1} (kaki ${i + 1}–${j + 1})`, pt));
+        [...faces, ...(k === lv.length - 1 ? ringOnly : [])].forEach(([i, j]) => {
+          const g = geo(i, j, y);
+          rings.set(`${k}-${i}${j}`, bar(`${pre}ring-${k}-${i}${j}`, g.P(y), g.Q(y), 'custom', `${nm}ring tingkat ${k + 1} (kaki ${i + 1}–${j + 1})`, pt, [legM[i]], [legM[j]]));
+        });
       });
       for (let k = 0; k < lv.length - 1; k++) {
+        const yl = lv[k] + L / 2;
+        const yh = lv[k + 1] - L / 2;
         faces.forEach(([i, j]) => {
-          line(`${pre}x-${k}-${i}${j}-a`, at(legs[i], lv[k] + L / 2), at(legs[j], lv[k + 1] - L / 2), 'custom', `${nm}silang X tingkat ${k + 1} (kaki ${i + 1}–${j + 1})`, br);
-          line(`${pre}x-${k}-${i}${j}-b`, at(legs[j], lv[k] + L / 2), at(legs[i], lv[k + 1] - L / 2), 'custom', `${nm}silang X tingkat ${k + 1} (kaki ${j + 1}–${i + 1})`, br);
+          const g = geo(i, j, lv[k]);
+          const back = times(g.d, -1);
+          const rLo = rings.get(`${k}-${i}${j}`);
+          const rHi = rings.get(`${k + 1}-${i}${j}`);
+          const lo = rLo ? [rLo] : [];
+          const hi = rHi ? [rHi] : [];
+          const [a0, a1] = trimEnds(g.P(yl), g.Q(yh), br, [legM[i]], [legM[j]], g.d, back, lo, hi);
+          const A = push(mk(`${pre}x-${k}-${i}${j}-a`, a0, a1, 'custom', `${nm}silang X tingkat ${k + 1} (kaki ${i + 1}–${j + 1})`, br));
+          const [b0, b1] = trimEnds(g.Q(yl), g.P(yh), br, [legM[j]], [legM[i]], back, g.d, lo, hi);
+          splitBar(`${pre}x-${k}-${i}${j}-b`, b0, b1, 'custom', `${nm}silang X tingkat ${k + 1} (kaki ${j + 1}–${i + 1})`, br, A);
         });
       }
+      return (k: number, i: number, j: number) => rings.get(`${k}-${i}${j}`) ?? rings.get(`${k}-${j}${i}`);
     };
-    const legLines = (pre: string, nm: string, legs: Leg[]) =>
-      legs.forEach((lg, i) => line(`${pre}kaki-${i + 1}`, lg.a, lg.b, 'post', `${nm}kaki ${i + 1}`, pt));
+    const legLines = (pre: string, nm: string, legs: Leg[]) => legs.map((lg, i) => push(mk(`${pre}kaki-${i + 1}`, lg.a, lg.b, 'post', `${nm}kaki ${i + 1}`, pt)));
     const footPlates = (pre: string, legs: Leg[]) =>
       legs.forEach((lg, i) => boards.push({ ...board(`${pre}plat-kaki-${i + 1}`, `Plat kaki ${i + 1} (dibaut ke cor)`, lg.a[0] - 8, lg.a[0] + 8, 0, pf, lg.a[2] - 8, lg.a[2] + 8), steelMm: 8 }));
     /** Plat / kisi atas kotak: ring sudah ada di yR; balok alas sejajar z di antara ring belakang & depan */
@@ -334,40 +582,37 @@ export const DUDUKAN_TOREN: ProductDef = {
         boards.push(alas === 'plat' ? { ...bd, steelMm: 5 } : bd);
       }
     };
-    /** Pagar pinggang di sepanjang tepi a→b (x,z), dengan celah opsional di tengah tepi */
-    const postSet = new Set<string>();
+    /** Pagar pinggang di sepanjang tepi a→b (x,z), dengan celah opsional di tengah tepi. Palang dipotong di antara tiang. */
+    const posts = new Map<string, FrameMember>();
     let edgeNo = 0;
     const pagarEdge = (pre: string, a: [number, number], b: [number, number], y: number, gap = 0) => {
-      const post = (x: number, z: number) => {
-        const k = `${r1(x)},${r1(z)}`;
-        if (postSet.has(k)) return;
-        postSet.add(k);
-        add(`${pre}tiang-pagar-${postSet.size}`, 'y', x, y, z, 90, 'custom', `Tiang pagar ${postSet.size}`, [30, 30]);
+      const post = (q: [number, number]) => {
+        const k = `${r1(q[0])},${r1(q[1])}`;
+        const old = posts.get(k);
+        if (old) return old;
+        const m = push(mk(`${pre}tiang-pagar-${posts.size + 1}`, [q[0], y, q[1]], [q[0], y + 90, q[1]], 'custom', `Tiang pagar ${posts.size + 1}`, [30, 30]));
+        posts.set(k, m);
+        return m;
       };
       edgeNo++;
       const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
       const P = (f: number): [number, number] => [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
-      post(a[0], a[1]);
-      post(b[0], b[1]);
       const segs: [number, number][] = gap > 0 ? [[0, 0.5 - gap / 2 / len], [0.5 + gap / 2 / len, 1]] : [[0, 1]];
       segs.forEach(([f0, f1], si) => {
-        if (gap > 0) {
-          const e = si === 0 ? P(f1) : P(f0);
-          post(e[0], e[1]);
-        } else if (len > 130) {
-          const c = P(0.5);
-          post(c[0], c[1]);
+        const fr = gap === 0 && len > 130 ? [f0, 0.5, f1] : [f0, f1];
+        const ps = fr.map((f) => post(P(f)));
+        for (let q = 0; q + 1 < fr.length; q++) {
+          const A = P(fr[q]);
+          const B = P(fr[q + 1]);
+          [90, 45].forEach((hh) =>
+            bar(`${pre}pagar-${edgeNo}-${si}-${q}-${hh}`, [A[0], y + hh - 1, A[1]], [B[0], y + hh - 1, B[1]], 'custom', `Palang pagar ${hh === 90 ? 'atas' : 'tengah'}`, thin, [ps[q]], [ps[q + 1]])
+          );
         }
-        [90, 45].forEach((hh) => {
-          const A = P(f0);
-          const B = P(f1);
-          line(`${pre}pagar-${edgeNo}-${si}-${hh}`, [A[0], y + hh - 1, A[1]], [B[0], y + hh - 1, B[1]], 'custom', `Palang pagar ${hh === 90 ? 'atas' : 'tengah'}`, thin);
-        });
       });
     };
     /** Tangga monyet di sisi (kaki i–j), sejajar muka sisi, ditahan batang penyangga di tiap ring */
     const LADDER_HALF = 22;
-    const ladder = (legs: Leg[], i: number, j: number, center: [number, number], yTop: number, lv: number[]) => {
+    const ladder = (legs: Leg[], i: number, j: number, center: [number, number], yTop: number, lv: number[], ringAt: (k: number, i: number, j: number) => FrameMember | undefined) => {
       const fm = (y: number) => mid(at(legs[i], y), at(legs[j], y));
       const pi = at(legs[i], yTop);
       const pj = at(legs[j], yTop);
@@ -386,12 +631,15 @@ export const DUDUKAN_TOREN: ProductDef = {
         const f = fm(y);
         return [f[0] + nx * off + tx * LADDER_HALF * sg, y, f[2] + nz * off + tz * LADDER_HALF * sg];
       };
-      [-1, 1].forEach((sg, k) => line(`tangga-ibu-${k}`, rail(0, sg), rail(yTop + 100, sg), 'post', `Ibu tangga ${k ? 'kanan' : 'kiri'}`, br));
-      for (let y = 30, k = 1; y <= yTop + 1; y += 30, k++) line(`tangga-anak-${k}`, rail(y, -1), rail(y, 1), 'custom', `Anak tangga ${k}`, thin);
+      const ibu = [-1, 1].map((sg, k) => push(mk(`tangga-ibu-${k}`, rail(0, sg), rail(yTop + 100, sg), 'post', `Ibu tangga ${k ? 'kanan' : 'kiri'}`, br)));
+      // anak tangga dipotong di antara kedua ibu tangga
+      for (let y = 30, k = 1; y <= yTop + 1; y += 30, k++) bar(`tangga-anak-${k}`, rail(y, -1), rail(y, 1), 'custom', `Anak tangga ${k}`, thin, [ibu[0]], [ibu[1]]);
+      // penyangga: dari sisi luar ring sampai sisi dalam ibu tangga
       lv.forEach((y, k) =>
         [-1, 1].forEach((sg, q) => {
           const f = fm(y);
-          line(`tangga-penyangga-${k}-${q}`, [f[0] + tx * LADDER_HALF * sg, y, f[2] + tz * LADDER_HALF * sg], rail(y, sg), 'custom', `Penyangga tangga ${k + 1}`, thin);
+          const ring = ringAt(k, i, j);
+          bar(`tangga-penyangga-${k}-${q}`, [f[0] + tx * LADDER_HALF * sg, y, f[2] + tz * LADDER_HALF * sg], rail(y, sg), 'custom', `Penyangga tangga ${k + 1}`, thin, ring ? [ring] : [], [ibu[q]]);
         })
       );
       return { nx, nz };
@@ -413,12 +661,12 @@ export const DUDUKAN_TOREN: ProductDef = {
       const top: [number, number][] = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]];
       const bot: [number, number][] = [[L / 2, L / 2], [Wb - L / 2, L / 2], [Wb - L / 2, Db - L / 2], [L / 2, Db - L / 2]];
       const legs: Leg[] = top.map((tp, i) => ({ a: [bot[i][0], pf, bot[i][1]], b: [tp[0], yTop - t, tp[1]] }));
-      legLines('', '', legs);
+      const legM = legLines('', '', legs);
       footPlates('', legs);
       const y0 = 30;
       const lv = levelsOf(y0, yR, nT);
       const faces: [number, number][] = [[0, 1], [1, 2], [2, 3], [3, 0]];
-      frame('', '', legs, faces, lv);
+      const ringAt = frame('', '', legs, legM, faces, lv);
       deckRect('', s, s + Wd, s, s + Dd, yTop);
       if (pompa && papanB > 0) {
         const a0 = at(legs[0], y0);
@@ -426,7 +674,7 @@ export const DUDUKAN_TOREN: ProductDef = {
         add('pompa-balok', 'z', (a0[0] + a2[0]) / 2, y0, a0[2] + L / 2, a2[2] - a0[2] - L, 'custom', 'Balok rak pompa', pt);
         boards.push(board('papan-pompa', 'Papan rak pompa / filter', a0[0], a2[0], y0 + L / 2, y0 + L / 2 + papanB, a0[2], a2[2]));
       }
-      if (tangga) ladder(legs, 2, 3, [Wb / 2, Db / 2], yTop, lv);
+      if (tangga) ladder(legs, 2, 3, [Wb / 2, Db / 2], yTop, lv, ringAt);
       if (pagar) {
         const c: [number, number][] = [[s + in_, s + in_], [s + Wd - in_, s + in_], [s + Wd - in_, s + Dd - in_], [s + in_, s + Dd - in_]];
         pagarEdge('', c[0], c[1], yTop);
@@ -449,15 +697,18 @@ export const DUDUKAN_TOREN: ProductDef = {
         a: [cx + Rb * Math.cos(a), pf, cz + Rb * Math.sin(a)],
         b: [cx + R * Math.cos(a), yTop - t, cz + R * Math.sin(a)],
       }));
-      legLines('', '', legs);
+      const legM = legLines('', '', legs);
       footPlates('', legs);
-      const lv = levelsOf(30, yR, nT);
+      // ring teratas tepat di bawah balok laba-laba (balok di puncak kaki menopang plat)
+      const lv = levelsOf(30, yR, nT).map((y, k, a) => (k === a.length - 1 ? yR - L : y));
       const faces: [number, number][] = [[0, 1], [1, 2], [2, 0]];
-      frame('', '', legs, faces, lv);
-      // laba-laba: balok dari tiap sudut ke tengah, plat bundar di atasnya
-      legs.forEach((lg, i) => line(`balok-tengah-${i + 1}`, at(lg, yR), [cx, yR, cz], 'custom', `Balok alas ke tengah ${i + 1}`, pt));
+      const ringAt = frame('', '', legs, legM, faces, lv, [], true);
+      // laba-laba: balok 1 menerus dari kaki 1 melewati titik tengah, balok 2 & 3 dilas di sisinya; plat bundar di atasnya
+      const s0 = at(legs[0], yR);
+      const sp0 = bar('balok-tengah-1', s0, [s0[0], yR, cz + L], 'custom', 'Balok alas ke tengah 1 (menerus)', pt, [legM[0]], []);
+      [1, 2].forEach((i) => bar(`balok-tengah-${i + 1}`, at(legs[i], yR), [cx, yR, cz], 'custom', `Balok alas ke tengah ${i + 1}`, pt, [legM[i]], [sp0]));
       boards.push({ ...board('alas', 'Plat alas toren (bundar)', cx - P / 2, cx + P / 2, yTop - t, yTop, cz - P / 2, cz + P / 2), shape: 'round', steelMm: 5 });
-      if (tangga) ladder(legs, 1, 2, [cx, cz], yTop, lv);
+      if (tangga) ladder(legs, 1, 2, [cx, cz], yTop, lv, ringAt);
       if (pagar) {
         const c = legs.map((lg) => [lg.b[0], lg.b[2]] as [number, number]);
         pagarEdge('', c[0], c[1], yTop);
@@ -491,7 +742,7 @@ export const DUDUKAN_TOREN: ProductDef = {
         { a: [Wb - L / 2, pf, zB0], b: [xR, yB, zT0] },
         { a: [Wb - L / 2, pf, zB1], b: [xR, yB, zT1] },
       ];
-      legs.forEach((lg, i) => line(`kaki-${i + 1}`, lg.a, lg.b, 'post', i === 1 || i === 2 ? `Tiang tengah bersama ${i}` : `Kaki ${i + 1}`, pt));
+      const legM = legs.map((lg, i) => push(mk(`kaki-${i + 1}`, lg.a, lg.b, 'post', i === 1 || i === 2 ? `Tiang tengah bersama ${i}` : `Kaki ${i + 1}`, pt)));
       footPlates('', legs);
       const y0 = 30;
       const yRA = yA - L / 2;
@@ -499,8 +750,8 @@ export const DUDUKAN_TOREN: ProductDef = {
       const lvA = levelsOf(y0, yRA, nT);
       const nB = Math.max(1, Math.round((nT * (yRB - y0)) / (yRA - y0)));
       const lvB = levelsOf(y0, yRB, nB);
-      frame('a-', 'Toren 1: ', legs, [[0, 1], [1, 2], [2, 3], [3, 0]], lvA);
-      frame('b-', 'Toren 2: ', legs, [[1, 4], [4, 5], [5, 2]], lvB, sel > 0 ? [[2, 1]] : []);
+      const ringA = frame('a-', 'Toren 1: ', legs, legM, [[0, 1], [1, 2], [2, 3], [3, 0]], lvA);
+      frame('b-', 'Toren 2: ', legs, legM, [[1, 4], [4, 5], [5, 2]], lvB, sel > 0 ? [[2, 1]] : []);
       deckRect('a-', s, s + lb, s, s + D, HA);
       deckRect('b-', s + lb, s + 2 * lb, s, s + D, HB);
       if (pompa && papanB > 0) {
@@ -509,7 +760,7 @@ export const DUDUKAN_TOREN: ProductDef = {
         add('pompa-balok', 'z', (a0[0] + a2[0]) / 2, y0, a0[2] + L / 2, a2[2] - a0[2] - L, 'custom', 'Balok rak pompa', pt);
         boards.push(board('papan-pompa', 'Papan rak pompa / filter', a0[0], a2[0], y0 + L / 2, y0 + L / 2 + papanB, a0[2], a2[2]));
       }
-      if (tangga) ladder(legs, 3, 0, [Wb / 2, Db / 2], HA, lvA);
+      if (tangga) ladder(legs, 3, 0, [Wb / 2, Db / 2], HA, lvA, ringA);
       if (pagar) {
         const zb = s + in_;
         const zf = s + D - in_;
@@ -549,22 +800,54 @@ export const DUDUKAN_TOREN: ProductDef = {
       const xs = [L / 2, Wd - L / 2];
       const z0 = L / 2;
       const z1 = D - L / 2;
-      xs.forEach((x, i) => line(`rel-atap-${i}`, [x, yr(0) + L / 2, 0], [x, yr(D) + L / 2, D], 'rail-z', `Rel tapak atap ${i ? 'kanan' : 'kiri'} (ikut miring)`, pt));
-      add('rel-silang-belakang', 'x', L, yr(z0) + L / 2, z0, Wd - 2 * L, 'rail-x', 'Palang rel belakang', pt);
-      add('rel-silang-depan', 'x', L, yr(z1) + L / 2, z1, Wd - 2 * L, 'rail-x', 'Palang rel depan', pt);
+      const railM = xs.map((x, i) => push(mk(`rel-atap-${i}`, [x, yr(0) + L / 2, 0], [x, yr(D) + L / 2, D], 'rail-z', `Rel tapak atap ${i ? 'kanan' : 'kiri'} (ikut miring)`, pt)));
+      // palang melintang menumpang di atas kedua rel (dilas di garis sentuh), kaki berdiri rata di atas palang
+      const palang = (id: string, zc: number, label: string) => {
+        const y0r = yr(zc) + L / 2;
+        const dy = boundary((v) => mk('_', [0, y0r + v, zc], [Wd, y0r + v, zc], 'rail-x', '', pt), railM, 0, 2 * L);
+        return push(mk(id, [0, y0r + dy, zc], [Wd, y0r + dy, zc], 'rail-x', label, pt));
+      };
+      const palB = palang('rel-silang-belakang', z0, 'Palang rel belakang (di atas rel)');
+      const palD = palang('rel-silang-depan', z1, 'Palang rel depan (di atas rel)');
       // 0 kiri-belakang, 1 kanan-belakang, 2 kanan-depan, 3 kiri-depan
       const corners: [number, number][] = [[xs[0], z0], [xs[1], z0], [xs[1], z1], [xs[0], z1]];
-      const legs: Leg[] = corners.map(([x, z]) => ({ a: [x, yr(z) + L, z], b: [x, yTop - t, z] }));
-      legs.forEach((lg, i) => add(`kaki-${i + 1}`, 'y', lg.a[0], lg.a[1], lg.a[2], lg.b[1] - lg.a[1], 'post', `Kaki ${i + 1} (${i < 2 ? 'belakang, pendek' : 'depan, panjang'})`, pt));
-      const yLow = yr(z0) + L + 15;
+      const legs: Leg[] = corners.map(([x, z], i) => ({ a: [x, (i < 2 ? palB : palD).y + L / 2, z], b: [x, yTop - t, z] }));
+      const legM = legs.map((lg, i) => push(mk(`kaki-${i + 1}`, lg.a, lg.b, 'post', `Kaki ${i + 1} (${i < 2 ? 'belakang, pendek' : 'depan, panjang'})`, pt)));
+      const yLow = legs[0].a[1] + 15;
       const lv = levelsOf(yLow, yR, nT);
-      frame('', '', legs, [[0, 1], [1, 2], [2, 3], [3, 0]], lv);
+      const ringAt = frame('', '', legs, legM, [[0, 1], [1, 2], [2, 3], [3, 0]], lv);
       // bawah ring terendah: silang di muka depan & segitiga di sisi samping
       const ybf = legs[2].a[1];
       if (yLow - ybf > 25) {
-        line('x-bawah-depan-a', [xs[0], ybf + 2, z1], [xs[1], yLow - L / 2, z1], 'custom', 'Silang X bawah depan', br);
-        line('x-bawah-depan-b', [xs[1], ybf + 2, z1], [xs[0], yLow - L / 2, z1], 'custom', 'Silang X bawah depan', br);
-        xs.forEach((x, i) => line(`topang-samping-${i}`, [x, ybf + 2, z1], [x, yLow - L / 2, z0], 'custom', `Topang samping ${i ? 'kanan' : 'kiri'}`, br));
+        // silang X depan: duduk di atas palang rel depan, ujung atas di bawah ring terendah
+        const ex: V = [1, 0, 0];
+        const wx: V = [-1, 0, 0];
+        const rF = ringAt(0, 2, 3);
+        const up = rF ? [rF] : [];
+        const [a0, a1] = trimEnds([xs[0], ybf, z1], [xs[1], yLow - L / 2, z1], br, [legM[3]], [legM[2]], ex, wx, [palD], up);
+        const XA = push(mk('x-bawah-depan-a', a0, a1, 'custom', 'Silang X bawah depan', br));
+        const [b0, b1] = trimEnds([xs[1], ybf, z1], [xs[0], yLow - L / 2, z1], br, [legM[2]], [legM[3]], wx, ex, [palD], up);
+        splitBar('x-bawah-depan-b', b0, b1, 'custom', 'Silang X bawah depan', br, XA);
+        // topang samping: kaki bawah duduk di rel tepat di belakang kaki depan, ujung atas di bawah ring samping
+        xs.forEach((x, i) => {
+          const legF = legM[i ? 2 : 3];
+          const legB = legM[i ? 1 : 0];
+          let top: V = [x, yLow - L / 2, z0];
+          let bot: V = [x, ybf, z1];
+          const onRail = (zS: number, tp: V): V => {
+            const y0r = yr(zS) + L / 2;
+            const dy = boundary((v) => mk('_', [x, y0r + v, zS], tp, 'custom', '', br), [railM[i]], 0, 3 * L);
+            return [x, y0r + dy, zS];
+          };
+          for (let pass = 0; pass < 2; pass++) {
+            const tz = boundary((v) => mk('_', bot, [x, top[1], z0 + v], 'custom', '', br), [legB], 0, 4 * L);
+            top = [x, top[1], z0 + tz];
+            const tp = top;
+            const bz = boundary((v) => mk('_', onRail(z1 - v, tp), tp, 'custom', '', br), [legF, palD], 0, 5 * L);
+            bot = onRail(z1 - bz, top);
+          }
+          push(mk(`topang-samping-${i}`, bot, top, 'custom', `Topang samping ${i ? 'kanan' : 'kiri'}`, br));
+        });
       }
       deckRect('', 0, Wd, 0, D, yTop);
       if (pagar) {
@@ -585,30 +868,37 @@ export const DUDUKAN_TOREN: ProductDef = {
       const yR = yTop - t - L / 2;
       const sp = Math.max(40, C + 30);
       boards.push({ ...board('plat-cor', 'Plat dasar tiang 12 mm (angkur ke cor)', cx - sp / 2, cx + sp / 2, 0, 1.2, cz - sp / 2, cz + sp / 2), steelMm: 12 });
-      add('tiang', 'y', cx, 1.2, cz, yR - L / 2 - 1.2, 'post', `Tiang utama ${r1(C * 10)}×${r1(C * 10)} mm`, [C * 10, C * 10]);
+      const tiangM = push(mk('tiang', [cx, 1.2, cz], [cx, yR - L / 2, cz], 'post', `Tiang utama ${r1(C * 10)}×${r1(C * 10)} mm`, [C * 10, C * 10]));
+      // sirip: duduk di plat dasar, ujung atas menempel di sisi tiang
       [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dz], k) =>
-        line(`sirip-${k + 1}`, [cx + dx * (sp / 2 - 3), 1.2 + 1, cz + dz * (sp / 2 - 3)], [cx + (dx * C) / 2, 22, cz + (dz * C) / 2], 'custom', `Sirip penguat dasar ${k + 1}`, thin)
+        bar(`sirip-${k + 1}`, [cx + dx * (sp / 2 - 3), 1.2, cz + dz * (sp / 2 - 3)], [cx + (dx * C) / 2, 22, cz + (dz * C) / 2], 'custom', `Sirip penguat dasar ${k + 1}`, thin, [], [tiangM])
       );
-      // kepala: ring keliling + balok silang di atas tiang
+      // kepala: ring keliling (belakang & depan menerus, kiri & kanan di antaranya) + balok silang di atas tiang
       const a = L / 2;
       const b = W - L / 2;
       const cor: V[] = [[a, yR, a], [b, yR, a], [b, yR, b], [a, yR, b]];
-      cor.forEach((pnt, k) => line(`ring-${k + 1}`, pnt, cor[(k + 1) % 4], 'custom', `Ring atas ${k + 1}`, pt));
+      add('ring-1', 'x', 0, yR, a, W, 'custom', 'Ring atas 1 (belakang, menerus)', pt);
+      add('ring-2', 'z', b, yR, L, W - 2 * L, 'custom', 'Ring atas 2 (kanan)', pt);
+      add('ring-3', 'x', 0, yR, b, W, 'custom', 'Ring atas 3 (depan, menerus)', pt);
+      add('ring-4', 'z', a, yR, L, W - 2 * L, 'custom', 'Ring atas 4 (kiri)', pt);
       add('balok-x', 'x', L, yR, cz, W - 2 * L, 'custom', 'Balok kepala kiri-kanan', pt);
       add('balok-z-1', 'z', cx, yR, L, W / 2 - L - L / 2, 'custom', 'Balok kepala belakang', pt);
       add('balok-z-2', 'z', cx, yR, W / 2 + L / 2, W / 2 - L - L / 2, 'custom', 'Balok kepala depan', pt);
       const yS = Math.max(40, yR - Math.max(60, W * 0.7));
+      // topang: ujung bawah menempel di sudut tiang, ujung atas rata di bawah pojok ring
       cor.forEach((pnt, k) => {
         const sx = Math.sign(pnt[0] - cx);
         const sz = Math.sign(pnt[2] - cz);
-        line(`topang-${k + 1}`, [cx + (sx * C) / 2, yS, cz + (sz * C) / 2], [pnt[0], yR - L / 2, pnt[2]], 'custom', `Topang miring ${k + 1}`, pt);
+        bar(`topang-${k + 1}`, [cx + (sx * C) / 2, yS, cz + (sz * C) / 2], [pnt[0], yR - L / 2, pnt[2]], 'custom', `Topang miring ${k + 1}`, pt, [tiangM], []);
       });
       if (alas === 'kisi') {
         const n = Math.max(3, Math.round((W - 2 * L) / 12));
         for (let k = 1; k < n; k++) {
           const x = L / 2 + ((W - L) * k) / n;
           if (Math.abs(x - cx) < L) continue;
-          add(`kisi-${k}`, 'z', x, yTop - 2, L, W - 2 * L, 'custom', `Kisi alas ${k}`, [20, 40]);
+          // kisi dipotong di balok kepala kiri-kanan
+          add(`kisi-${k}`, 'z', x, yTop - 2, L, cz - L / 2 - L, 'custom', `Kisi alas ${k}`, [20, 40]);
+          add(`kisi-${k}b`, 'z', x, yTop - 2, cz + L / 2, W - L - cz - L / 2, 'custom', `Kisi alas ${k}`, [20, 40]);
         }
       } else {
         const bd = board('alas', alas === 'plat' ? 'Plat alas toren' : 'Papan alas toren', 0, W, yTop - t, yTop, 0, W);
@@ -642,9 +932,9 @@ export const DUDUKAN_TOREN: ProductDef = {
       const z1 = E + D - L / 2;
       const corners: [number, number][] = [[xs[0], z0], [xs[1], z0], [xs[1], z1], [xs[0], z1]];
       const legs: Leg[] = corners.map(([x, z]) => ({ a: [x, L, z], b: [x, yTop - t, z] }));
-      legs.forEach((lg, i) => add(`kaki-${i + 1}`, 'y', lg.a[0], lg.a[1], lg.a[2], lg.b[1] - lg.a[1], 'post', `Kaki ${i + 1}`, pt));
+      const legM = legs.map((lg, i) => push(mk(`kaki-${i + 1}`, lg.a, lg.b, 'post', `Kaki ${i + 1}`, pt)));
       const lv = levelsOf(L + 12, yR, nT);
-      frame('', '', legs, [[0, 1], [1, 2], [2, 3], [3, 0]], lv);
+      frame('', '', legs, legM, [[0, 1], [1, 2], [2, 3], [3, 0]], lv);
       const yK = Math.min(60, (yR - L) * 0.5);
       xs.forEach((x, i) => {
         line(`topang-${i}-b`, [x, L, 2], [x, yK, z0], 'custom', `Topang ujung rel belakang ${i ? 'kanan' : 'kiri'}`, br);

@@ -240,14 +240,50 @@ export const RAK_KAMAR_MANDI: ProductDef = {
     let wall = false;
     const zb = L / 2;
     const zf = D - L / 2;
+    const h = L / 2; // setengah lebar tiang
+    const hw = thin[0] / 20; // setengah lebar pipa pagar / penguat (15 mm)
     const extra = pagar ? b + PG + 1 : 0; // tiang dilebihkan untuk pagar papan teratas
     const yPg = (y: number) => y + rh / 2 + b + PG;
     const levels = (y0: number, y1: number, cnt: number) => Array.from({ length: cnt }, (_, i) => r1(y0 + ((y1 - y0) * i) / Math.max(1, cnt - 1)));
     const plank = (id: string, nm: string, x0: number, x1: number, z0: number, z1: number, y: number) => {
       if (b > 0) boards.push(board(id, nm, x0, x1, y + rh / 2, y + rh / 2 + b, z0, z1));
     };
-    /** Tiang pagar tipis di sudut yang tidak punya tiang */
-    const fencePost = (id: string, nm: string, x: number, z: number, y: number) => add(id, 'y', x, y + rh / 2, z, yPg(y) - y - rh / 2 + 0.75, 'custom', nm, thin);
+    /** Tiang pagar tipis di sudut yang tidak punya tiang: berdiri di atas palang/lengan, pagar mendatar dilas di atasnya */
+    const fencePost = (id: string, nm: string, x: number, z: number, y: number) => add(id, 'y', x, y + rh / 2, z, yPg(y) - hw - y - rh / 2, 'custom', nm, thin);
+    /**
+     * Penguat miring di bidang tegak (bidang 'z' = bidang Y–Z pada x = c, bidang 'x' = bidang X–Y pada z = c).
+     * a/e = titik sasaran [koordinat mendatar, y]. Flag tiap ujung: 'v' = ujung menempel sisi TEGAK (sisi tiang),
+     * 'h' = ujung menempel sisi MENDATAR (bawah palang / atas pagar). Ujung batang dipotong rata lantai bila batang
+     * curam, atau tegak bila landai (lihat cutAxisIndex), jadi titik ujung digeser supaya potongannya tidak masuk
+     * ke batang yang ditemui.
+     */
+    const brace = (id: string, nm: string, plane: 'x' | 'z', c: number, a: [number, number], e: [number, number], fa: string, fe: string) => {
+      let P = a;
+      let Q = e;
+      for (let k = 0; k < 5; k++) {
+        const ds = Q[0] - P[0];
+        const dy = Q[1] - P[1];
+        const len = Math.hypot(ds, dy) || 1;
+        P = [...a];
+        Q = [...e];
+        if (Math.abs(dy) / len >= 0.35) {
+          const o = (hw * len) / Math.abs(dy) + 0.1;
+          if (fa.includes('v')) P[0] += Math.sign(ds) * o;
+          if (fe.includes('v')) Q[0] -= Math.sign(ds) * o;
+        } else {
+          const o = (hw * len) / Math.abs(ds) + 0.1;
+          if (fa.includes('h')) P[1] += Math.sign(dy) * o;
+          if (fe.includes('h')) Q[1] -= Math.sign(dy) * o;
+        }
+      }
+      const pt3 = (q: [number, number]): [number, number, number] => (plane === 'z' ? [c, q[1], q[0]] : [q[0], q[1], c]);
+      line(id, pt3(P), pt3(Q), 'custom', nm, thin);
+    };
+    /** Pipa handuk: lengan menjulur ke depan, pipa melintang menerus di ujungnya (lengan menempel di belakang pipa) */
+    const towelBar = (xl: number, xr: number, yH: number, z0: number, zH: number) => {
+      [xl, xr].forEach((x, k) => add(`lengan-handuk-${k}`, 'z', x, yH, z0, zH - rh / 2 - z0, 'custom', `Lengan pipa handuk ${k ? 'kanan' : 'kiri'}`, rail));
+      add('pipa-handuk', 'x', xl - rh / 2, yH, zH, xr - xl + rh, 'rail-x', 'Pipa handuk', rail);
+    };
 
     // ---------- Rak melangkahi (kolong di bawah, papan di atas) ----------
     if (LANGKAH.includes(model)) {
@@ -286,11 +322,12 @@ export const RAK_KAMAR_MANDI: ProductDef = {
           add(`atas-${i}-ujung`, 'z', xR, y, zb + L / 2, zf - zb - L, 'rail-z', `Palang ${nm} ujung`, rail);
           plank(`papan-atas-${i}`, `Papan ${nm}`, xB, xR, zb, zf, y);
           if (pagar) {
-            add(`atas-${i}-pagar-belakang`, 'x', xB, yPg(y), zb, xR - xB, 'custom', `Pagar ${nm} belakang`, thin);
-            add(`atas-${i}-pagar-ujung`, 'z', xR, yPg(y), zb, zf - zb, 'custom', `Pagar ${nm} ujung`, thin);
+            // pagar dipotong pas di antara tiang
+            add(`atas-${i}-pagar-belakang`, 'x', xB + h, yPg(y), zb, xR - xB - L, 'custom', `Pagar ${nm} belakang`, thin);
+            add(`atas-${i}-pagar-ujung`, 'z', xR, yPg(y), zb + h, zf - zb - L, 'custom', `Pagar ${nm} ujung`, thin);
           }
         });
-        line('siku-ujung', [xR, y1 - 18, zb], [xR, y1 - rh / 2, zb + (zf - zb) * 0.7], 'custom', 'Penguat siku ujung tembok', thin);
+        brace('siku-ujung', 'Penguat siku ujung tembok', 'z', xR, [zb + h, y1 - 18], [zb + (zf - zb) * 0.7, y1 - rh / 2], 'v', 'h');
       } else if (model === 'plafon') {
         // Dua tiang dijepit lantai–plafon di belakang, lengan menjulur ke depan
         const Hc = num(p, 'tinggiPlafon', 260);
@@ -305,16 +342,17 @@ export const RAK_KAMAR_MANDI: ProductDef = {
         ys.forEach((y, i) => {
           const nm = `rak ${i + 1}`;
           xs.forEach((x, k) => {
-            add(`t${i}-lengan-${k}`, 'z', x, y, zb + L / 2, zf - zb - L / 2, 'rail-z', `Lengan ${nm} ${k ? 'kanan' : 'kiri'}`, rail);
-            line(`t${i}-siku-${k}`, [x, y - 14, zb], [x, y - rh / 2, zb + (zf - zb) * 0.55], 'custom', `Penguat lengan ${nm} ${k ? 'kanan' : 'kiri'}`, thin);
+            // lengan dari sisi depan tiang sampai rata sisi luar palang depan
+            add(`t${i}-lengan-${k}`, 'z', x, y, zb + L / 2, zf + rh / 2 - zb - L / 2, 'rail-z', `Lengan ${nm} ${k ? 'kanan' : 'kiri'}`, rail);
+            brace(`t${i}-siku-${k}`, `Penguat lengan ${nm} ${k ? 'kanan' : 'kiri'}`, 'z', x, [zb + h, y - 14], [zb + (zf - zb) * 0.55, y - rh / 2], 'v', 'h');
           });
-          add(`t${i}-depan`, 'x', xs[0] + 1, y, zf, xs[1] - xs[0] - 2, 'rail-x', `Palang ${nm} depan`, rail);
+          add(`t${i}-depan`, 'x', xs[0] + rh / 2, y, zf, xs[1] - xs[0] - rh, 'rail-x', `Palang ${nm} depan`, rail);
           add(`t${i}-belakang`, 'x', xs[0] + L / 2, y, zb, xs[1] - xs[0] - L, 'rail-x', `Palang ${nm} belakang`, rail);
           plank(`papan-${i}`, `Papan ${nm}`, xs[0], xs[1], zb, zf, y);
           if (pagar) {
-            add(`t${i}-pagar-belakang`, 'x', xs[0], yPg(y), zb, xs[1] - xs[0], 'custom', `Pagar ${nm} belakang`, thin);
+            add(`t${i}-pagar-belakang`, 'x', xs[0] + h, yPg(y), zb, xs[1] - xs[0] - L, 'custom', `Pagar ${nm} belakang`, thin);
             xs.forEach((x, k) => {
-              add(`t${i}-pagar-sisi-${k}`, 'z', x, yPg(y), zb, zf - zb, 'custom', `Pagar ${nm} ${k ? 'kanan' : 'kiri'}`, thin);
+              add(`t${i}-pagar-sisi-${k}`, 'z', x, yPg(y), zb + h, zf + hw - zb - h, 'custom', `Pagar ${nm} ${k ? 'kanan' : 'kiri'}`, thin);
               fencePost(`t${i}-pagar-tegak-${k}`, `Tiang pagar ${nm} ${k ? 'kanan' : 'kiri'}`, x, zf, y);
             });
           }
@@ -326,8 +364,10 @@ export const RAK_KAMAR_MANDI: ProductDef = {
         const xl = xs[0];
         const xr = xs[xs.length - 1];
         const tapak = model === 'tapak';
+        const silang = model === 'silang';
         const zc = D / 2;
         if (model === 'konsol') wall = true;
+        const yHead = y1 + rh / 2; // kaki silang: permukaan atas kepala kaki = permukaan atas palang papan terbawah
 
         // Kaki / tiang
         xs.forEach((x, i) => {
@@ -338,34 +378,41 @@ export const RAK_KAMAR_MANDI: ProductDef = {
             add(`tapak-${i}`, 'z', x, L / 2, 0, D, 'rail-z', `Tapak lantai ${nm}`, pt);
             [zb, zf].forEach((z, j) => add(`tiang-${i}-${j}`, 'y', x, L, z, postTop - L, 'post', `Tiang ${nm} ${j ? 'depan' : 'belakang'}`, pt));
             add(`bingkai-tengah-${i}`, 'z', x, r1(y1 / 2), zb + L / 2, zf - zb - L, 'rail-z', `Palang tengah bingkai ${nm}`, rail);
-          } else if (model === 'silang') {
-            const yk = y1 - rh / 2;
-            line(`kaki-${i}-a`, [x, 0, zb], [x, yk, zf], 'post', `Kaki silang ${nm} (miring ke depan)`, pt);
-            line(`kaki-${i}-b`, [x, 0, zf], [x, yk, zb], 'post', `Kaki silang ${nm} (miring ke belakang)`, pt);
-            [zb, zf].forEach((z, j) => add(`tiang-${i}-${j}`, 'y', x, yk, z, postTop - yk, 'post', `Tiang atas ${nm} ${j ? 'depan' : 'belakang'}`, pt));
+          } else if (silang) {
+            // Dua kaki miring dipasang BERSEBELAHAN (masing-masing setengah lebar tiang) dan dilas di titik silang,
+            // ujung atasnya menempel di bawah kepala kaki menerus depan–belakang; tiang atas berdiri di atas kepala kaki.
+            const yk = yHead - L;
+            add(`kepala-${i}`, 'z', x, yk + L / 2, 0, D, 'rail-z', `Kepala kaki silang ${nm}`, pt);
+            const leg: [number, number] = [h * 10, L * 10];
+            const uy = yk / Math.hypot(yk, zf - zb);
+            const e = h / uy - h + 0.1; // potongan rata lantai/kepala lebih lebar dari pipa: geser ke dalam
+            line(`kaki-${i}-a`, [x - h / 2, 0, zb + e], [x - h / 2, yk, zf - e], 'post', `Kaki silang ${nm} (miring ke depan)`, leg);
+            line(`kaki-${i}-b`, [x + h / 2, 0, zf - e], [x + h / 2, yk, zb + e], 'post', `Kaki silang ${nm} (miring ke belakang)`, leg);
+            [zb, zf].forEach((z, j) => add(`tiang-${i}-${j}`, 'y', x, yHead, z, postTop - yHead, 'post', `Tiang atas ${nm} ${j ? 'depan' : 'belakang'}`, pt));
           } else if (tapak) {
             add(`tapak-${i}`, 'z', x, L / 2, 0, D, 'rail-z', `Tapak melintang ${nm}`, pt);
             add(`tiang-${i}`, 'y', x, L, zc, yTop + rh / 2 - L, 'post', `Tiang ${nm}`, pt);
             [-1, 1].forEach((s, j) =>
-              line(`siku-${i}-${j}`, [x, y1 - 15, zc + (s * L) / 2], [x, y1 - rh / 2, zc + s * (zc - L / 2 - 3)], 'custom', `Penguat lengan ${nm} ${j ? 'depan' : 'belakang'}`, thin)
+              brace(`siku-${i}-${j}`, `Penguat lengan ${nm} ${j ? 'depan' : 'belakang'}`, 'z', x, [zc + s * h, y1 - 15], [zc + s * (zc - L / 2 - 3), y1 - rh / 2], 'v', 'h')
             );
           } else {
             // konsol: kaki depan ke lantai, tiang belakang dibaut tembok
             add(`kaki-${i}`, 'y', x, 0, zf, postTop, 'post', `Kaki depan ${nm}`, pt);
             add(`tembok-${i}`, 'y', x, y1 - 20, zb, postTop - (y1 - 20), 'post', `Tiang tembok ${nm}`, pt);
-            line(`siku-tembok-${i}`, [x, y1 - 18, zb], [x, y1 - rh / 2, zb + (zf - zb) * 0.5], 'custom', `Penguat siku tembok ${nm}`, thin);
+            brace(`siku-tembok-${i}`, `Penguat siku tembok ${nm}`, 'z', x, [zb + h, y1 - 18], [zb + (zf - zb) * 0.5, y1 - rh / 2], 'v', 'h');
           }
         });
 
         // Tingkat papan di atas kolong
-        const off = tapak ? 1 : L / 2;
+        const off = tapak ? rh / 2 : L / 2;
         ys.forEach((y, i) => {
           const nm = `rak ${i + 1}`;
           xs.forEach((x, k) => {
             if (tapak) {
-              add(`t${i}-lengan-${k}-b`, 'z', x, y, zb, zc - L / 2 - zb, 'rail-z', `Lengan ${nm} belakang ${k + 1}`, rail);
-              add(`t${i}-lengan-${k}-d`, 'z', x, y, zc + L / 2, zf - zc - L / 2, 'rail-z', `Lengan ${nm} depan ${k + 1}`, rail);
-            } else add(`t${i}-samping-${k}`, 'z', x, y, zb + L / 2, zf - zb - L, 'rail-z', `Palang ${nm} samping ${k + 1}`, rail);
+              // lengan dari rata sisi luar palang belakang / depan sampai sisi tiang
+              add(`t${i}-lengan-${k}-b`, 'z', x, y, zb - rh / 2, zc - L / 2 - zb + rh / 2, 'rail-z', `Lengan ${nm} belakang ${k + 1}`, rail);
+              add(`t${i}-lengan-${k}-d`, 'z', x, y, zc + L / 2, zf + rh / 2 - zc - L / 2, 'rail-z', `Lengan ${nm} depan ${k + 1}`, rail);
+            } else if (!(silang && i === 0)) add(`t${i}-samping-${k}`, 'z', x, y, zb + L / 2, zf - zb - L, 'rail-z', `Palang ${nm} samping ${k + 1}`, rail);
           });
           for (let j = 0; j < xs.length - 1; j++) {
             const sfx = xs.length > 2 ? ` ${j + 1}` : '';
@@ -375,19 +422,31 @@ export const RAK_KAMAR_MANDI: ProductDef = {
           }
           if (pagar) {
             const yp = yPg(y);
-            add(`t${i}-pagar-belakang`, 'x', xl, yp, zb, xr - xl, 'custom', `Pagar ${nm} belakang`, thin);
-            [xl, xr].forEach((x, k) => {
-              const side = k ? 'kanan' : 'kiri';
-              if (tapak) {
-                add(`t${i}-pagar-${side}-b`, 'z', x, yp, zb, zc - L / 2 - zb, 'custom', `Pagar ${nm} ${side} belakang`, thin);
-                add(`t${i}-pagar-${side}-d`, 'z', x, yp, zc + L / 2, zf - zc - L / 2, 'custom', `Pagar ${nm} ${side} depan`, thin);
+            if (tapak) {
+              // tiang pagar tipis di tiap ujung lengan, pagar mendatar menerus di atasnya
+              add(`t${i}-pagar-belakang`, 'x', xl - hw, yp, zb, xr - xl + 2 * hw, 'custom', `Pagar ${nm} belakang`, thin);
+              const above = yp - hw > yTop + rh / 2; // pagar di atas ujung tiang: pagar samping menerus
+              [xl, xr].forEach((x, k) => {
+                const side = k ? 'kanan' : 'kiri';
+                if (above) add(`t${i}-pagar-${side}`, 'z', x, yp, zb + hw, zf - zb, 'custom', `Pagar ${nm} ${side}`, thin);
+                else {
+                  add(`t${i}-pagar-${side}-b`, 'z', x, yp, zb + hw, zc - L / 2 - zb - hw, 'custom', `Pagar ${nm} ${side} belakang`, thin);
+                  add(`t${i}-pagar-${side}-d`, 'z', x, yp, zc + L / 2, zf + hw - zc - L / 2, 'custom', `Pagar ${nm} ${side} depan`, thin);
+                }
                 fencePost(`t${i}-pagar-tegak-${side}-b`, `Tiang pagar ${nm} ${side} belakang`, x, zb, y);
                 fencePost(`t${i}-pagar-tegak-${side}-d`, `Tiang pagar ${nm} ${side} depan`, x, zf, y);
-              } else add(`t${i}-pagar-${side}`, 'z', x, yp, zb, zf - zb, 'custom', `Pagar ${nm} ${side}`, thin);
-            });
-            if (tapak && xs.length > 2) {
-              // tiang tengah dilewati pagar belakang: beri tiang pagar
-              fencePost(`t${i}-pagar-tegak-tengah`, `Tiang pagar ${nm} tengah`, xs[1], zb, y);
+              });
+              if (xs.length > 2) fencePost(`t${i}-pagar-tegak-tengah`, `Tiang pagar ${nm} tengah`, xs[1], zb, y);
+            } else {
+              // semua tiang menerus sampai atas pagar: pagar dipotong pas di antara tiang
+              for (let j = 0; j < xs.length - 1; j++) {
+                const sfx = xs.length > 2 ? ` ${j + 1}` : '';
+                add(`t${i}-pagar-belakang${j ? `-${j}` : ''}`, 'x', xs[j] + h, yp, zb, xs[j + 1] - xs[j] - L, 'custom', `Pagar ${nm} belakang${sfx}`, thin);
+              }
+              [xl, xr].forEach((x, k) => {
+                const side = k ? 'kanan' : 'kiri';
+                add(`t${i}-pagar-${side}`, 'z', x, yp, zb + h, zf - zb - L, 'custom', `Pagar ${nm} ${side}`, thin);
+              });
             }
           }
         });
@@ -395,32 +454,36 @@ export const RAK_KAMAR_MANDI: ProductDef = {
         if (model === 'empat') {
           const kb = Math.min(12, (zf - zb) / 2 - 1);
           xs.forEach((x, i) => {
-            line(`siku-samping-${i}-b`, [x, y1 - 13, zb], [x, y1 - rh / 2, zb + kb], 'custom', `Siku kolong samping ${i + 1} belakang`, thin);
-            line(`siku-samping-${i}-d`, [x, y1 - 13, zf], [x, y1 - rh / 2, zf - kb], 'custom', `Siku kolong samping ${i + 1} depan`, thin);
+            brace(`siku-samping-${i}-b`, `Siku kolong samping ${i + 1} belakang`, 'z', x, [zb + h, y1 - 13], [zb + kb, y1 - rh / 2], 'v', 'h');
+            brace(`siku-samping-${i}-d`, `Siku kolong samping ${i + 1} depan`, 'z', x, [zf - h, y1 - 13], [zf - kb, y1 - rh / 2], 'v', 'h');
             [-1, 1].forEach((s) => {
               if ((x === xl && s < 0) || (x === xr && s > 0)) return;
-              line(`siku-depan-${i}-${s > 0 ? 'ka' : 'ki'}`, [x, y1 - 13, zf], [x + s * 12, y1 - rh / 2, zf], 'custom', `Siku kolong depan ${i + 1}`, thin);
+              brace(`siku-depan-${i}-${s > 0 ? 'ka' : 'ki'}`, `Siku kolong depan ${i + 1}`, 'x', zf, [x + s * h, y1 - 13], [x + s * 12, y1 - rh / 2], 'v', 'h');
             });
           });
+          // Silang X belakang di antara rak 1 & rak 2: dua pipa ditumpuk bersebelahan (depan–belakang) dan dilas di
+          // titik silang; ujung bawah di atas pagar / papan rak 1, ujung atas di bawah palang rak 2, sisi menempel tiang.
+          const yLo = pagar ? yPg(ys[0]) + hw : ys[0] + rh / 2 + b;
+          const yHi = ys[1] - rh / 2;
+          const dz = Math.max(0, 2 * hw - h);
           for (let j = 0; j < xs.length - 1; j++) {
-            line(`silang-belakang-${j}-a`, [xs[j], ys[0], zb], [xs[j + 1], ys[1], zb], 'custom', `Silang X belakang ${j + 1}`, thin);
-            line(`silang-belakang-${j}-b`, [xs[j + 1], ys[0], zb], [xs[j], ys[1], zb], 'custom', `Silang X belakang ${j + 1}`, thin);
+            brace(`silang-belakang-${j}-a`, `Silang X belakang ${j + 1}`, 'x', zb - hw + dz, [xs[j] + h, yLo], [xs[j + 1] - h, yHi], 'vh', 'vh');
+            brace(`silang-belakang-${j}-b`, `Silang X belakang ${j + 1}`, 'x', zb + hw + dz, [xs[j + 1] - h, yLo], [xs[j] + h, yHi], 'vh', 'vh');
           }
         }
         if (model === 'konsol')
           xs.forEach((x, i) =>
             [-1, 1].forEach((s) => {
               if ((x === xl && s < 0) || (x === xr && s > 0)) return;
-              line(`siku-depan-${i}-${s > 0 ? 'ka' : 'ki'}`, [x, y1 - 13, zf], [x + s * 12, y1 - rh / 2, zf], 'custom', `Siku kolong depan ${i + 1}`, thin);
+              brace(`siku-depan-${i}-${s > 0 ? 'ka' : 'ki'}`, `Siku kolong depan ${i + 1}`, 'x', zf, [x + s * h, y1 - 13], [x + s * 12, y1 - rh / 2], 'v', 'h');
             })
           );
 
         // Pipa handuk di depan bawah rak terbawah
         if (handuk) {
-          const yH = model === 'silang' || tapak ? y1 : y1 - 6;
-          const z0 = tapak ? zf + 1 : zf + L / 2;
-          [xl, xr].forEach((x, k) => add(`lengan-handuk-${k}`, 'z', x, yH, z0, D + 5 - z0, 'custom', `Lengan pipa handuk ${k ? 'kanan' : 'kiri'}`, rail));
-          add('pipa-handuk', 'x', xl, yH, D + 5, xr - xl, 'rail-x', 'Pipa handuk', rail);
+          const yH = silang || tapak ? y1 : y1 - 6;
+          const z0 = tapak ? zf + rh / 2 : zf + L / 2;
+          towelBar(xl, xr, yH, z0, D + 5);
           outD = D + 6;
         }
       }
@@ -441,11 +504,15 @@ export const RAK_KAMAR_MANDI: ProductDef = {
       P.forEach(([x, z, nm], i) => add(`tiang-${i}`, 'y', x, 0, z, postTop, 'post', `Tiang ${nm}`, pt));
       const k = S >= 40 ? 4 : 3;
       const w = (S - L) / k;
+      // Palang miring 45° (potongan ujung tegak, rata sisi tiang) dari sisi kanan tiang kiri depan ke sisi kiri tiang
+      // kanan belakang. Palang tembok belakang berhenti di sisi belakang palang miring (bukan menembus ke tiang).
+      const rw = rail[0] / 10;
+      const xBack = S - (L / 2 + rw / 2) - (rw / 2) * Math.SQRT2 - 0.1;
       ys.forEach((y, i) => {
         const nm = `rak ${i + 1}`;
-        add(`t${i}-belakang`, 'x', L, y, L / 2, S - 2 * L, 'rail-x', `Palang ${nm} tembok belakang`, rail);
+        add(`t${i}-belakang`, 'x', L, y, L / 2, xBack - L, 'rail-x', `Palang ${nm} tembok belakang`, rail);
         add(`t${i}-kiri`, 'z', L / 2, y, L, S - 2 * L, 'rail-z', `Palang ${nm} tembok kiri`, rail);
-        line(`t${i}-miring`, [L / 2, y, S - L / 2], [S - L / 2, y, L / 2], 'rail-x', `Palang ${nm} depan (miring)`, rail);
+        line(`t${i}-miring`, [L, y, S - L], [S - L, y, L], 'rail-x', `Palang ${nm} depan (miring)`, rail);
         if (b > 0)
           for (let j = 0; j < k; j++) {
             const za = L / 2 + j * w;
@@ -454,7 +521,7 @@ export const RAK_KAMAR_MANDI: ProductDef = {
             if (xe - L / 2 < 4) continue;
             boards.push(board(`papan-${i}-${j}`, `Bilah papan ${nm} ke-${j + 1}`, L / 2, xe, y + rh / 2, y + rh / 2 + b, za, ze));
           }
-        if (pagar) line(`t${i}-pagar`, [L / 2, yPg(y), S - L / 2], [S - L / 2, yPg(y), L / 2], 'custom', `Pagar ${nm} depan`, thin);
+        if (pagar) line(`t${i}-pagar`, [L, yPg(y), S - L], [S - L, yPg(y), L], 'custom', `Pagar ${nm} depan`, thin);
       });
       outH = pagar ? yPg(yTop) + 0.75 : yTop + rh / 2 + b;
     } else if (model === 'sela') {
@@ -477,22 +544,27 @@ export const RAK_KAMAR_MANDI: ProductDef = {
       });
       ys.forEach((y, i) => {
         const nm = `rak ${i + 1}`;
+        const last = i === ys.length - 1;
         [x0, x1].forEach((x, k) => {
-          add(`t${i}-lengan-${k}`, 'z', x, y, zb + L / 2, zf - zb - L / 2, 'rail-z', `Lengan ${nm} ${k ? 'kanan' : 'kiri'}`, rail);
-          if (i > 0) line(`t${i}-siku-${k}`, [x, y - 12, zb], [x, y - rh / 2, zb + (zf - zb) * 0.5], 'custom', `Penguat lengan ${nm} ${k ? 'kanan' : 'kiri'}`, thin);
+          add(`t${i}-lengan-${k}`, 'z', x, y, zb + L / 2, zf + rh / 2 - zb - L / 2, 'rail-z', `Lengan ${nm} ${k ? 'kanan' : 'kiri'}`, rail);
+          if (i > 0) brace(`t${i}-siku-${k}`, `Penguat lengan ${nm} ${k ? 'kanan' : 'kiri'}`, 'z', x, [zb + h, y - 12], [zb + (zf - zb) * 0.5, y - rh / 2], 'v', 'h');
         });
         add(`t${i}-belakang`, 'x', x0 + L / 2, y, zb, x1 - x0 - L, 'rail-x', `Palang ${nm} belakang`, rail);
-        add(`t${i}-depan`, 'x', x0 + 1, y, zf, x1 - x0 - 2, 'rail-x', `Palang ${nm} depan`, rail);
+        add(`t${i}-depan`, 'x', x0 + rh / 2, y, zf, x1 - x0 - rh, 'rail-x', `Palang ${nm} depan`, rail);
         plank(`papan-${i}`, `Papan ${nm}`, x0, x1, zb, zf, y);
         if (pagar) {
-          add(`t${i}-pagar-belakang`, 'x', x0, yPg(y), zb, x1 - x0, 'custom', `Pagar ${nm} belakang`, thin);
-          add(`t${i}-pagar-depan`, 'x', x0, yPg(y), zf, x1 - x0, 'custom', `Pagar ${nm} depan`, thin);
-          if (i < ys.length - 1) [x0, x1].forEach((x, k) => fencePost(`t${i}-pagar-tegak-${k}`, `Tiang pagar ${nm} depan ${k ? 'kanan' : 'kiri'}`, x, zf, y));
+          add(`t${i}-pagar-belakang`, 'x', x0 + h, yPg(y), zb, x1 - x0 - L, 'custom', `Pagar ${nm} belakang`, thin);
+          // rak teratas: pagar depan di antara tiang pegangan; rak lain: menerus di atas tiang pagar
+          if (last) add(`t${i}-pagar-depan`, 'x', x0 + hw, yPg(y), zf, x1 - x0 - 2 * hw, 'custom', `Pagar ${nm} depan`, thin);
+          else {
+            add(`t${i}-pagar-depan`, 'x', x0 - hw, yPg(y), zf, x1 - x0 + 2 * hw, 'custom', `Pagar ${nm} depan`, thin);
+            [x0, x1].forEach((x, k) => fencePost(`t${i}-pagar-tegak-${k}`, `Tiang pagar ${nm} depan ${k ? 'kanan' : 'kiri'}`, x, zf, y));
+          }
         }
       });
       const yh = yTop + rh / 2 + handle;
-      [x0, x1].forEach((x, k) => add(`pegangan-tegak-${k}`, 'y', x, yTop + rh / 2, zf, handle, 'custom', `Tiang pegangan ${k ? 'kanan' : 'kiri'}`, thin));
-      add('pegangan', 'x', x0, yh, zf, x1 - x0, 'custom', 'Pegangan tarik', thin);
+      [x0, x1].forEach((x, k) => add(`pegangan-tegak-${k}`, 'y', x, yTop + rh / 2, zf, handle - hw, 'custom', `Tiang pegangan ${k ? 'kanan' : 'kiri'}`, thin));
+      add('pegangan', 'x', x0 - hw, yh, zf, x1 - x0 + 2 * hw, 'custom', 'Pegangan tarik', thin);
       outH = yh + 0.75;
       if (roda) casters = casterSet([x0, x1], [3, D - 3], inch, true);
     } else if (model === 'kolong') {
@@ -523,15 +595,16 @@ export const RAK_KAMAR_MANDI: ProductDef = {
         } else {
           add(`t${i}-belakang-ki`, 'x', x0 + L / 2, y, zb, xa - x0 - L, 'rail-x', `Palang ${nm} belakang kiri`, rail);
           add(`t${i}-belakang-ka`, 'x', xb + L / 2, y, zb, x1 - xb - L, 'rail-x', `Palang ${nm} belakang kanan`, rail);
-          add(`t${i}-celah-ki`, 'z', xa, y, zb + L / 2, zn - zb - L / 2, 'rail-z', `Palang celah pipa kiri`, rail);
-          add(`t${i}-celah-ka`, 'z', xb, y, zb + L / 2, zn - zb - L / 2, 'rail-z', `Palang celah pipa kanan`, rail);
-          add(`t${i}-celah-depan`, 'x', xa - 1, y, zn, xb - xa + 2, 'rail-x', `Palang ujung celah pipa`, rail);
+          // palang celah sampai rata sisi luar palang ujung celah, palang ujung celah di antaranya
+          add(`t${i}-celah-ki`, 'z', xa, y, zb + L / 2, zn + rh / 2 - zb - L / 2, 'rail-z', `Palang celah pipa kiri`, rail);
+          add(`t${i}-celah-ka`, 'z', xb, y, zb + L / 2, zn + rh / 2 - zb - L / 2, 'rail-z', `Palang celah pipa kanan`, rail);
+          add(`t${i}-celah-depan`, 'x', xa + rh / 2, y, zn, xb - xa - rh, 'rail-x', `Palang ujung celah pipa`, rail);
           plank(`papan-${i}-ki`, `Papan ${nm} kiri`, x0, xa, zb, zf, y);
           plank(`papan-${i}-ka`, `Papan ${nm} kanan`, xb, x1, zb, zf, y);
           plank(`papan-${i}-tengah`, `Papan ${nm} depan celah`, xa, xb, zn, zf, y);
         }
         if (pagar)
-          [x0, x1].forEach((x, k) => add(`t${i}-pagar-${k}`, 'z', x, yPg(y), zb, zf - zb, 'custom', `Pagar ${nm} ${k ? 'kanan' : 'kiri'}`, thin));
+          [x0, x1].forEach((x, k) => add(`t${i}-pagar-${k}`, 'z', x, yPg(y), zb + h, zf - zb - L, 'custom', `Pagar ${nm} ${k ? 'kanan' : 'kiri'}`, thin));
       });
       outH = pagar ? yPg(yTop) + 0.75 : yTop + rh / 2 + b;
     } else {
@@ -549,21 +622,21 @@ export const RAK_KAMAR_MANDI: ProductDef = {
       ys.forEach((y, i) => {
         const nm = `keranjang ${i + 1}`;
         [x0, x1].forEach((x, k) => {
-          add(`t${i}-lengan-${k}`, 'z', x, y, zb + L / 2, zf - zb - L / 2, 'rail-z', `Lengan ${nm} ${k ? 'kanan' : 'kiri'}`, rail);
-          line(`t${i}-siku-${k}`, [x, y - 12, zb], [x, y - rh / 2, zb + (zf - zb) * 0.6], 'custom', `Penguat siku ${nm} ${k ? 'kanan' : 'kiri'}`, thin);
-          add(`t${i}-pagar-${k}`, 'z', x, yPg(y), zb, zf - zb, 'custom', `Pagar ${nm} ${k ? 'kanan' : 'kiri'}`, thin);
+          add(`t${i}-lengan-${k}`, 'z', x, y, zb + L / 2, zf + rh / 2 - zb - L / 2, 'rail-z', `Lengan ${nm} ${k ? 'kanan' : 'kiri'}`, rail);
+          brace(`t${i}-siku-${k}`, `Penguat siku ${nm} ${k ? 'kanan' : 'kiri'}`, 'z', x, [zb + h, y - 12], [zb + (zf - zb) * 0.6, y - rh / 2], 'v', 'h');
+          // pagar samping dari sisi tiang sampai menempel di belakang pagar depan
+          add(`t${i}-pagar-${k}`, 'z', x, yPg(y), zb + h, zf - hw - zb - h, 'custom', `Pagar ${nm} ${k ? 'kanan' : 'kiri'}`, thin);
           fencePost(`t${i}-pagar-tegak-${k}`, `Tiang pagar ${nm} depan ${k ? 'kanan' : 'kiri'}`, x, zf, y);
         });
         add(`t${i}-belakang`, 'x', x0 + L / 2, y, zb, x1 - x0 - L, 'rail-x', `Palang ${nm} belakang`, rail);
-        add(`t${i}-depan`, 'x', x0 + 1, y, zf, x1 - x0 - 2, 'rail-x', `Palang ${nm} depan`, rail);
-        add(`t${i}-pagar-depan`, 'x', x0, yPg(y), zf, x1 - x0, 'custom', `Pagar ${nm} depan`, thin);
+        add(`t${i}-depan`, 'x', x0 + rh / 2, y, zf, x1 - x0 - rh, 'rail-x', `Palang ${nm} depan`, rail);
+        add(`t${i}-pagar-depan`, 'x', x0 - hw, yPg(y), zf, x1 - x0 + 2 * hw, 'custom', `Pagar ${nm} depan`, thin);
         plank(`papan-${i}`, `Alas ${nm}`, x0, x1, zb, zf, y);
       });
       if (handuk) {
         const yH = yb - 20;
         const zH = Math.max(zf, D - 3);
-        [x0, x1].forEach((x, k) => add(`lengan-handuk-${k}`, 'z', x, yH, zb + L / 2, zH - zb - L / 2, 'custom', `Lengan pipa handuk ${k ? 'kanan' : 'kiri'}`, rail));
-        add('pipa-handuk', 'x', x0, yH, zH, x1 - x0, 'rail-x', 'Pipa handuk', rail);
+        towelBar(x0, x1, yH, zb + L / 2, zH);
       }
       outH = yPg(yTop) + 0.75;
     }

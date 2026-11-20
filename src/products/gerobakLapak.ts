@@ -20,6 +20,8 @@ import { BOARD_THICK, CASTER_OPTIONS, board, bool, casterHeight, casterSet, mate
  */
 type Tube = [number, number];
 type V3 = [number, number, number];
+/** Jenis permukaan yang ditemui ujung batang miring (lihat brace() di build) */
+type End = 'v' | 'h' | 'bebas';
 
 const MODELS = [
   { value: 'angkringan', label: 'Gerobak angkringan', desc: '2 roda besar, 4 tiang ke atap datar' },
@@ -363,6 +365,7 @@ export const GEROBAK_LAPAK: ProductDef = {
     const ta = Math.tan(rad(num(p, 'miringAtap', 15)));
     const td = Math.tan(rad(num(p, 'miringDisplay', 20)));
     const yt = ht - b - rh / 2; // as palang di bawah papan meja
+    const ru = (rh / 2) * Math.hypot(1, ta); // jarak tegak as kasau miring ke sisi bawahnya
     const { list, add, line } = memberFactory();
     const boards: Board[] = [];
     const casters: Caster[] = [];
@@ -393,6 +396,78 @@ export const GEROBAK_LAPAK: ProductDef = {
     /** Posisi kolom tiang: tiang tengah otomatis bila bentang > 250 cm */
     const columns = (W: number) => (W > 250 ? [L / 2, W / 2, W - L / 2] : [L / 2, W - L / 2]);
     const colName = (i: number, n: number) => (i === 0 ? 'kiri' : i === n - 1 ? 'kanan' : 'tengah');
+    /** Setengah lebar palang (cm): sisi palang yang ditemui ujung batang lain */
+    const rw = rail[0] / 20;
+    /**
+     * Palang sumbu x di antara deretan tiang/batang (as di xs, setengah lebar hw): dipotong per bentang,
+     * ujungnya menempel rata di sisi tiang, tidak menembus tiang di tengah.
+     */
+    const between = (id: string, label: string, xs: number[], y: number, z: number, hw: number, tube: Tube = rail) => {
+      const n = xs.length - 1;
+      for (let i = 0; i < n; i++)
+        add(n > 1 ? `${id}-${i}` : id, 'x', xs[i] + hw, y, z, xs[i + 1] - xs[i] - 2 * hw, 'rail-x', n > 1 ? `${label} (${i + 1})` : label, tube);
+    };
+    /** Bingkai tanpa tiang sudut: depan/belakang menerus, kiri/kanan dipotong di antaranya (as di x0/x1, z0/z1) */
+    const frame = (id: string, nm: string, x0: number, x1: number, z0: number, z1: number, y: number, tube: Tube = rail) => {
+      const tw = tube[0] / 20;
+      add(`${id}-depan`, 'x', x0 - tw, y, z1, x1 - x0 + 2 * tw, 'rail-x', `${nm} depan`, tube);
+      add(`${id}-belakang`, 'x', x0 - tw, y, z0, x1 - x0 + 2 * tw, 'rail-x', `${nm} belakang`, tube);
+      add(`${id}-kiri`, 'z', x0, y, z0 + tw, z1 - z0 - 2 * tw, 'rail-z', `${nm} kiri`, tube);
+      add(`${id}-kanan`, 'z', x1, y, z0 + tw, z1 - z0 - 2 * tw, 'rail-z', `${nm} kanan`, tube);
+    };
+    /**
+     * Batang miring (siku / kasau / palang display) dari titik a ke b di bidang tegak. Titik a/b = titik singgung
+     * di permukaan yang ditemui: 'v' = sisi tegak tiang/palang, 'h' = permukaan datar (atas/bawah batang, lantai);
+     * 'bebas' = ujung lepas (tidak menempel apa pun); sa/sb = kemiringan permukaan datar itu (dy/d-run). Batang yang cukup tegak dipotong rata datar, jadi ujung
+     * yang menempel di sisi tegak digeser menjauh setebal potongan miringnya supaya sudut potongan tidak masuk ke
+     * tiang; batang landai dipotong tegak, jadi ujung di permukaan datar digeser naik/turun. Hasilnya ujung batang
+     * menempel rata di permukaan yang ditemui, tidak menembus.
+     */
+    const brace = (id: string, label: string, a: V3, b: V3, tube: Tube, ea: End, eb: End, role: 'custom' | 'rail-z' | 'rail-x' | 'post' = 'custom', sa = 0, sb = 0) => {
+      const half = tube[1] / 20;
+      const ri = Math.abs(b[0] - a[0]) > Math.abs(b[2] - a[2]) ? 0 : 2;
+      const k0 = (b[1] - a[1]) / (b[ri] - a[ri] || 1); // kemiringan as semula
+      const r1v = (v: number) => Math.round(v * 10) / 10; // pembulatan sama seperti memberFromPoints
+      const isSteep = (p: V3, q: V3) => {
+        const dr = r1v(q[ri]) - r1v(p[ri]);
+        const dy = r1v(q[1]) - r1v(p[1]);
+        return Math.abs(dy) / (Math.hypot(dr, dy) || 1) >= 0.35;
+      };
+      /** posisi ujung bila batang dianggap dipotong datar (steep) atau tegak */
+      const solve = (steep: boolean): [V3, V3] => {
+        const p: V3 = [...a];
+        const q: V3 = [...b];
+        for (let k = 0; k < 8; k++) {
+          const dr = q[ri] - p[ri];
+          const dy = q[1] - p[1];
+          const len = Math.hypot(dr, dy) || 1;
+          const uy = Math.abs(dy) / len || 1e-6;
+          const ur = Math.abs(dr) / len || 1e-6;
+          const sr = Math.sign(dr);
+          const sy = Math.sign(dy);
+          // ujung di sisi tegak digeser menyusur garis as semula (kemiringan batang tetap)
+          if (ea === 'v') {
+            const d = steep ? (sr * half) / uy : 0;
+            p[ri] = a[ri] + d;
+            p[1] = a[1] + d * k0;
+          } else if (ea === 'h') p[1] = a[1] + sy * (steep ? (half / uy) * Math.abs(sa) : half / ur);
+          if (eb === 'v') {
+            const d = steep ? (sr * half) / uy : 0;
+            q[ri] = b[ri] - d;
+            q[1] = b[1] - d * k0;
+          } else if (eb === 'h') q[1] = b[1] - sy * (steep ? (half / uy) * Math.abs(sb) : half / ur);
+        }
+        return [p, q];
+      };
+      // pakai anggapan potongan yang cocok dengan potongan akhir batang (di sekitar batas 0,35 bisa berbalik)
+      const guess = isSteep(a, b);
+      let [p, q] = solve(guess);
+      if (isSteep(p, q) !== guess) {
+        const alt = solve(!guess);
+        if (isSteep(alt[0], alt[1]) === !guess) [p, q] = alt;
+      }
+      line(id, p, q, role, label, tube);
+    };
 
     // ---------- Gerobak 2 roda besar (panjang searah dorong = sumbu z) ----------
     if (m === 'angkringan' || m === 'etalase') {
@@ -418,9 +493,10 @@ export const GEROBAK_LAPAK: ProductDef = {
         ring('meja', 'Rangka meja', xl, xr, zb, zf, yt);
         ring('atap', 'Rangka atap', xl, xr, zb, zf, yr);
         if (gl > 100) {
-          add('meja-tengah', 'x', xl + L / 2, yt, gl / 2, gw - L, 'rail-x', 'Palang tengah meja', rail);
-          add('lantai-tengah', 'x', xl + L / 2, yd, gl / 2, gw - L, 'rail-x', 'Palang tengah lantai', rail);
-          add('atap-tengah', 'x', xl + L / 2, yr, gl / 2, gw - L, 'rail-x', 'Palang tengah atap', rail);
+          // di antara rangka kiri & kanan: ujung menempel di sisi palang samping
+          add('meja-tengah', 'x', xl + rw, yt, gl / 2, xr - xl - 2 * rw, 'rail-x', 'Palang tengah meja', rail);
+          add('lantai-tengah', 'x', xl + rw, yd, gl / 2, xr - xl - 2 * rw, 'rail-x', 'Palang tengah lantai', rail);
+          add('atap-tengah', 'x', xl + rw, yr, gl / 2, xr - xl - 2 * rw, 'rail-x', 'Palang tengah atap', rail);
         }
         flat('meja', 'Papan meja jualan', 0, gw, 0, gl, yt);
         if (bool(p, 'rakBawah')) flat('lantai', 'Papan rak bawah', 0, gw, 0, gl, yd);
@@ -458,9 +534,9 @@ export const GEROBAK_LAPAK: ProductDef = {
         xs.forEach((x, i) => {
           const nm = i ? 'kanan' : 'kiri';
           add(`kasau-${i}`, 'z', x, yr, L, rl, 'rail-z', `Kasau atap ${nm}`, rail);
-          line(`siku-atap-${i}`, [x, yr - 45, zb + L / 2], [x, yr - rh / 2, zb + 45], 'custom', `Siku atap ${nm}`, thin);
+          brace(`siku-atap-${i}`, `Siku atap ${nm}`, [x, yr - 45, zb + L / 2], [x, yr - rh / 2, zb + 45], thin, 'v', 'h');
         });
-        add('atap-belakang', 'x', xl + L / 2, yr, zb, gw - L, 'rail-x', 'Palang atap belakang', rail);
+        between('atap-belakang', 'Palang atap belakang', xs, yr, zb, L / 2);
         add('atap-depan', 'x', xl + 1, yr, L + rl - 1, gw - L - 2, 'rail-x', 'Palang atap depan', rail);
         add('atap-tengah', 'x', xl + 1, yr, L + rl / 2, gw - L - 2, 'rail-x', 'Palang atap tengah', rail);
         flat('atap', 'Papan atap', -5, gw + 5, 0, L + rl, yr);
@@ -469,10 +545,12 @@ export const GEROBAK_LAPAK: ProductDef = {
       add('as-roda', 'x', -6, r, zw, gw + 12, 'rail-x', 'As roda (besi as Ø20)', [20, 20]);
       xs.forEach((x, i) => {
         const nm = i ? 'kanan' : 'kiri';
-        add(`dudukan-as-${i}`, 'y', x, r, zw, yd - r, 'custom', `Dudukan as roda ${nm}`, [20, 20]);
+        // duduk di atas as roda, ujung atas menempel di bawah rangka lantai
+        add(`dudukan-as-${i}`, 'y', x, r + 1, zw, yd - rh / 2 - r - 1, 'custom', `Dudukan as roda ${nm}`, [20, 20]);
       });
       const yh = ht - 10;
-      xs.forEach((x, i) => add(`gagang-${i}`, 'z', x, yh, -40, 40, 'rail-z', `Gagang dorong ${i ? 'kanan' : 'kiri'}`, pt));
+      // gagang dari sisi tiang belakang ke sisi pegangan (tidak masuk ke pegangan)
+      xs.forEach((x, i) => add(`gagang-${i}`, 'z', x, yh, -40 + L / 2, 40 - L / 2, 'rail-z', `Gagang dorong ${i ? 'kanan' : 'kiri'}`, pt));
       add('pegangan', 'x', 0, yh, -40, gw, 'rail-x', 'Pegangan dorong', pt);
       [-5, gw + 5].forEach((x, i) => casters.push({ id: `roda-besar-${i}`, x, z: zw, topY: 2 * r + 1, sizeInch: inch, brake: false }));
     }
@@ -497,24 +575,33 @@ export const GEROBAK_LAPAK: ProductDef = {
       ring('tepi-atap', 'Rangka tepi atap', xl, xr, zb, zf, yE);
       const ylo = yt;
       const yhi = Math.min(ylo + (zf - zb) * td, yE - 20);
-      add('display-depan', 'x', xl + L / 2, ylo, zf, W - L, 'rail-x', 'Palang display depan', rail);
-      add('display-belakang', 'x', xl + L / 2, yhi, zb, W - L, 'rail-x', 'Palang display belakang', rail);
-      [xl, xr].forEach((x, i) => line(`display-miring-${i}`, [x, yhi, zb + L / 2], [x, ylo, zf - L / 2], 'rail-z', `Palang display miring ${i ? 'kanan' : 'kiri'}`, rail));
-      if (W > 120) line('display-tengah', [W / 2, yhi, zb + 1], [W / 2, ylo, zf - 1], 'custom', 'Penyangga tengah display', thin);
+      /** tinggi as bidang display di titik z (garis lurus dari palang belakang ke palang depan) */
+      const yDs = (z: number) => ylo + ((zf - z) / (zf - zb)) * (yhi - ylo);
+      between('display-depan', 'Palang display depan', [xl, xr], ylo, zf, L / 2);
+      between('display-belakang', 'Palang display belakang', [xl, xr], yhi, zb, L / 2);
+      [xl, xr].forEach((x, i) =>
+        brace(`display-miring-${i}`, `Palang display miring ${i ? 'kanan' : 'kiri'}`, [x, yDs(zb + L / 2), zb + L / 2], [x, yDs(zf - L / 2), zf - L / 2], rail, 'v', 'v', 'rail-z')
+      );
+      if (W > 120) brace('display-tengah', 'Penyangga tengah display', [W / 2, yDs(zb + rw), zb + rw], [W / 2, yDs(zf - rw), zf - rw], thin, 'v', 'v');
       slopeBoard('display', 'Papan display miring', 0, W, zb, yhi, zf, ylo);
-      add('bibir', 'x', xl + L / 2, ylo + rh / 2 + b + 4, zf, W - L, 'rail-x', 'Bibir penahan barang', [15, 15]);
+      between('bibir', 'Bibir penahan barang', [xl, xr], ylo + rh / 2 + b + 4, zf, L / 2, [15, 15]);
       if (bool(p, 'rakBawah')) flat('lantai', 'Papan rak bawah', 0, W, 0, D, yd);
-      [xl, xr].forEach((x, i) => {
+      // Kuda-kuda dilas menempel di sisi dalam tiang (geser setebal pipa dari as tiang supaya tidak bersilang
+      // dengan rangka tepi atap samping): ujung bawah rata di muka palang tepi depan/belakang, ujung atas rata
+      // di muka bubungan. Bubungan di antara sisi luar kuda-kuda.
+      const yK = (z: number) => yE + (Math.min(z, D - z) - zb) * ta;
+      [xl + L / 2 + rw, xr - L / 2 - rw].forEach((x, i) => {
         const nm = i ? 'kanan' : 'kiri';
-        line(`kuda-b-${i}`, [x, yE, zb], [x, yR, D / 2], 'custom', `Kuda-kuda ${nm} belakang`, rail);
-        line(`kuda-d-${i}`, [x, yE, zf], [x, yR, D / 2], 'custom', `Kuda-kuda ${nm} depan`, rail);
+        brace(`kuda-b-${i}`, `Kuda-kuda ${nm} belakang`, [x, yK(zb + rw), zb + rw], [x, yK(D / 2 - rw), D / 2 - rw], rail, 'v', 'v');
+        brace(`kuda-d-${i}`, `Kuda-kuda ${nm} depan`, [x, yK(zf - rw), zf - rw], [x, yK(D / 2 + rw), D / 2 + rw], rail, 'v', 'v');
       });
-      add('bubungan', 'x', xl, yR, D / 2, xr - xl, 'rail-x', 'Bubungan atap', rail);
+      add('bubungan', 'x', xl + L / 2, yR, D / 2, xr - xl - L, 'rail-x', 'Bubungan atap', rail);
       slopeBoard('atap-belakang', 'Papan atap belakang', -5, W + 5, zb - tr, yE - tr * ta, D / 2, yR);
       slopeBoard('atap-depan', 'Papan atap depan', -5, W + 5, D / 2, yR, zf + tr, yE - tr * ta);
       const yh = Math.min(ht + 12, yE - 10);
-      [zb, zf].forEach((z, k) => add(`gagang-${k}`, 'x', -28, yh, z, 28, 'rail-x', `Gagang dorong ${k ? 'depan' : 'belakang'}`, pt));
-      add('pegangan', 'z', -28, yh, zb, zf - zb, 'rail-z', 'Pegangan dorong', pt);
+      // gagang dari sisi tiang ke sisi pegangan; pegangan menerus menutup kedua ujung gagang
+      [zb, zf].forEach((z, k) => add(`gagang-${k}`, 'x', -28 + L / 2, yh, z, 28 - L / 2, 'rail-x', `Gagang dorong ${k ? 'depan' : 'belakang'}`, pt));
+      add('pegangan', 'z', -28, yh, zb - L / 2, zf - zb + L, 'rail-z', 'Pegangan dorong', pt);
       casters.push(...casterSet([xl, xr], [zb, zf], inch, bool(p, 'remRoda')));
     }
 
@@ -531,7 +618,8 @@ export const GEROBAK_LAPAK: ProductDef = {
         [zb, zf].forEach((z, k) => post(`tiang-${i}-${k}`, `Tiang ${i ? 'kanan' : 'kiri'} ${k ? 'depan' : 'belakang'}`, x, z, 0, yr + rh / 2))
       );
       const zc = D - Math.min(55, D * 0.5);
-      [xl, xr].forEach((x, i) => post(`kaki-counter-${i}`, `Kaki belakang counter ${i ? 'kanan' : 'kiri'}`, x, zc, 0, yt + rh / 2));
+      // kaki belakang counter berdiri di atas palang bawah samping (bukan menembusnya)
+      [xl, xr].forEach((x, i) => post(`kaki-counter-${i}`, `Kaki belakang counter ${i ? 'kanan' : 'kiri'}`, x, zc, 10 + rh / 2, yt + rh / 2));
       ring('counter', 'Rangka counter', xl, xr, zc, zf, yt);
       flat('counter', 'Papan counter', 0, W, zc - L / 2, D + 3, yt);
       if (b > 0) boards.push(board('panel-depan', 'Papan penutup depan counter', 0, W, 8, yt + rh / 2, D, D + b));
@@ -540,7 +628,7 @@ export const GEROBAK_LAPAK: ProductDef = {
       ring('atap', 'Rangka atap', xl, xr, zb, zf, yr);
       flat('atap', 'Papan atap', -5, W + 5, -5, D + tr, yr);
       if (bool(p, 'papanNama')) {
-        add('papan-nama-bawah', 'x', xl + L / 2, yr - 32, zf, W - L, 'rail-x', 'Palang bawah papan nama', rail);
+        between('papan-nama-bawah', 'Palang bawah papan nama', [xl, xr], yr - 32, zf, L / 2);
         if (b > 0) boards.push(board('papan-nama', 'Papan nama usaha', 0, W, yr - 32 - rh / 2, yr + rh / 2, D, D + b));
       }
     }
@@ -568,14 +656,14 @@ export const GEROBAK_LAPAK: ProductDef = {
       if (b > 0) boards.push(board('panel-depan', 'Papan penutup depan counter', 0, W, rh, yt + rh / 2, D, D + b));
       const yTop = hb - rh / 2;
       [15, (15 + yTop) / 2, yTop].forEach((y, k) =>
-        add(`backdrop-${k}`, 'x', xl + L / 2, y, zb, W - L, 'rail-x', `Palang backdrop ${['bawah', 'tengah', 'atas'][k]}`, rail)
+        between(`backdrop-${k}`, `Palang backdrop ${['bawah', 'tengah', 'atas'][k]}`, [xl, xr], y, zb, L / 2)
       );
       if (b > 0) boards.push(board('backdrop', 'Papan backdrop / promosi', xl + L / 2, xr - L / 2, 15 - rh / 2, hb, zb + 1, zb + 1 + b));
       const arm = Math.max(30, tr);
       [xl, xr].forEach((x, i) => {
         const nm = i ? 'kanan' : 'kiri';
         add(`lengan-tritisan-${i}`, 'z', x, yTop, L, arm, 'rail-z', `Lengan tritisan ${nm}`, rail);
-        line(`siku-tritisan-${i}`, [x, hb - 35, zb + L / 2], [x, yTop - rh / 2, L + arm * 0.7], 'custom', `Siku tritisan ${nm}`, thin);
+        brace(`siku-tritisan-${i}`, `Siku tritisan ${nm}`, [x, hb - 35, zb + L / 2], [x, yTop - rh / 2, L + arm * 0.7], thin, 'v', 'h');
       });
       add('tritisan-depan', 'x', xl + 1, yTop, L + arm - 1, xr - xl - 2, 'rail-x', 'Palang depan tritisan', rail);
       if (b > 0) boards.push(board('tritisan', 'Papan tritisan', -3, W + 3, hb, hb + b, 0, L + arm));
@@ -589,25 +677,32 @@ export const GEROBAK_LAPAK: ProductDef = {
       const xr = W - L / 2;
       const zb = L / 2;
       const zf = D - L / 2;
-      ring('meja', 'Rangka meja', xl, xr, zb, zf, yt);
+      frame('meja', 'Rangka meja', xl, xr, zb, zf, yt);
+      // Kaki X lipat: kedua kaki bersebelahan (kaki 2 di sisi dalam kaki 1, dibaut di tengah), tidak bersilang
+      // di bidang yang sama. Ujung bawah rata lantai, ujung atas rata di bawah rangka meja, tidak menonjol
+      // keluar dari muka depan / belakang rangka.
+      const zlo = zb - rw;
+      const zhi = zf + rw;
       [xl, xr].forEach((x, i) => {
         const nm = i ? 'kanan' : 'kiri';
-        line(`kaki-x-${i}-a`, [x, 1, zb], [x, yt - rh / 2, zf], 'post', `Kaki silang ${nm} 1`, pt);
-        line(`kaki-x-${i}-b`, [x, 1, zf], [x, yt - rh / 2, zb], 'post', `Kaki silang ${nm} 2`, pt);
+        const xi = i ? x - L : x + L;
+        brace(`kaki-x-${i}-a`, `Kaki silang ${nm} 1`, [x, 1, zlo], [x, yt - rh / 2, zhi], pt, 'v', 'v', 'post');
+        brace(`kaki-x-${i}-b`, `Kaki silang ${nm} 2`, [xi, 1, zhi], [xi, yt - rh / 2, zlo], pt, 'v', 'v', 'post');
       });
-      add('palang-silang', 'x', xl + L / 2, (1 + yt - rh / 2) / 2, D / 2, W - L, 'rail-x', 'Palang tengah kaki silang', rail);
+      // palang tengah di antara kaki dalam, ujungnya menempel di sisi kaki 2 tepat di titik silang
+      add('palang-silang', 'x', xl + 1.5 * L, (1 + yt - rh / 2) / 2, D / 2, xr - xl - 3 * L, 'rail-x', 'Palang tengah kaki silang', rail);
       flat('meja', 'Papan meja', 0, W, 0, D, yt);
       const hp = hr - b;
       const zs = zb - L / 2 - 1;
       [xl, xr].forEach((x, i) => post(`tiang-spanduk-${i}`, `Tiang spanduk ${i ? 'kanan' : 'kiri'}`, x, zs, 0, hp));
-      add('spanduk-atas', 'x', xl + L / 2, hp - rh / 2, zs, W - L, 'rail-x', 'Palang atas spanduk', rail);
-      add('spanduk-bawah', 'x', xl + L / 2, hp - 60, zs, W - L, 'rail-x', 'Palang bawah spanduk', rail);
+      between('spanduk-atas', 'Palang atas spanduk', [xl, xr], hp - rh / 2, zs, L / 2);
+      between('spanduk-bawah', 'Palang bawah spanduk', [xl, xr], hp - 60, zs, L / 2);
       if (b > 0) boards.push(board('spanduk', 'Papan nama / spanduk', xl + L / 2, xr - L / 2, hp - 60 - rh / 2, hp, zs + 1, zs + 1 + b));
       const arm = Math.max(25, tr);
       [xl, xr].forEach((x, i) => {
         const nm = i ? 'kanan' : 'kiri';
         add(`lengan-tritisan-${i}`, 'z', x, hp - rh / 2, zs + L / 2, arm, 'rail-z', `Lengan tritisan ${nm}`, rail);
-        line(`siku-tritisan-${i}`, [x, hp - 30, zs + L / 2], [x, hp - rh, zs + L / 2 + arm * 0.7], 'custom', `Siku tritisan ${nm}`, thin);
+        brace(`siku-tritisan-${i}`, `Siku tritisan ${nm}`, [x, hp - 30, zs + L / 2], [x, hp - rh, zs + L / 2 + arm * 0.7], thin, 'v', 'h');
       });
       add('tritisan-depan', 'x', xl + 1, hp - rh / 2, zs + L / 2 + arm - 1, xr - xl - 2, 'rail-x', 'Palang depan tritisan', rail);
       if (b > 0) boards.push(board('tritisan', 'Papan tritisan', -3, W + 3, hp, hp + b, zs - L / 2, zs + L / 2 + arm));
@@ -625,29 +720,32 @@ export const GEROBAK_LAPAK: ProductDef = {
       const yhi = ylo + (zf - zb) * td;
       const yP = hr - b;
       const yA = yP - rh / 2;
+      /** tinggi as bidang display di titik z */
+      const yDs = (z: number) => ylo + ((zf - z) / (zf - zb)) * (yhi - ylo);
       [xl, xr].forEach((x, i) => {
         const nm = i ? 'kanan' : 'kiri';
         post(`tiang-belakang-${i}`, `Tiang belakang ${nm}`, x, zb, 0, yP);
-        post(`kaki-depan-${i}`, `Kaki depan ${nm}`, x, zf, 0, ylo + rh / 2);
-        line(`display-miring-${i}`, [x, yhi, zb + L / 2], [x, ylo, zf - L / 2], 'rail-z', `Palang display miring ${nm}`, rail);
-        add(`palang-bawah-${i}`, 'z', x, 15, L, D - L, 'rail-z', `Palang bawah ${nm}`, rail);
+        // kaki depan naik sampai bibir penahan supaya bibir dilas di antara kedua kaki (tidak melayang)
+        post(`kaki-depan-${i}`, `Kaki depan ${nm}`, x, zf, 0, ylo + rh / 2 + b + 4 + 0.75);
+        brace(`display-miring-${i}`, `Palang display miring ${nm}`, [x, yDs(zb + L / 2), zb + L / 2], [x, yDs(zf - L / 2), zf - L / 2], rail, 'v', 'v', 'rail-z');
+        add(`palang-bawah-${i}`, 'z', x, 15, zb + L / 2, zf - zb - L, 'rail-z', `Palang bawah ${nm}`, rail);
       });
-      add('palang-bawah-tengah', 'x', xl + 1, 15, D / 2, W - L - 2, 'rail-x', 'Palang bawah tengah (H)', rail);
-      add('display-depan', 'x', xl + L / 2, ylo, zf, W - L, 'rail-x', 'Palang display depan', rail);
-      add('display-belakang', 'x', xl + L / 2, yhi, zb, W - L, 'rail-x', 'Palang display belakang', rail);
-      if (W > 120) line('display-tengah', [W / 2, yhi, zb + 1], [W / 2, ylo, zf - 1], 'custom', 'Penyangga tengah display', thin);
+      add('palang-bawah-tengah', 'x', xl + rw, 15, D / 2, xr - xl - 2 * rw, 'rail-x', 'Palang bawah tengah (H)', rail);
+      between('display-depan', 'Palang display depan', [xl, xr], ylo, zf, L / 2);
+      between('display-belakang', 'Palang display belakang', [xl, xr], yhi, zb, L / 2);
+      if (W > 120) brace('display-tengah', 'Penyangga tengah display', [W / 2, yDs(zb + rw), zb + rw], [W / 2, yDs(zf - rw), zf - rw], thin, 'v', 'v');
       slopeBoard('display', 'Papan display miring', 0, W, zb, yhi, zf, ylo);
-      add('bibir', 'x', xl + L / 2, ylo + rh / 2 + b + 4, zf, W - L, 'rail-x', 'Bibir penahan barang', [15, 15]);
+      between('bibir', 'Bibir penahan barang', [xl, xr], ylo + rh / 2 + b + 4, zf, L / 2, [15, 15]);
       const zEnd = D + tr;
       const z0 = zb + L / 2;
       const yEnd = yA - (zEnd - z0) * ta;
       [xl, xr].forEach((x, i) => {
         const nm = i ? 'kanan' : 'kiri';
-        line(`kasau-${i}`, [x, yA, z0], [x, yEnd, zEnd], 'rail-z', `Kasau atap ${nm}`, rail);
+        brace(`kasau-${i}`, `Kasau atap ${nm}`, [x, yA, z0], [x, yEnd, zEnd], rail, 'v', 'bebas', 'rail-z');
         const zq = z0 + 0.4 * (zEnd - z0);
-        line(`siku-atap-${i}`, [x, yA - 45, z0], [x, yA - 0.4 * (yA - yEnd) - rh / 2, zq], 'custom', `Siku atap ${nm}`, thin);
+        brace(`siku-atap-${i}`, `Siku atap ${nm}`, [x, yA - 45, z0], [x, yA - 0.4 * (yA - yEnd) - ru, zq], thin, 'v', 'h', 'custom', 0, ta);
       });
-      add('atap-belakang', 'x', xl + L / 2, yA, zb, W - L, 'rail-x', 'Palang atap belakang', rail);
+      between('atap-belakang', 'Palang atap belakang', [xl, xr], yA, zb, L / 2);
       add('atap-depan', 'x', xl + 1, yEnd, zEnd - 1, W - L - 2, 'rail-x', 'Palang atap depan', rail);
       slopeBoard('atap', 'Papan atap', -5, W + 5, zb, yA, zEnd, yEnd);
     }
@@ -670,15 +768,16 @@ export const GEROBAK_LAPAK: ProductDef = {
         const nm = colName(i, xs.length);
         post(`tiang-tembok-${i}`, `Tiang tembok ${nm} (dibaut)`, x, zw, y0, yP);
         add(`lengan-meja-${i}`, 'z', x, yt, L, D - L, 'rail-z', `Lengan meja ${nm}`, rail);
-        line(`siku-meja-${i}`, [x, y0 + 3, L], [x, yt - rh / 2, L + (D - L) * 0.7], 'custom', `Siku meja ${nm}`, thin);
-        line(`kasau-${i}`, [x, yA, L], [x, yEnd, zEnd], 'rail-z', `Kasau tritisan ${nm}`, rail);
+        brace(`siku-meja-${i}`, `Siku meja ${nm}`, [x, y0 + 3, L], [x, yt - rh / 2, L + (D - L) * 0.7], thin, 'v', 'h');
+        brace(`kasau-${i}`, `Kasau tritisan ${nm}`, [x, yA, L], [x, yEnd, zEnd], rail, 'v', 'bebas', 'rail-z');
         const zq = L + 0.5 * (zEnd - L);
-        line(`siku-atap-${i}`, [x, yA - 40, L], [x, yA - 0.5 * (yA - yEnd) - rh / 2, zq], 'custom', `Siku tritisan ${nm}`, thin);
+        brace(`siku-atap-${i}`, `Siku tritisan ${nm}`, [x, yA - 40, L], [x, yA - 0.5 * (yA - yEnd) - ru, zq], thin, 'v', 'h', 'custom', 0, ta);
       });
-      add('meja-depan', 'x', xl + 1, yt, D - 1, xr - xl - 2, 'rail-x', 'Palang meja depan', rail);
-      add('rel-tembok-meja', 'x', xl + L / 2, yt, zw, W - L, 'rail-x', 'Rel tembok meja', rail);
-      add('rel-tembok-atas', 'x', xl + L / 2, yA, zw, W - L, 'rail-x', 'Rel tembok atas', rail);
-      add('atap-depan', 'x', xl + 1, yEnd, zEnd - 1, xr - xl - 2, 'rail-x', 'Palang tritisan depan', rail);
+      // palang memanjang dipotong per bentang di antara tiang / lengan / kasau
+      between('meja-depan', 'Palang meja depan', xs, yt, D - rw, rw);
+      between('rel-tembok-meja', 'Rel tembok meja', xs, yt, zw, L / 2);
+      between('rel-tembok-atas', 'Rel tembok atas', xs, yA, zw, L / 2);
+      between('atap-depan', 'Palang tritisan depan', xs, yEnd, zEnd - rw, rw);
       flat('meja', 'Papan meja', 0, W, L, D, yt);
       slopeBoard('atap', 'Papan tritisan', -5, W + 5, 0, yA, zEnd, yEnd);
     }
@@ -707,7 +806,7 @@ export const GEROBAK_LAPAK: ProductDef = {
       ring('atap', 'Rangka atap', xl, xr, zb, zf, yr);
       flat('atap', 'Papan atap', -5, W + 5, -tr, D + tr, yr);
       if (bool(p, 'papanNama')) {
-        add('papan-nama-bawah', 'x', xl + L / 2, yr - 32, zf, W - L, 'rail-x', 'Palang bawah papan nama', rail);
+        between('papan-nama-bawah', 'Palang bawah papan nama', [xl, xr], yr - 32, zf, L / 2);
         if (b > 0) boards.push(board('papan-nama', 'Papan nama usaha', 0, W, yr - 32 - rh / 2, yr + rh / 2, D, D + b));
       }
     }
@@ -720,12 +819,18 @@ export const GEROBAK_LAPAK: ProductDef = {
       const yR = hr - b - rh / 2;
       boards.push({ ...board('plat-dasar', 'Plat dasar bundar', -35, 35, 0, 0.8, -35, 35), shape: 'round', steelMm: 8 });
       add('tiang', 'y', 0, 0.8, 0, yR + rh / 2 - 0.8, 'post', 'Tiang tengah 40×40', [40, 40]);
+      const tp = 2; // setengah lebar tiang 40×40
       const level = (id: string, nm: string, y: number, side: number, braceDrop: number) => {
-        add(`${id}-lengan-x`, 'x', -side / 2, y, 0, side, 'rail-x', `Lengan ${nm} kiri-kanan`, rail);
-        add(`${id}-lengan-z`, 'z', 0, y, -side / 2, side, 'rail-z', `Lengan ${nm} depan-belakang`, rail);
-        ring(id, `Bingkai ${nm}`, -side / 2, side / 2, -side / 2, side / 2, y, rail, 1);
+        // Lengan dipotong di tiang: tiap potong dari sisi tiang ke sisi dalam bingkai (tidak menembus tiang,
+        // tidak bersilang satu sama lain). Bingkai: depan/belakang menerus, kiri/kanan di antaranya.
+        const h = side / 2;
+        add(`${id}-lengan-x`, 'x', -h + rw, y, 0, h - rw - tp, 'rail-x', `Lengan ${nm} kiri`, rail);
+        add(`${id}-lengan-x2`, 'x', tp, y, 0, h - rw - tp, 'rail-x', `Lengan ${nm} kanan`, rail);
+        add(`${id}-lengan-z`, 'z', 0, y, -h + rw, h - rw - tp, 'rail-z', `Lengan ${nm} belakang`, rail);
+        add(`${id}-lengan-z2`, 'z', 0, y, tp, h - rw - tp, 'rail-z', `Lengan ${nm} depan`, rail);
+        frame(id, `Bingkai ${nm}`, -h, h, -h, h, y);
         ([[1, 0], [-1, 0], [0, 1], [0, -1]] as [number, number][]).forEach(([sx, sz], k) =>
-          line(`${id}-siku-${k}`, [sx * 2, y - braceDrop, sz * 2], [sx * side * 0.35, y - rh / 2, sz * side * 0.35], 'custom', `Siku ${nm} ${k + 1}`, thin)
+          brace(`${id}-siku-${k}`, `Siku ${nm} ${k + 1}`, [sx * tp, y - braceDrop, sz * tp], [sx * side * 0.35, y - rh / 2, sz * side * 0.35], thin, 'v', 'h')
         );
       };
       level('meja', 'meja', yt, T, 30);
@@ -751,17 +856,17 @@ export const GEROBAK_LAPAK: ProductDef = {
         plate(`plat-d-${i}`, x, zf);
         post(`tiang-belakang-${i}`, `Tiang belakang ${nm}`, x, zb, 0.6, yBa + rh / 2);
         post(`tiang-depan-${i}`, `Tiang depan ${nm} (lebih tinggi)`, x, zf, 0.6, yFa + rh / 2);
-        line(`kasau-${i}`, [x, yBa, zb + L / 2], [x, yFa, zf - L / 2], 'rail-z', `Kasau miring ${nm}`, rail);
-        line(`siku-d-${i}`, [x, yFa - 40, zf - L / 2], [x, yAt(zf - 35) - rh / 2, zf - 35], 'custom', `Siku depan ${nm}`, thin);
-        line(`siku-b-${i}`, [x, yBa - 40, zb + L / 2], [x, yAt(zb + 35) - rh / 2, zb + 35], 'custom', `Siku belakang ${nm}`, thin);
+        brace(`kasau-${i}`, `Kasau miring ${nm}`, [x, yAt(zb + L / 2), zb + L / 2], [x, yAt(zf - L / 2), zf - L / 2], rail, 'v', 'v', 'rail-z');
+        brace(`siku-d-${i}`, `Siku depan ${nm}`, [x, yFa - 40, zf - L / 2], [x, yAt(zf - 35) - ru, zf - 35], thin, 'v', 'h', 'custom', 0, ta);
+        brace(`siku-b-${i}`, `Siku belakang ${nm}`, [x, yBa - 40, zb + L / 2], [x, yAt(zb + 35) - ru, zb + 35], thin, 'v', 'h', 'custom', 0, ta);
       });
-      add('palang-depan', 'x', xl + L / 2, yFa, zf, W - L, 'rail-x', 'Palang atap depan', rail);
-      add('palang-belakang', 'x', xl + L / 2, yBa, zb, W - L, 'rail-x', 'Palang atap belakang', rail);
+      between('palang-depan', 'Palang atap depan', xs, yFa, zf, L / 2);
+      between('palang-belakang', 'Palang atap belakang', xs, yBa, zb, L / 2);
       const zm = (zb + zf) / 2;
-      add('gording', 'x', xl + 1, yAt(zm), zm, W - L - 2, 'rail-x', 'Gording tengah', rail);
+      between('gording', 'Gording tengah', xs, yAt(zm), zm, rw);
       ([[L / 2, 1], [W - L / 2, -1]] as [number, number][]).forEach(([x, s], k) => {
-        line(`siku-samping-d-${k}`, [x, yFa - 40, zf], [x + s * 35, yFa - rh / 2, zf], 'custom', `Siku samping depan ${k ? 'kanan' : 'kiri'}`, thin);
-        line(`siku-samping-b-${k}`, [x, yBa - 40, zb], [x + s * 35, yBa - rh / 2, zb], 'custom', `Siku samping belakang ${k ? 'kanan' : 'kiri'}`, thin);
+        brace(`siku-samping-d-${k}`, `Siku samping depan ${k ? 'kanan' : 'kiri'}`, [x + (s * L) / 2, yFa - 40, zf], [x + s * 35, yFa - rh / 2, zf], thin, 'v', 'h');
+        brace(`siku-samping-b-${k}`, `Siku samping belakang ${k ? 'kanan' : 'kiri'}`, [x + (s * L) / 2, yBa - 40, zb], [x + s * 35, yBa - rh / 2, zb], thin, 'v', 'h');
       });
       slopeBoard('atap', 'Papan atap', -5, W + 5, zb - 5, yBa - 5 * ta, zf + tr, yFa + tr * ta);
     }
@@ -779,6 +884,8 @@ export const GEROBAK_LAPAK: ProductDef = {
       const yE = yR - (D / 2 - zb) * ta;
       const dc = 50;
       const zt = zf - L / 2 - dc;
+      /** tinggi as kuda-kuda di titik z */
+      const yK = (z: number) => yE + (Math.min(z, D - z) - zb) * ta;
       xs.forEach((x, i) => {
         const nm = colName(i, xs.length);
         plate(`plat-b-${i}`, x, zb);
@@ -786,21 +893,24 @@ export const GEROBAK_LAPAK: ProductDef = {
         post(`tiang-belakang-${i}`, `Tiang belakang ${nm}`, x, zb, 0.6, yE + rh / 2);
         post(`tiang-depan-${i}`, `Tiang depan ${nm}`, x, zf, 0.6, yE + rh / 2);
         add(`balok-${i}`, 'z', x, yE, zb + L / 2, zf - zb - L, 'rail-z', `Balok ikat ${nm}`, rail);
-        line(`kuda-b-${i}`, [x, yE, zb], [x, yR, D / 2], 'custom', `Kuda-kuda ${nm} belakang`, rail);
-        line(`kuda-d-${i}`, [x, yE, zf], [x, yR, D / 2], 'custom', `Kuda-kuda ${nm} depan`, rail);
+        // kuda-kuda dilas di sisi tiang (geser setebal pipa dari as, ke arah dalam tenda) supaya tidak bersilang
+        // dengan balok ikat: ujung bawah rata di muka palang tepi, ujung atas rata di muka bubungan
+        const xk = i === xs.length - 1 ? x - L / 2 - rw : x + L / 2 + rw;
+        brace(`kuda-b-${i}`, `Kuda-kuda ${nm} belakang`, [xk, yK(zb + rw), zb + rw], [xk, yK(D / 2 - rw), D / 2 - rw], rail, 'v', 'v');
+        brace(`kuda-d-${i}`, `Kuda-kuda ${nm} depan`, [xk, yK(zf - rw), zf - rw], [xk, yK(D / 2 + rw), D / 2 + rw], rail, 'v', 'v');
         add(`lengan-meja-${i}`, 'z', x, yt, zt, dc, 'rail-z', `Lengan meja ${nm}`, rail);
-        line(`siku-meja-${i}`, [x, yt - 30, zf - L / 2], [x, yt - rh / 2, zf - L / 2 - dc * 0.8], 'custom', `Siku meja ${nm}`, thin);
+        brace(`siku-meja-${i}`, `Siku meja ${nm}`, [x, yt - 30, zf - L / 2], [x, yt - rh / 2, zf - L / 2 - dc * 0.8], thin, 'v', 'h');
       });
-      add('tepi-depan', 'x', xl + L / 2, yE, zf, W - L, 'rail-x', 'Palang tepi atap depan', rail);
-      add('tepi-belakang', 'x', xl + L / 2, yE, zb, W - L, 'rail-x', 'Palang tepi atap belakang', rail);
-      add('bubungan', 'x', xl, yR, D / 2, xr - xl, 'rail-x', 'Bubungan atap', rail);
+      between('tepi-depan', 'Palang tepi atap depan', xs, yE, zf, L / 2);
+      between('tepi-belakang', 'Palang tepi atap belakang', xs, yE, zb, L / 2);
+      add('bubungan', 'x', xl + L / 2, yR, D / 2, xr - xl - L, 'rail-x', 'Bubungan atap', rail);
       ([[xl, 1], [xr, -1]] as [number, number][]).forEach(([x, s], k) =>
         [zb, zf].forEach((z, j) =>
-          line(`siku-${k}-${j}`, [x, yE - 40, z], [x + s * 35, yE - rh / 2, z], 'custom', `Siku tiang ${k ? 'kanan' : 'kiri'} ${j ? 'depan' : 'belakang'}`, thin)
+          brace(`siku-${k}-${j}`, `Siku tiang ${k ? 'kanan' : 'kiri'} ${j ? 'depan' : 'belakang'}`, [x + (s * L) / 2, yE - 40, z], [x + s * 35, yE - rh / 2, z], thin, 'v', 'h')
         )
       );
-      add('meja-depan', 'x', xl + L / 2, yt, zf, W - L, 'rail-x', 'Palang meja depan', rail);
-      add('meja-belakang', 'x', xl + 1, yt, zt + 1, xr - xl - 2, 'rail-x', 'Palang meja belakang', rail);
+      between('meja-depan', 'Palang meja depan', xs, yt, zf, L / 2);
+      between('meja-belakang', 'Palang meja belakang', xs, yt, zt + rw, rw);
       flat('meja', 'Papan meja jualan', 0, W, zt, D, yt);
       slopeBoard('atap-belakang', 'Papan atap belakang', -5, W + 5, zb - tr, yE - tr * ta, D / 2, yR);
       slopeBoard('atap-depan', 'Papan atap depan', -5, W + 5, D / 2, yR, zf + tr, yE - tr * ta);
@@ -822,16 +932,17 @@ export const GEROBAK_LAPAK: ProductDef = {
         const nm = colName(i, xs.length);
         add(`tapak-${i}`, 'z', x, L / 2, 0, zp + D * 0.55, 'rail-z', `Tapak lantai ${nm}`, pt);
         post(`tiang-${i}`, `Tiang ${nm}`, x, zp, L, yP);
-        line(`siku-tapak-d-${i}`, [x, 55, z0], [x, L, zp + 50], 'custom', `Siku tapak depan ${nm}`, thin);
-        line(`siku-tapak-b-${i}`, [x, 55, zp - L / 2], [x, L, 3], 'custom', `Siku tapak belakang ${nm}`, thin);
-        line(`kasau-${i}`, [x, yA, z0], [x, yEnd, zEnd], 'rail-z', `Kasau menjorok ${nm}`, rail);
+        brace(`siku-tapak-d-${i}`, `Siku tapak depan ${nm}`, [x, 55, z0], [x, L, zp + 50], thin, 'v', 'h');
+        brace(`siku-tapak-b-${i}`, `Siku tapak belakang ${nm}`, [x, 55, zp - L / 2], [x, L, 3], thin, 'v', 'h');
+        brace(`kasau-${i}`, `Kasau menjorok ${nm}`, [x, yA, z0], [x, yEnd, zEnd], rail, 'v', 'bebas', 'rail-z');
         const zq = z0 + 0.45 * (zEnd - z0);
-        line(`siku-atap-${i}`, [x, yA - 60, z0], [x, yA - 0.45 * (yA - yEnd) - rh / 2, zq], 'custom', `Siku kasau ${nm}`, thin);
+        brace(`siku-atap-${i}`, `Siku kasau ${nm}`, [x, yA - 60, z0], [x, yA - 0.45 * (yA - yEnd) - ru, zq], thin, 'v', 'h', 'custom', 0, ta);
       });
-      add('palang-atas', 'x', xl + L / 2, yA, zp, W - L, 'rail-x', 'Palang atas tiang', rail);
-      add('palang-ujung', 'x', xl + 1, yEnd, zEnd - 1, W - L - 2, 'rail-x', 'Palang ujung atap', rail);
+      // palang memanjang dipotong per bentang di antara tiang / kasau
+      between('palang-atas', 'Palang atas tiang', xs, yA, zp, L / 2);
+      between('palang-ujung', 'Palang ujung atap', xs, yEnd, zEnd - rw, rw);
       const zm = (z0 + zEnd) / 2;
-      add('gording', 'x', xl + 1, (yA + yEnd) / 2, zm, W - L - 2, 'rail-x', 'Gording tengah', rail);
+      between('gording', 'Gording tengah', xs, (yA + yEnd) / 2, zm, rw);
       slopeBoard('atap', 'Papan atap', -5, W + 5, zp - 3, yA + 3 * ta, zEnd, yEnd);
     }
 

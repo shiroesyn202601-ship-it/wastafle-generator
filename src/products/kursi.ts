@@ -442,47 +442,93 @@ export const KURSI: ProductDef = {
 
     /** Tiang sandaran dari atas kaki belakang (x, yS, zb) naik miring ke tinggi sandaran */
     const backPost = (x: number, tag: string) => line(`sandaran-tiang-${tag}`, [x, yS, zb], [x, Hb, zBack(Hb)], 'post', `Tiang sandaran ${tag}`, leg);
+    /** z muka depan tiang sandaran pada ketinggian y (palang / lengan yang menempel di depannya berakhir di sini) */
+    const zBackFace = (y: number) => zBack(y) + L / 2 / Math.cos((tilt * Math.PI) / 180);
 
-    /** Satu bingkai samping (model selain empat kaki) di posisi x */
-    const sideFrame = (x: number, tag: string, withBack: boolean) => {
+    // Sambungan las: setengah lebar palang 20×20, dan tinggi ujung atas kaki yang dilas di BAWAH palang dudukan
+    const rh = rail[0] / 20;
+    const yUnder = yS - 2 * rh;
+    /** Setengah lebar mendatar kaki miring yang naik dy sambil bergeser dz */
+    const slantHalf = (dz: number, dy: number) => (L / 2) * Math.hypot(dz, dy) / Math.max(1, dy);
+    /**
+     * Kaki silang X / kaki A: ujung bawah di (zb, zf), ujung atas dipotong rata di bawah palang dudukan.
+     * e = jarak muka luar palang di atasnya dari as kaki sudut; tepi luar potongan atas rata dengan muka itu.
+     * Mengembalikan pergeseran z as kaki dari bawah ke atas (dz) dan setengah lebar mendatarnya (hw).
+     */
+    const slantLegs = (kind: 'silang' | 'a', e: number) => {
+      let hw = L / 2;
+      let dz = 0;
+      for (let k = 0; k < 6; k++) {
+        dz = kind === 'silang' ? zf + e - hw - zb : zm - hw - zb;
+        hw = slantHalf(dz, yUnder);
+      }
+      return { dz, hw };
+    };
+    /** Bingkai samping kiri / kanan: palang dudukan samping menerus di atas ujung kaki (silang & A) */
+    const fullSide = model === 'silang' || model === 'a';
+    const xGeo = slantLegs('silang', L / 2);
+    const aGeo = slantLegs('a', 0);
+    /** Tinggi titik silang kaki X (palang tengah dipasang di sini) */
+    const yCross = (g: { dz: number }) => (yUnder * (zf - zb)) / (2 * g.dz);
+
+    /**
+     * Satu bingkai samping (model selain empat kaki) di posisi x. Bingkai tengah (mid) tidak membawa palang dudukan
+     * sendiri di sudutnya: ujung atas kakinya dilas di bawah palang dudukan depan / belakang.
+     */
+    const sideFrame = (x: number, tag: string, withBack: boolean, mid = false) => {
+      const yTop = mid ? yUnder : yS;
       if (model === 'sled') {
         add(`rel-${tag}`, 'z', x, L / 2, zb - kk - L / 2, zf - zb + 2 * kk + L, 'rail-z', `Rel lantai ${tag}`, leg);
-        line(`kaki-belakang-${tag}`, [x, L, zb - kk], [x, yS, zb], 'post', `Kaki belakang miring ${tag}`, leg);
-        line(`kaki-depan-${tag}`, [x, L, zf + kk], [x, yS, zf], 'post', `Kaki depan miring ${tag}`, leg);
+        line(`kaki-belakang-${tag}`, [x, L, zb - kk], [x, yTop, zb], 'post', `Kaki belakang miring ${tag}`, leg);
+        line(`kaki-depan-${tag}`, [x, L, zf + kk], [x, yTop, zf], 'post', `Kaki depan miring ${tag}`, leg);
         if (withBack) backPost(x, tag);
       } else if (model === 'kotak') {
         if (withBack && tilt === 0) add(`kaki-belakang-${tag}`, 'y', x, 0, zb, Hb, 'post', `Kaki belakang + sandaran ${tag}`, leg);
         else {
-          add(`kaki-belakang-${tag}`, 'y', x, 0, zb, yS, 'post', `Kaki belakang ${tag}`, leg);
+          add(`kaki-belakang-${tag}`, 'y', x, 0, zb, yTop, 'post', `Kaki belakang ${tag}`, leg);
           if (withBack) backPost(x, tag);
         }
-        add(`kaki-depan-${tag}`, 'y', x, 0, zf, yS, 'post', `Kaki depan ${tag}`, leg);
+        add(`kaki-depan-${tag}`, 'y', x, 0, zf, yTop, 'post', `Kaki depan ${tag}`, leg);
         add(`rel-${tag}`, 'z', x, L / 2, zb + L / 2, zf - zb - L, 'rail-z', `Rel lantai ${tag}`, leg);
       } else if (model === 'kantilever') {
         add(`rel-${tag}`, 'z', x, L / 2, zb - kk - L / 2, zf - zb + 2 * kk + L, 'rail-z', `Rel lantai ${tag}`, leg);
-        line(`kaki-depan-${tag}`, [x, L, zf + kk], [x, yS, zf], 'post', `Kaki depan kantilever ${tag}`, leg);
+        line(`kaki-depan-${tag}`, [x, L, zf + kk], [x, yTop, zf], 'post', `Kaki depan kantilever ${tag}`, leg);
         if (withBack) backPost(x, tag);
       } else if (model === 'lengan') {
         const arm = withBack;
         add(`rel-${tag}`, 'z', x, L / 2, zb - kk - L / 2, zf - zb + kk + L, 'rail-z', `Rel lantai ${tag}`, leg);
-        line(`kaki-belakang-${tag}`, [x, L, zb - kk], [x, yS, zb], 'post', `Kaki belakang miring ${tag}`, leg);
+        line(`kaki-belakang-${tag}`, [x, L, zb - kk], [x, yTop, zb], 'post', `Kaki belakang miring ${tag}`, leg);
         if (arm) {
-          add(`kaki-depan-${tag}`, 'y', x, L, zf, ya - 1 - L, 'post', `Kaki depan + tiang lengan ${tag}`, leg);
-          const zA = (back ? zBack(ya) : zb) + L / 2;
+          // tiang depan berhenti di bawah lengan; lengan duduk di atasnya dan ujung belakangnya rata di muka tiang sandaran
+          const yArm = ya - L / 2;
+          add(`kaki-depan-${tag}`, 'y', x, L, zf, yArm - L, 'post', `Kaki depan + tiang lengan ${tag}`, leg);
+          const zA = back ? zBackFace(yArm) : zb + L / 2;
           add(`lengan-${tag}`, 'z', x, ya, zA, zf + L / 2 + 3 - zA, 'rail-z', `Lengan sandaran tangan ${tag}`, leg);
           if (back) backPost(x, tag);
-          else add(`tiang-lengan-belakang-${tag}`, 'y', x, yS, zb, ya - 1 - yS, 'post', `Tiang lengan belakang ${tag}`, leg);
-        } else add(`kaki-depan-${tag}`, 'y', x, L, zf, yS - L, 'post', `Kaki depan ${tag}`, leg);
+          else add(`tiang-lengan-belakang-${tag}`, 'y', x, yS, zb, yArm - yS, 'post', `Tiang lengan belakang ${tag}`, leg);
+        } else add(`kaki-depan-${tag}`, 'y', x, L, zf, yTop - L, 'post', `Kaki depan ${tag}`, leg);
       } else if (model === 'silang') {
-        line(`kaki-silang-a-${tag}`, [x, 0, zb], [x, yS, zf], 'post', `Kaki silang ${tag} (belakang ke depan)`, leg);
-        line(`kaki-silang-b-${tag}`, [x, 0, zf], [x, yS, zb], 'post', `Kaki silang ${tag} (depan ke belakang)`, leg);
+        // satu kaki menerus, kaki lainnya dipotong dua dan dilas di kedua sisi kaki menerus
+        const g = mid ? slantLegs('silang', rh) : xGeo;
+        const s = g.dz / yUnder;
+        const zA = (y: number) => zb + s * y;
+        const zB = (y: number) => zf - s * y;
+        const y1 = (yUnder * (zf - zb - 2 * g.hw)) / (2 * g.dz);
+        const y2 = (yUnder * (zf - zb + 2 * g.hw)) / (2 * g.dz);
+        line(`kaki-silang-a-${tag}`, [x, 0, zA(0)], [x, yUnder, zA(yUnder)], 'post', `Kaki silang ${tag} (belakang ke depan)`, leg);
+        line(`kaki-silang-b1-${tag}`, [x, 0, zB(0)], [x, y1, zB(y1)], 'post', `Kaki silang ${tag} (depan ke belakang, bawah)`, leg);
+        line(`kaki-silang-b2-${tag}`, [x, y2, zB(y2)], [x, yUnder, zB(yUnder)], 'post', `Kaki silang ${tag} (depan ke belakang, atas)`, leg);
         if (withBack) backPost(x, tag);
       } else if (model === 'a') {
-        line(`kaki-a-belakang-${tag}`, [x, 0, zb], [x, yS, zm], 'post', `Kaki A belakang ${tag}`, leg);
-        line(`kaki-a-depan-${tag}`, [x, 0, zf], [x, yS, zm], 'post', `Kaki A depan ${tag}`, leg);
+        // dua kaki bertemu di bawah palang dudukan, potongan atasnya saling menempel di tengah
+        const g = aGeo;
+        const s = g.dz / yUnder;
+        line(`kaki-a-belakang-${tag}`, [x, 0, zb], [x, yUnder, zb + g.dz], 'post', `Kaki A belakang ${tag}`, leg);
+        line(`kaki-a-depan-${tag}`, [x, 0, zf], [x, yUnder, zf - g.dz], 'post', `Kaki A depan ${tag}`, leg);
+        // palang mendatar di antara kedua kaki: ujungnya rata di muka dalam kaki pada sisi atas palang
         const yc = yS * 0.35;
-        const dz = (zm - zb) * 0.35;
-        add(`palang-a-${tag}`, 'z', x, yc, zb + dz + L / 2, zf - zb - 2 * dz - L, 'rail-z', `Palang kaki A ${tag}`, rail);
+        const z0 = zb + s * (yc + rh) + g.hw;
+        add(`palang-a-${tag}`, 'z', x, yc, z0, zf + zb - 2 * z0, 'rail-z', `Palang kaki A ${tag}`, rail);
         if (withBack) backPost(x, tag);
       }
     };
@@ -492,10 +538,13 @@ export const KURSI: ProductDef = {
       const t = Math.min(1, Math.max(0, y / Math.max(1, yS)));
       if (model === 'sled') return [zb - kk * (1 - t), zf + kk * (1 - t)];
       if (model === 'silang') {
-        const d = Math.abs(zf - zb) * Math.abs(1 - 2 * t);
+        const d = Math.abs(zf - zb - (2 * xGeo.dz * Math.min(y, yUnder)) / yUnder);
         return [zm - d / 2, zm + d / 2];
       }
-      if (model === 'a') return [zb + (zm - zb) * t, zf - (zf - zm) * t];
+      if (model === 'a') {
+        const d = (aGeo.dz * Math.min(y, yUnder)) / yUnder;
+        return [zb + d, zf - d];
+      }
       return [zb, zf];
     };
 
@@ -518,16 +567,24 @@ export const KURSI: ProductDef = {
     } else {
       sideFrame(xl, 'kiri', back);
       sideFrame(xr, 'kanan', back);
-      if (midFrame) sideFrame(xMid, 'tengah', false);
+      if (midFrame) sideFrame(xMid, 'tengah', false, true);
     }
 
     // Rangka dudukan
     const yr = yS - 1;
-    add('dudukan-depan', 'x', ox + L, yr, zf, W - 2 * ox - 2 * L, 'rail-x', 'Rangka dudukan depan', rail);
-    add('dudukan-belakang', 'x', ox + L, yr, zb, W - 2 * ox - 2 * L, 'rail-x', 'Rangka dudukan belakang', rail);
-    add('dudukan-kiri', 'z', xl, yr, zb + L / 2, zf - zb - L, 'rail-z', 'Rangka dudukan kiri', rail);
-    add('dudukan-kanan', 'z', xr, yr, zb + L / 2, zf - zb - L, 'rail-z', 'Rangka dudukan kanan', rail);
-    if (midFrame) add('dudukan-tengah', 'z', xMid, yr, zb + 1, zf - zb - 2, 'rail-z', 'Rangka dudukan tengah', rail);
+    if (fullSide) {
+      // kaki silang / A dilas di bawah palang samping yang menerus; palang depan & belakang menempel di sisi dalamnya
+      add('dudukan-depan', 'x', xl + rh, yr, zf, xr - xl - 2 * rh, 'rail-x', 'Rangka dudukan depan', rail);
+      add('dudukan-belakang', 'x', xl + rh, yr, zb, xr - xl - 2 * rh, 'rail-x', 'Rangka dudukan belakang', rail);
+      add('dudukan-kiri', 'z', xl, yr, zb - L / 2, zf - zb + L, 'rail-z', 'Rangka dudukan kiri', rail);
+      add('dudukan-kanan', 'z', xr, yr, zb - L / 2, zf - zb + L, 'rail-z', 'Rangka dudukan kanan', rail);
+    } else {
+      add('dudukan-depan', 'x', ox + L, yr, zf, W - 2 * ox - 2 * L, 'rail-x', 'Rangka dudukan depan', rail);
+      add('dudukan-belakang', 'x', ox + L, yr, zb, W - 2 * ox - 2 * L, 'rail-x', 'Rangka dudukan belakang', rail);
+      add('dudukan-kiri', 'z', xl, yr, zb + L / 2, zf - zb - L, 'rail-z', 'Rangka dudukan kiri', rail);
+      add('dudukan-kanan', 'z', xr, yr, zb + L / 2, zf - zb - L, 'rail-z', 'Rangka dudukan kanan', rail);
+    }
+    if (midFrame) add('dudukan-tengah', 'z', xMid, yr, zb + rh, zf - zb - 2 * rh, 'rail-z', 'Rangka dudukan tengah', rail);
 
     // Kaki tengah bangku panjang (empat kaki)
     if (model === 'empat' && midFrame) {
@@ -545,8 +602,15 @@ export const KURSI: ProductDef = {
         add(`${prefix}-belakang`, 'x', lb[0] + L / 2, y, lb[2], rb[0] - lb[0] - L, 'rail-x', `${name} belakang`, rail);
       } else add(`${prefix}-tengah`, 'x', lb[0] + 1, y, zs + D / 2, rb[0] - lb[0] - 2, 'rail-x', `${name} tengah`, rail);
     };
-    /** Palang kiri–kanan di antara dua bingkai samping */
-    const crossX = (id: string, label: string, y: number, z: number) => add(id, 'x', xl + L / 2, y, z, xr - xl - L, 'rail-x', label, rail);
+    /**
+     * Palang kiri–kanan di antara dua bingkai samping; ujungnya rata di sisi batang yang ditemui (setengah lebar hb).
+     * Bila ada bingkai tengah, palang dipotong dua dan dilas di kedua sisi bingkai tengah.
+     */
+    const crossX = (id: string, label: string, y: number, z: number, hb = L / 2) => {
+      if (!midFrame) return add(id, 'x', xl + hb, y, z, xr - xl - 2 * hb, 'rail-x', label, rail);
+      add(`${id}-kiri`, 'x', xl + hb, y, z, xMid - xl - 2 * hb, 'rail-x', `${label} (kiri)`, rail);
+      add(`${id}-kanan`, 'x', xMid + hb, y, z, xr - xMid - 2 * hb, 'rail-x', `${label} (kanan)`, rail);
+    };
     const yLow = Math.min(15, yS / 3);
     const rakOk = jenis === 'bangku' && !side && bool(p, 'rakBawah') && (model === 'empat' || model === 'kotak');
 
@@ -557,8 +621,8 @@ export const KURSI: ProductDef = {
         ring('rak', 'Palang rak bawah', yLow, true);
       } else if (bool(p, 'palangKaki')) ring('palang', 'Palang kaki', yLow, false);
     } else {
-      if (model === 'silang') crossX('palang-silang', 'Palang tengah di titik silang', yS / 2, zm);
-      if (model === 'a') crossX('palang-a', 'Palang tengah kaki A', yS * 0.35, zm);
+      if (model === 'silang') crossX('palang-silang', 'Palang tengah di titik silang', yCross(xGeo), zm);
+      if (model === 'a') crossX('palang-a', 'Palang tengah kaki A', yS * 0.35, zm, rh);
       if (model === 'kantilever') crossX('rel-belakang', 'Rel lantai belakang (penyambung U)', L / 2, zb - kk);
       if (jenis === 'stool' && bool(p, 'pijakan')) {
         const yP = num(p, 'tinggiPijakan', 28);
@@ -575,12 +639,8 @@ export const KURSI: ProductDef = {
       boards.push(board('papan-rak', 'Papan rak bawah', lb[0] + L / 2, rb[0] - L / 2, yLow + 1, yLow + 1 + papanB, lb[2] - 1, lf[2] + 1));
     }
 
-    // Dudukan: papan utuh atau bilah besi berjajar
-    if (slats) {
-      const n = Math.max(3, Math.round((D - 2) / 6));
-      const pitch = (D - 4) / (n - 1);
-      for (let i = 0; i < n; i++) add(`bilah-${i + 1}`, 'x', 0, yS + 1, zs + 2 + i * pitch, seatW, 'custom', `Bilah dudukan ${i + 1}`, [40, 20]);
-    } else if (papanB > 0) {
+    // Dudukan: papan utuh atau bilah besi berjajar (bilah dipasang paling akhir, dipotong di tiang yang menembus dudukan)
+    if (!slats && papanB > 0) {
       const seat = board('dudukan', 'Papan dudukan', 0, seatW, yS, Hs, zs, zs + D);
       if (jenis === 'stool' && str(p, 'bentukDudukan') === 'bulat') {
         // dudukan bundar: diameter = lebar, dipusatkan di atas rangka
@@ -655,10 +715,59 @@ export const KURSI: ProductDef = {
       // Tiang depan naik ke tinggi lengan, lengan mendatar ke tiang sandaran
       [0, 1].forEach((i) => {
         const x = i ? xr : xl;
-        add(`tiang-tangan-${i}`, 'y', x, yS, zf, ya - yS - L / 2, 'post', `Tiang sandaran tangan ${i ? 'kanan' : 'kiri'}`, leg);
-        const zB = zBack(ya) + L / 2;
+        add(`tiang-tangan-${i}`, 'y', x, yS, zf, ya - rh - yS, 'post', `Tiang sandaran tangan ${i ? 'kanan' : 'kiri'}`, leg);
+        const zB = zBackFace(ya - rh);
         add(`lengan-${i}`, 'z', x, ya, zB, zf + L / 2 - zB, 'rail-z', `Lengan sandaran tangan ${i ? 'kanan' : 'kiri'}`, rail);
       });
+    }
+
+    if (slats) {
+      // Tiang yang naik melewati lapisan bilah (tiang sandaran, tiang lengan): bilah dipotong dan ujungnya dilas
+      // menempel di sisi tiang, tidak menembusnya. Potongan sisa yang terlalu pendek (< 3 cm) dibuang.
+      const y0 = yS;
+      const y1 = yS + 2;
+      const posts = list.flatMap((m) => {
+        if (m.axis !== 'y' && !m.end) return [];
+        const a: P3 = [m.x, m.y, m.z];
+        const e: P3 = m.end ? [m.end.x, m.end.y, m.end.z] : [m.x, m.y + m.length, m.z];
+        const dy = e[1] - a[1];
+        const len = Math.hypot(e[0] - a[0], dy, e[2] - a[2]);
+        if (Math.abs(dy) < 0.35 * len) return [];
+        const lo = Math.min(a[1], e[1]);
+        const hi = Math.max(a[1], e[1]);
+        if (hi <= y0 + 0.4 || lo >= y1 - 0.4) return [];
+        const pt = (y: number) => {
+          const t = Math.min(1, Math.max(0, (y - a[1]) / dy));
+          return [a[0] + (e[0] - a[0]) * t, a[2] + (e[2] - a[2]) * t];
+        };
+        const pa = pt(Math.max(lo, y0));
+        const pb = pt(Math.min(hi, y1));
+        const half = (m.tubeSize || 20) / 20;
+        const hx = (half * Math.hypot(e[0] - a[0], dy)) / Math.abs(dy);
+        const hz = (half * Math.hypot(e[2] - a[2], dy)) / Math.abs(dy);
+        return [{ x0: Math.min(pa[0], pb[0]) - hx, x1: Math.max(pa[0], pb[0]) + hx, z0: Math.min(pa[1], pb[1]) - hz, z1: Math.max(pa[1], pb[1]) + hz }];
+      });
+      // rangka yang menjorok (seluncur / kantilever / lengan): bilah hanya selebar rangka dudukan supaya tiap bilah tertumpu
+      const zLo = kk > 0 ? zb - L / 2 + 2 : zs + 2;
+      const zHi = kk > 0 ? zf + L / 2 - 2 : zs + D - 2;
+      const n = Math.max(3, Math.round((zHi - zLo + 2) / 6));
+      const pitch = (zHi - zLo) / (n - 1);
+      for (let i = 0; i < n; i++) {
+        const zc = zLo + i * pitch;
+        const cuts = posts.filter((q) => q.z1 > zc - 2 + 0.4 && q.z0 < zc + 2 - 0.4).sort((u, v) => u.x0 - v.x0);
+        const pieces: [number, number][] = [];
+        let x = 0;
+        for (const q of cuts) {
+          if (q.x0 > x) pieces.push([x, Math.min(q.x0, seatW)]);
+          x = Math.max(x, q.x1);
+        }
+        if (x < seatW) pieces.push([x, seatW]);
+        const keep = pieces.filter(([u, v]) => v - u >= 3);
+        keep.forEach(([u, v], k) => {
+          const suffix = keep.length > 1 ? String.fromCharCode(97 + k) : '';
+          add(`bilah-${i + 1}${suffix}`, 'x', u, yS + 1, zc, v - u, 'custom', `Bilah dudukan ${i + 1}${suffix ? ` (${k + 1})` : ''}`, [40, 20]);
+        });
+      }
     }
 
     const H = Math.max(back ? Hb : Hs, side ? Ht : 0, model === 'lengan' && back ? ya : 0);

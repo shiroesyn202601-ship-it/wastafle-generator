@@ -179,9 +179,15 @@ export const RAK_TANAMAN: ProductDef = {
         const ang = ((i * (360 / Math.max(1, Math.min(n - 1, 4))) + (i >= 4 ? 45 : 0)) * Math.PI) / 180;
         const tx = top ? c : c + r * Math.cos(ang);
         const tz = top ? c : c + r * Math.sin(ang);
-        if (!top) line(`lengan-${t}`, [c + (L / 2) * Math.cos(ang), y, c + (L / 2) * Math.sin(ang)], [tx, y, tz], 'custom', `Lengan nampan ${t}`, rail);
-        add(`dudukan-${t}-x`, 'x', tx - d * 0.4, y + rh, tz, d * 0.8, 'rail-x', `Dudukan nampan ${t} (x)`, thin);
-        add(`dudukan-${t}-z`, 'z', tx, y + rh, tz - d * 0.4, d * 0.8, 'rail-z', `Dudukan nampan ${t} (z)`, thin);
+        // lengan dilas rata di sisi tiang: pada sudut diagonal, titik awal mundur ke bidang sisi tiang (bukan ke dalam sudutnya)
+        const r0 = L / 2 / Math.max(Math.abs(Math.cos(ang)), Math.abs(Math.sin(ang)));
+        if (!top) line(`lengan-${t}`, [c + r0 * Math.cos(ang), y, c + r0 * Math.sin(ang)], [tx, y, tz], 'custom', `Lengan nampan ${t}`, rail);
+        // dudukan silang: batang x menerus, batang z dipotong dua dan dilas di kedua sisi batang x
+        const hd = d * 0.4;
+        const tw = thin[0] / 20;
+        add(`dudukan-${t}-x`, 'x', tx - hd, y + rh, tz, 2 * hd, 'rail-x', `Dudukan nampan ${t} (x)`, thin);
+        add(`dudukan-${t}-z`, 'z', tx, y + rh, tz - hd, hd - tw, 'rail-z', `Dudukan nampan ${t} (z) belakang`, thin);
+        add(`dudukan-${t}-z2`, 'z', tx, y + rh, tz + tw, hd - tw, 'rail-z', `Dudukan nampan ${t} (z) depan`, thin);
         if (b > 0) boards.push({ ...board(`nampan-${t}`, `Nampan pot ${t}`, tx - d / 2, tx + d / 2, y + rh + 0.75, y + rh + 0.75 + b, tz - d / 2, tz + d / 2), shape: 'round' });
       });
       H = yTop + rh + 1 + b;
@@ -215,7 +221,17 @@ export const RAK_TANAMAN: ProductDef = {
         add(`n${t}-ujung`, 'z', xe, y, zb + 1, zf - zb - 2, 'rail-z', `Palang ujung nampan ${t}`, rail);
         add(`n${t}-ikat`, 'z', (x0 + x1) / 2, y, zb + 1, zf - zb - 2, 'rail-z', `Palang ikat menara ${t}`, rail);
         const dir = left ? -1 : 1;
-        [zb, zf].forEach((z, j) => line(`n${t}-penguat-${j}`, [xp + dir * (L / 2), y - d * 0.6, z], [xp + dir * d * 0.6, y - rh / 2, z], 'custom', `Penguat miring nampan ${t} ${j ? 'depan' : 'belakang'}`, thin));
+        // penguat miring: kedua ujung dipotong datar (rata lengan di atas); ujung bawah digeser keluar supaya
+        // sudut potongannya menempel di sisi tiang, tidak masuk ke dalam tiang
+        const yb = y - d * 0.6;
+        const yu = y - rh / 2;
+        const xu = xp + dir * d * 0.6;
+        let xb = xp + dir * (L / 2);
+        for (let k = 0; k < 3; k++) {
+          const uy = (yu - yb) / Math.hypot(xu - xb, yu - yb);
+          xb = xp + dir * (L / 2 + thin[0] / 20 / uy);
+        }
+        [zb, zf].forEach((z, j) => line(`n${t}-penguat-${j}`, [xb, yb, z], [xu, yu, z], 'custom', `Penguat miring nampan ${t} ${j ? 'depan' : 'belakang'}`, thin));
         if (b > 0) boards.push(board(`nampan-${t}`, `Papan nampan ${t} ${sd}`, left ? 0 : xp + L / 2, left ? xp - L / 2 : W, y + rh / 2, y + rh / 2 + b, 0, D));
       });
       if (b > 0) boards.push(board('papan-puncak', 'Papan puncak menara', x0 - L / 2, x1 + L / 2, H, H + b, 0, D));
@@ -265,12 +281,21 @@ export const RAK_TANAMAN: ProductDef = {
         if (b > 0) boards.push(board(`papan-${i}`, `Papan tingkat ${i}`, L, W - L, i * h, i * h + b, 0, D));
       }
       add('teralis-atas', 'x', L, H - L / 2, zb, W - 2 * L, 'rail-x', 'Palang atas teralis', pt);
-      const y0 = ytop + rh / 2;
+      // Kisi sebidang: kisi tegak menerus dari atas palang tingkat teratas sampai bawah palang atas teralis;
+      // kisi datar dipotong pendek di antara tiang & kisi tegak, dilas rata di kedua sisinya.
+      const y0 = ytop;
       const y1 = H - L;
+      const tw = thin[0] / 20;
       const nv = Math.max(1, Math.round((W - 2 * L) / 20) - 1);
-      for (let i = 1; i <= nv; i++) add(`kisi-tegak-${i}`, 'y', L + ((W - 2 * L) * i) / (nv + 1), y0, zb, y1 - y0, 'custom', `Kisi tegak ${i}`, thin);
+      const xv = Array.from({ length: nv }, (_, i) => L + ((W - 2 * L) * (i + 1)) / (nv + 1));
+      xv.forEach((x, i) => add(`kisi-tegak-${i + 1}`, 'y', x, y0, zb, y1 - y0, 'custom', `Kisi tegak ${i + 1}`, thin));
+      const edges = [L, ...xv.flatMap((x) => [x - tw, x + tw]), W - L];
       const nh = Math.max(1, Math.round((y1 - y0) / 20) - 1);
-      for (let i = 1; i <= nh; i++) add(`kisi-datar-${i}`, 'x', L, y0 + ((y1 - y0) * i) / (nh + 1), zb, W - 2 * L, 'custom', `Kisi datar ${i}`, thin);
+      for (let i = 1; i <= nh; i++) {
+        const yk = y0 + ((y1 - y0) * i) / (nh + 1);
+        for (let k = 0; k + 1 < edges.length; k += 2)
+          add(`kisi-datar-${i}-${k / 2 + 1}`, 'x', edges[k], yk, zb, edges[k + 1] - edges[k], 'custom', `Kisi datar ${i} ruas ${k / 2 + 1}`, thin);
+      }
     }
 
     return { members: list, boards, casters: [], W, D, H, boardThick: 0 };

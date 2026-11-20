@@ -376,6 +376,46 @@ export const STAND_MOTOR: ProductDef = {
     let H = 50;
     let wall = false;
 
+    type V3 = [number, number, number];
+    /** Batas muka batang yang ditemui ujung batang miring: ujung tidak boleh melewati bidang ini */
+    type Lim = { yMin?: number; yMax?: number; zMin?: number; zMax?: number };
+    /**
+     * Batang miring di bidang y-z. Ujungnya dipotong datar (bila curam) atau tegak (bila landai), jadi
+     * potongan itu punya lebar; titik as ujung digeser supaya bidang potong menempel RATA di muka batang
+     * yang ditemui (la untuk ujung a, lb untuk ujung b), tidak masuk ke dalamnya.
+     */
+    const lineYZ = (id: string, a: V3, bp: V3, role: Parameters<typeof line>[3], label: string, tube: [number, number], la: Lim = {}, lb: Lim = {}): [V3, V3] => {
+      const th = tube[1] / 10;
+      const A: V3 = [...a];
+      const B: V3 = [...bp];
+      for (let it = 0; it < 8; it++) {
+        const dy = B[1] - A[1];
+        const dz = B[2] - A[2];
+        const len = Math.hypot(B[0] - A[0], dy, dz) || 1;
+        const yCut = Math.abs(dy) / len >= 0.35;
+        const ey = yCut ? 0 : th / 2 / (Math.abs(dz) / len);
+        const ez = yCut ? th / 2 / (Math.abs(dy) / len) : 0;
+        const fit = (P: V3, l: Lim) => {
+          if (l.yMin != null) P[1] = l.yMin + ey;
+          if (l.yMax != null) P[1] = l.yMax - ey;
+          if (l.zMin != null) P[2] = l.zMin + ez;
+          if (l.zMax != null) P[2] = l.zMax - ez;
+        };
+        fit(A, la);
+        fit(B, lb);
+      }
+      line(id, A, B, role, label, tube);
+      return [A, B];
+    };
+    /** z muka samping batang miring a→b (tebal th) di rentang tinggi [y0, y1]; dir +1 = muka ke arah z besar */
+    const sideZ = (a: V3, bp: V3, th: number, y0: number, y1: number, dir: 1 | -1) => {
+      const dy = bp[1] - a[1];
+      const dz = bp[2] - a[2];
+      const uy = Math.abs(dy) / Math.hypot(dy, dz);
+      const zs = [y0, y1].map((y) => a[2] + ((y - a[1]) * dz) / dy + (dir * th) / 2 / uy);
+      return dir > 0 ? Math.max(...zs) : Math.min(...zs);
+    };
+
     /** Penjepit roda di atas platform: lingkar penahan depan + topang miring + bibir samping. y0 = muka atas rangka */
     const wheelStop = (id: string, xc: number, zFront: number, y0: number, zBar: number) => {
       const cw = num(p, 'ban', 110) / 10 + 3;
@@ -384,8 +424,11 @@ export const STAND_MOTOR: ProductDef = {
       xs.forEach((x, i) => {
         const nm = i ? 'kanan' : 'kiri';
         add(`${id}-tiang-${i}`, 'y', x, y0, zFront, hh, 'post', `Penjepit roda: tiang ${nm}`, rail);
-        line(`${id}-topang-${i}`, [x, y0 + hh - 4, zFront - 1], [x, y0, zBar], 'custom', `Penjepit roda: topang miring ${nm}`, rail);
-        add(`${id}-bibir-${i}`, 'z', x, y0 + 6, zBar, zFront - zBar - 1, 'custom', `Penjepit roda: bibir samping ${nm}`, thin);
+        // topang: ujung atas rata di muka belakang tiang, kaki rata di muka atas rangka
+        const [ta, tb] = lineYZ(`${id}-topang-${i}`, [x, y0 + hh - 4, zFront - 1], [x, y0, zBar], 'custom', `Penjepit roda: topang miring ${nm}`, rail, { zMax: zFront - 1 }, { yMin: y0 });
+        // bibir: dari muka depan topang sampai muka belakang tiang
+        const zs = sideZ(ta, tb, 2, y0 + 6 - 0.75, y0 + 6 + 0.75, 1);
+        add(`${id}-bibir-${i}`, 'z', x, y0 + 6, zs, zFront - 1 - zs, 'custom', `Penjepit roda: bibir samping ${nm}`, thin);
       });
       add(`${id}-atas`, 'x', xs[0] - 1, y0 + hh + 1, zFront, xs[1] - xs[0] + 2, 'custom', 'Penjepit roda: lingkar atas', rail);
       return hh;
@@ -403,9 +446,9 @@ export const STAND_MOTOR: ProductDef = {
       });
       const nr = Math.max(2, Math.round(len / 30));
       for (let k = 0; k <= nr; k++) {
-        const f = k / nr;
-        const z = zTop - run * f;
-        const y = yTop - (yTop - L / 2) * f;
+        // palang di antara kedua rel; yang paling atas mundur dari muka belakang rangka platform, yang paling bawah di dalam ujung rel
+        const z = zTop - 1 - ((run - 2) * k) / nr;
+        const y = yTop - ((yTop - L / 2) * (zTop - z)) / run;
         add(`${id}-anak-${k}`, 'x', x0 + L / 2, y, z, x1 - x0 - L, 'rail-x', `Ramp: palang ${k + 1}`, rail);
       }
       if (withBoard && b > 0) {
@@ -433,13 +476,16 @@ export const STAND_MOTOR: ProductDef = {
       xs.forEach((x, i) => {
         const nm = i ? 'kanan' : 'kiri';
         add(`lengan-${i}`, 'z', x, yA, zr, len, 'rail-z', `Lengan tuas ${nm}`, t);
-        add(`tiang-${i}`, 'y', x, c + L, zf, top - c - L - (front ? L / 2 : 0), 'post', `Tiang ${nm}`, t);
-        line(`siku-${i}`, [x, c + L, zf - Math.min(18, len / 3)], [x, Math.min(top - 4, c + L + 18), zf - L / 2], 'custom', `Siku penguat ${nm}`, rail);
-        line(`gagang-${i}`, [x, c + L, zr + L / 2], [x, front ? 90 : 75, 2], 'custom', `Gagang tuas ${nm}`, t);
+        // tiang berdiri di atas lengan; paddock depan: berhenti di bawah palang atas yang menutup kedua tiang
+        add(`tiang-${i}`, 'y', x, c + L, zf, top - c - L - (front ? L : 0), 'post', `Tiang ${nm}`, t);
+        // siku: kaki rata di atas lengan, ujung atas rata di muka belakang tiang
+        lineYZ(`siku-${i}`, [x, c + L, zf - Math.min(18, len / 3)], [x, Math.min(top - 4, c + L + 18), zf - L / 2], 'custom', `Siku penguat ${nm}`, rail, { yMin: c + L }, { zMax: zf - L / 2 });
+        // gagang: kaki rata di atas ujung lengan, ujung atas rata di bawah pegangan
+        lineYZ(`gagang-${i}`, [x, c + L, zr + L / 2], [x, front ? 90 : 75, 2], 'custom', `Gagang tuas ${nm}`, t, { yMin: c + L }, { yMax: (front ? 90 : 75) - L / 2 });
         if (!front) {
-          // kait L: dudukan swing arm + bibir penahan
-          add(`kait-${i}`, 'z', x, top + 1, zf - L / 2, 7 + L / 2, 'custom', `Kait swing arm ${nm}`, flat);
-          add(`bibir-${i}`, 'y', x, top + 2, zf + 6, 4, 'custom', `Bibir kait ${nm}`, thin);
+          // kait L: plat dudukan swing arm duduk di atas tiang, bibir penahan berdiri di ujung plat
+          add(`kait-${i}`, 'z', x, top + 2, zf - L / 2, 7 + L / 2, 'custom', `Kait swing arm ${nm}`, flat);
+          add(`bibir-${i}`, 'y', x, top + 4, zf + 7 - 0.75, 4, 'custom', `Bibir kait ${nm}`, thin);
         }
       });
       add('palang-belakang', 'x', L, yA, zr + L / 2, W - 2 * L, 'rail-x', 'Palang belakang tuas', t);
@@ -501,7 +547,14 @@ export const STAND_MOTOR: ProductDef = {
           zp.forEach((z, j) => add(`kaki-${i}-${j}`, 'y', x, 0, z, yF - L / 2, 'post', `Kaki ${i ? 'kanan' : 'kiri'} ${['belakang', 'tengah', 'depan'][j]}`, t))
         );
         const yb = Math.min(15, yF / 3);
-        [L / 2, W - L / 2].forEach((x, i) => add(`palang-bawah-${i}`, 'z', x, yb, z0 + L, len - 2 * L, 'rail-z', `Palang bawah ${i ? 'kanan' : 'kiri'}`, rail));
+        // palang bawah memanjang dipotong di kaki tengah: tiap potong menempel di sisi kaki
+        [L / 2, W - L / 2].forEach((x, i) =>
+          [0, 1].forEach((s) => {
+            const za = s ? zp[1] + L / 2 : zp[0] + L / 2;
+            const zb = s ? zp[2] - L / 2 : zp[1] - L / 2;
+            add(`palang-bawah-${i}-${s}`, 'z', x, yb, za, zb - za, 'rail-z', `Palang bawah ${i ? 'kanan' : 'kiri'} ${s ? 'depan' : 'belakang'}`, rail);
+          })
+        );
         zp.forEach((z, j) => add(`palang-lintang-${j}`, 'x', L, yb, z, W - 2 * L, 'rail-x', `Palang bawah melintang ${j + 1}`, rail));
       } else {
         // rangka lantai + kaki gunting X di kiri & kanan
@@ -511,16 +564,22 @@ export const STAND_MOTOR: ProductDef = {
         const zb = z1 - 12;
         const ym = (L + yF - L / 2) / 2;
         const zm = (za + zb) / 2;
-        [1.5 * L, W - 1.5 * L].forEach((x, i) => {
+        // kaki gunting luar (a) & dalam (b) bersebelahan, bukan di bidang yang sama: bersilang di poros tengah
+        [
+          { xa: 1.5 * L, xb: 2.5 * L },
+          { xa: W - 1.5 * L, xb: W - 2.5 * L },
+        ].forEach(({ xa, xb }, i) => {
           const nm = i ? 'kanan' : 'kiri';
-          line(`gunting-a-${i}`, [x, L, za], [x, yF - L / 2, zb], 'post', `Kaki gunting ${nm} (poros belakang → rel geser depan)`, t);
-          line(`gunting-b-${i}`, [x, L, zb], [x, yF - L / 2, za], 'post', `Kaki gunting ${nm} (rel geser depan → poros belakang)`, t);
+          lineYZ(`gunting-a-${i}`, [xa, L, za], [xa, yF - L / 2, zb], 'post', `Kaki gunting ${nm} (poros belakang → rel geser depan)`, t, {}, { yMax: yF - L / 2 });
+          lineYZ(`gunting-b-${i}`, [xb, L, zb], [xb, yF - L / 2, za], 'post', `Kaki gunting ${nm} (rel geser depan → poros belakang)`, t, {}, { yMax: yF - L / 2 });
         });
-        add('poros-tengah', 'x', L, ym, zm, W - 2 * L, 'custom', 'Poros tengah gunting', rail);
+        // poros tengah di antara kedua kaki dalam (menempel di sisi dalamnya)
+        add('poros-tengah', 'x', 3 * L, ym, zm, W - 6 * L, 'custom', 'Poros tengah gunting', rail);
         add('poros-bawah', 'x', 2 * L, L + 1, za, W - 4 * L, 'custom', 'Poros bawah (engsel tetap)', rail);
-        add('poros-atas', 'x', 2 * L, yF - L / 2 - 1, za, W - 4 * L, 'custom', 'Poros atas (engsel tetap)', rail);
+        add('poros-atas', 'x', 3 * L, yF - L / 2 - 1, za, W - 6 * L, 'custom', 'Poros atas (engsel tetap)', rail);
         add('dudukan-dongkrak', 'x', L, L / 2, zb - 25, W - 2 * L, 'rail-x', 'Dudukan dongkrak', t);
-        line('pendorong', [W / 2, L, zb - 25], [W / 2, ym - 1, zm], 'custom', 'Batang pendorong (dongkrak hidrolik)', t);
+        // pendorong: kaki rata di atas dudukan, ujung atas rata di bawah poros tengah
+        lineYZ('pendorong', [W / 2, L, zb - 25], [W / 2, ym - 1, zm], 'custom', 'Batang pendorong (dongkrak hidrolik)', t, { yMin: L }, { yMax: ym - 1 });
         line('tuas-pompa', [W / 2, L, z1 - L], [W / 2, 28, z1 + 30], 'custom', 'Tuas pompa (diinjak)', rail);
         hinges.push({ id: 'engsel-gunting', memberId: 'poros-tengah', type: 'barrel-weld', mode: 'axle', pos: 0, side: 'end', foldAxis: 'x', foldSign: 1, label: 'Poros tengah gunting' });
       }
@@ -551,7 +610,8 @@ export const STAND_MOTOR: ProductDef = {
       });
       [L / 2, W - L / 2].forEach((x, i) => {
         add(`palang-bawah-z-${i}`, 'z', x, 10, z0 + L, len - 2 * L, 'rail-z', `Palang bawah ${i ? 'kanan' : 'kiri'}`, rail);
-        line(`silang-${i}`, [x, 10 + L / 2, z0 + L], [x, yT - L / 2, z1 - L], 'custom', `Silang samping ${i ? 'kanan' : 'kiri'}`, rail);
+        // silang: kaki rata di atas palang bawah & di muka tiang belakang, ujung atas rata di bawah rel jembatan & di muka tiang depan
+        lineYZ(`silang-${i}`, [x, 10 + L / 2, z0 + L], [x, yT - L / 2, z1 - L], 'custom', `Silang samping ${i ? 'kanan' : 'kiri'}`, rail, { yMin: 10 + rail[1] / 20, zMin: z0 + L }, { yMax: yT - L / 2, zMax: z1 - L });
       });
       // lantai jeruji melintang (air & busa lolos ke bawah)
       const nj = Math.max(4, Math.round(len / 10));
@@ -588,12 +648,13 @@ export const STAND_MOTOR: ProductDef = {
         line(`bawah-${i}`, [x, ym, zm], [x, L / 2, zb], 'rail-z', `Rel ${nm} bagian bawah`, t);
         hinges.push({ id: `engsel-${i}`, memberId: `bawah-${i}`, type: 'folding-lock', mode: 'point', pos: 0, side: 'end', foldAxis: 'y', foldSign: 1, carry: true, label: `Engsel lipat tengah ${nm}` });
         // kait ujung atas ke bibir bak
-        add(`kait-${i}`, 'z', x, yTop + L / 2 + 1, 0, zt, 'custom', `Kait bak ${nm}`, flat);
-        add(`kait-turun-${i}`, 'y', x, yTop - 4, 1, 5 + L / 2, 'custom', `Bibir kait ${nm}`, thin);
-        // kaki penopang di engsel
-        add(`kaki-${i}`, 'y', x, 0, zm, ym - L / 2, 'post', `Kaki penopang tengah ${nm}`, rail);
+        // plat kait duduk di atas ujung rel, bibir kait turun dari bawah ujung plat
+        add(`kait-${i}`, 'z', x, yTop + 2, 0, zt, 'custom', `Kait bak ${nm}`, flat);
+        add(`kait-turun-${i}`, 'y', x, yTop - 5 - L / 2, 0.75, 5 + L / 2, 'custom', `Bibir kait ${nm}`, thin);
+        // kaki penopang di engsel: ujung atas rata di muka bawah rel (rel miring, jadi diukur di sisi kaki yang lebih rendah)
+        add(`kaki-${i}`, 'y', x, 0, zm, ym - ((yTop - L / 2) / run) * (rail[0] / 20) - (L / 2) * (len / run), 'post', `Kaki penopang tengah ${nm}`, rail);
       });
-      add('kaki-palang', 'x', L, 8, zm, W - 2 * L, 'rail-x', 'Palang kaki penopang', rail);
+      add('kaki-palang', 'x', L / 2 + rail[0] / 20, 8, zm, W - L - rail[0] / 10, 'rail-x', 'Palang kaki penopang', rail);
       const nr = Math.max(6, Math.round(len / 18));
       for (let k = 0; k <= nr; k++) {
         const [y, z] = mid(k / nr);
@@ -616,7 +677,7 @@ export const STAND_MOTOR: ProductDef = {
       const xs = [xc - cw / 2 - 2, xc + cw / 2 + 2];
       xs.forEach((x, i) => {
         add(`lingkar-tiang-${i}`, 'y', x, L + 0.3, zh, hh, 'post', `Penahan ban: tiang ${i ? 'kanan' : 'kiri'}`, t);
-        line(`lingkar-topang-${i}`, [x, L + 0.3 + hh * 0.6, zh + L / 2], [x, L + 0.3, len - 2], 'custom', `Penahan ban: topang ${i ? 'kanan' : 'kiri'}`, rail);
+        lineYZ(`lingkar-topang-${i}`, [x, L + 0.3 + hh * 0.6, zh + L / 2], [x, L + 0.3, len - 2], 'custom', `Penahan ban: topang ${i ? 'kanan' : 'kiri'}`, rail, { zMin: zh + L / 2 }, { yMin: L + 0.3 });
       });
       add('lingkar-atas', 'x', xs[0] - L / 2, L + 0.3 + hh + L / 2, zh, xs[1] - xs[0] + L, 'rail-x', 'Penahan ban: palang atas', t);
       // buaian berporos: telinga poros, poros, dua rel buaian, bibir belakang
@@ -627,8 +688,9 @@ export const STAND_MOTOR: ProductDef = {
       const rz0 = za - 16;
       const rz1 = Math.min(zh - L / 2 - 1, za + 18);
       [xc - cw / 2, xc + cw / 2].forEach((x, i) => line(`buaian-${i}`, [x, ya + 2 - 3, rz0], [x, ya + 2 + 3, rz1], 'custom', `Rel buaian ${i ? 'kanan' : 'kiri'}`, rail));
-      add('buaian-belakang', 'x', xc - cw / 2 - 1, ya - 1, rz0, cw + 2, 'custom', 'Buaian: palang belakang', rail);
-      add('buaian-bibir', 'y', xc, ya - 1, rz0, 9, 'custom', 'Buaian: bibir pengunci ban', thin);
+      // palang belakang di antara kedua rel buaian, bibir berdiri di atas palang
+      add('buaian-belakang', 'x', xc - cw / 2 + 1, ya - 1, rz0, cw - 2, 'custom', 'Buaian: palang belakang', rail);
+      add('buaian-bibir', 'y', xc, ya, rz0, 8, 'custom', 'Buaian: bibir pengunci ban', thin);
       hinges.push({ id: 'engsel-buaian', memberId: 'poros', type: 'barrel-weld', mode: 'axle', pos: 0, side: 'end', foldAxis: 'x', foldSign: 1, label: 'Poros buaian (jungkit saat ban masuk)' });
       D = len;
       H = L + 0.3 + hh + L;
@@ -644,7 +706,7 @@ export const STAND_MOTOR: ProductDef = {
       add('tapak-tulang', 'z', xc, yB, L, len - L, 'rail-z', 'Tapak T: tulang depan', t);
       const zp = 14;
       add('tiang', 'y', xc, c + L, zp, hh - c - L - L / 2, 'post', 'Tiang tegak', t);
-      line('topang', [xc, c + L, Math.min(len - 6, zp + 32)], [xc, c + L + 30, zp + L / 2], 'custom', 'Topang miring tiang', t);
+      lineYZ('topang', [xc, c + L, Math.min(len - 6, zp + 32)], [xc, c + L + 30, zp + L / 2], 'custom', 'Topang miring tiang', t, { yMin: c + L }, { zMin: zp + L / 2 });
       const yH = hh - L / 2;
       const armL = 26;
       add('lengan-poros', 'z', xc, yH, zp + L / 2, armL, 'custom', 'Lengan berporos (putar 360°)', t);

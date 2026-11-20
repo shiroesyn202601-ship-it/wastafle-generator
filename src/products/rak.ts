@@ -29,6 +29,34 @@ const MODELS = [
 const isM = (p: Params, ...m: string[]) => m.includes(str(p, 'model', 'tegak'));
 const DEG = Math.PI / 180;
 
+/**
+ * Batang miring di bidang tegak antara dua sisi (u0 → u1 mendatar, mis. sisi tiang; v0 → v1 tegak, mis. sisi palang).
+ * Batang yang cukup tegak dipotong rata datar, yang landai dipotong rata tegak (lihat cutAxisIndex): titik as ujung
+ * digeser masuk sejauh setengah lebar potongan supaya bidang potong menempel rata di sisi palang dan sudutnya
+ * pas di sisi tiang — tidak menembus tiang maupun palang. Hasil: [uA, vA, uB, vB].
+ */
+function braceEnds(u0: number, v0: number, u1: number, v1: number, t: number): [number, number, number, number] {
+  const U = Math.abs(u1 - u0);
+  const V = Math.abs(v1 - v0);
+  let hu = 0;
+  let hv = 0;
+  for (let i = 0; i < 6; i++) {
+    const du = U - 2 * hu;
+    const dv = V - 2 * hv;
+    const len = Math.hypot(du, dv) || 1;
+    if (dv / len >= 0.35) {
+      hu = ((t / 2) * len) / dv;
+      hv = 0;
+    } else {
+      hv = ((t / 2) * len) / Math.max(1e-6, du);
+      hu = 0;
+    }
+  }
+  const su = Math.sign(u1 - u0) || 1;
+  const sv = Math.sign(v1 - v0) || 1;
+  return [u0 + su * hu, v0 + sv * hv, u1 - su * hu, v1 - sv * hv];
+}
+
 export const RAK: ProductDef = {
   id: 'rak',
   name: 'Rak',
@@ -213,11 +241,12 @@ export const RAK: ProductDef = {
     const boards: Board[] = [];
     const post = (id: string, nm: string, x: number, z: number, y0: number, y1: number) => add(id, 'y', x, y0, z, y1 - y0, 'post', nm, pt);
     /** Satu tingkat kotak: palang keliling di as tiang (x0..x1, z0..z1) + papan di atasnya */
-    const tier = (id: string, nm: string, x0: number, x1: number, z0: number, z1: number, y: number, withBoard = true) => {
+    /** `face`: jarak dari as tiang ke sisi tiang yang ditempel palang samping (tiang miring: lebih dari L/2) */
+    const tier = (id: string, nm: string, x0: number, x1: number, z0: number, z1: number, y: number, withBoard = true, face: [number, number] = [L / 2, L / 2]) => {
       add(`${id}-depan`, 'x', x0 + L / 2, y, z1, x1 - x0 - L, 'rail-x', `Palang ${nm} depan`, rail);
       add(`${id}-belakang`, 'x', x0 + L / 2, y, z0, x1 - x0 - L, 'rail-x', `Palang ${nm} belakang`, rail);
-      add(`${id}-kiri`, 'z', x0, y, z0 + L / 2, z1 - z0 - L, 'rail-z', `Palang ${nm} kiri`, rail);
-      add(`${id}-kanan`, 'z', x1, y, z0 + L / 2, z1 - z0 - L, 'rail-z', `Palang ${nm} kanan`, rail);
+      add(`${id}-kiri`, 'z', x0, y, z0 + face[0], z1 - z0 - face[0] - face[1], 'rail-z', `Palang ${nm} kiri`, rail);
+      add(`${id}-kanan`, 'z', x1, y, z0 + face[0], z1 - z0 - face[0] - face[1], 'rail-z', `Palang ${nm} kanan`, rail);
       if (b > 0 && withBoard) boards.push(board(`papan-${id}`, `Papan ${nm}`, x0 + L / 2, x1 - L / 2, y + rh / 2, y + rh / 2 + b, z0 - L / 2, z1 + L / 2));
     };
     let outH = H + (b > 0 ? b : 0);
@@ -237,8 +266,15 @@ export const RAK: ProductDef = {
       levels(n).forEach((y, i) => {
         const t = i + 1;
         const zf = zfAt(y);
-        add(`t${t}-depan`, 'x', L, y, zf, W - 2 * L, 'rail-x', `Palang tingkat ${t} depan`, rail);
-        add(`t${t}-belakang`, 'x', L, y, zb, W - 2 * L, 'rail-x', `Palang tingkat ${t} belakang`, rail);
+        // palang depan/belakang dipotong per kolom: ujungnya menempel rata di sisi tiang sekat, tidak menembusnya
+        for (let j = 0; j < k; j++) {
+          const xa = xsCol[j] + L / 2;
+          const len = xsCol[j + 1] - L / 2 - xa;
+          const kk = k > 1 ? ` kolom ${j + 1}` : '';
+          const sfx = k > 1 ? `-${j + 1}` : '';
+          add(`t${t}-depan${sfx}`, 'x', xa, y, zf, len, 'rail-x', `Palang tingkat ${t} depan${kk}`, rail);
+          add(`t${t}-belakang${sfx}`, 'x', xa, y, zb, len, 'rail-x', `Palang tingkat ${t} belakang${kk}`, rail);
+        }
         xsCol.forEach((x, j) => add(`t${t}-${j === 0 || j === k ? `samping-${j ? 'kanan' : 'kiri'}` : `sekat-${j}`}`, 'z', x, y, L, zf - L / 2 - L, 'rail-z', `Palang tingkat ${t} ${j === 0 ? 'kiri' : j === k ? 'kanan' : `sekat ${j}`}`, rail));
         if (b > 0)
           for (let j = 0; j < k; j++) {
@@ -257,7 +293,11 @@ export const RAK: ProductDef = {
         line(`kaki-${nm}-b`, [x, 0, zbAt(0)], [x, H, zbAt(H)], 'post', `Kaki ${nm} belakang (miring)`, pt);
         line(`kaki-${nm}-d`, [x, 0, zfAt(0)], [x, H, zfAt(H)], 'post', `Kaki ${nm} depan (miring)`, pt);
       });
-      levels(n).forEach((y, i) => tier(`t${i + 1}`, `tingkat ${i + 1}`, L / 2, W - L / 2, zbAt(y), zfAt(y), y));
+      // Palang samping menempel di sisi dalam kaki miring: sisi kaki diukur pada tepi atas palang
+      // (titik terdekat), supaya ujung palang tidak masuk ke kaki.
+      const slope = (D - top) / 2 / H;
+      const face = (L / 2) * Math.hypot(1, slope) + (slope * rh) / 2;
+      levels(n).forEach((y, i) => tier(`t${i + 1}`, `tingkat ${i + 1}`, L / 2, W - L / 2, zbAt(y), zfAt(y), y, true, [face, face]));
     } else if (model === 'tulang') {
       // Tulang tengah: 2 tiang di x tengah (belakang & depan), alas rangka lantai, papan bergantian kiri / kanan
       const xc = W / 2;
@@ -324,11 +364,16 @@ export const RAK: ProductDef = {
         post(`rangka-${j}-d`, `Tiang rangka ${nm} depan`, x, zf, 0, H);
         add(`rangka-${j}-bawah`, 'z', x, yLo, zb + L / 2, zf - zb - L, 'rail-z', `Palang rangka ${nm} bawah`, thin);
         add(`rangka-${j}-atas`, 'z', x, yHi, zb + L / 2, zf - zb - L, 'rail-z', `Palang rangka ${nm} atas`, thin);
+        // zig-zag di antara sisi atas palang bawah & sisi bawah palang atas, ujung menempel rata di sisi tiang
+        const tz = thin[0] / 10;
+        const y0z = yLo + tz / 2;
+        const y1z = yHi - tz / 2;
         for (let s = 0; s < seg; s++) {
-          const ya = yLo + ((yHi - yLo) * s) / seg;
-          const yb2 = yLo + ((yHi - yLo) * (s + 1)) / seg;
-          const a: [number, number, number] = s % 2 ? [x, ya, zf - L / 2] : [x, ya, zb + L / 2];
-          const bb: [number, number, number] = s % 2 ? [x, yb2, zb + L / 2] : [x, yb2, zf - L / 2];
+          const ya = y0z + ((y1z - y0z) * s) / seg;
+          const yb2 = y0z + ((y1z - y0z) * (s + 1)) / seg;
+          const [za, ya2, zb2, yb3] = braceEnds(zb + L / 2, ya, zf - L / 2, yb2, tz);
+          const a: [number, number, number] = s % 2 ? [x, ya2, zb2] : [x, ya2, za];
+          const bb: [number, number, number] = s % 2 ? [x, yb3, za] : [x, yb3, zb2];
           line(`rangka-${j}-zigzag-${s + 1}`, a, bb, 'custom', `Palang zig-zag rangka ${nm} ${s + 1}`, thin);
         }
       });
@@ -365,8 +410,12 @@ export const RAK: ProductDef = {
         const x1 = xsCol[j + 1] - L / 2;
         add(`ikat-${j}-atas`, 'x', x0, H - L / 2, zc, x1 - x0, 'rail-x', `Palang ikat atas ${j + 1}`, pt);
         add(`ikat-${j}-bawah`, 'x', x0, L + 15, zc, x1 - x0, 'rail-x', `Palang ikat bawah ${j + 1}`, pt);
-        line(`silang-${j}-a`, [x0, L + 17, zc], [x1, H - L - 2, zc], 'custom', `Palang silang ${j + 1} a`, thin);
-        line(`silang-${j}-b`, [x1, L + 17, zc], [x0, H - L - 2, zc], 'custom', `Palang silang ${j + 1} b`, thin);
+        // Silang X: dua batang ditumpuk bersebelahan (geser setebal pipa) supaya tidak saling tembus, dilas di titik
+        // silangnya; ujung dipotong rata di atas palang ikat bawah / di bawah palang ikat atas, sudutnya pas di sisi tiang.
+        const tz = thin[0] / 10;
+        const [ua, va, ub, vb] = braceEnds(x0, L + 15 + L / 2, x1, H - L, tz);
+        line(`silang-${j}-a`, [ua, va, zc - tz / 2], [ub, vb, zc - tz / 2], 'custom', `Palang silang ${j + 1} a`, thin);
+        line(`silang-${j}-b`, [ub, va, zc + tz / 2], [ua, vb, zc + tz / 2], 'custom', `Palang silang ${j + 1} b`, thin);
       }
       if (b > 0)
         levels(n, Math.max(yBottom, L + 10), H - 6).forEach((y, i) => {
@@ -418,7 +467,10 @@ export const RAK: ProductDef = {
             const zq = zb + ((zf - zb) * q) / 3;
             add(`t${t}-batang-${q}`, 'x', x0 + L / 2, yb - (rise * q) / 3, zq, x1 - x0 - L, 'rail-x', `Batang alas sepatu tingkat ${t} no. ${q}`, thin);
           });
-        [x0, x1].forEach((x, j) => line(`t${t}-miring-${j ? 'kanan' : 'kiri'}`, [x, yb, zb + L / 2], [x, yf, zf - L / 2], 'rail-z', `Palang miring tingkat ${t} ${j ? 'kanan' : 'kiri'}`, rail));
+        // palang miring di antara sisi tiang belakang & depan, tetap di garis kemiringan yang sama dengan palang
+        // depan/belakang; potongan ujungnya tegak, menempel rata di sisi tiang
+        const riseIn = (rise * (zf - zb - L)) / (zf - zb);
+        [x0, x1].forEach((x, j) => line(`t${t}-miring-${j ? 'kanan' : 'kiri'}`, [x, y + riseIn / 2, zb + L / 2], [x, y - riseIn / 2, zf - L / 2], 'rail-z', `Palang miring tingkat ${t} ${j ? 'kanan' : 'kiri'}`, rail));
         if (b > 0) {
           const len = (zf - zb + L) / Math.cos(tilt * DEG);
           const yc = y + rh / 2 + b / 2;
@@ -445,12 +497,17 @@ export const RAK: ProductDef = {
       const nk = Math.max(3, Math.round(W / 22));
       for (let i = 0; i < nk; i++) {
         const xk = x0 + ((x1 - x0) * (i + 0.5)) / nk;
-        add(`kait-${i + 1}`, 'z', xk, yk, zb + rh / 2, 7, 'custom', `Kait gantungan ${i + 1}`, [15, 15]);
-        add(`kait-${i + 1}-ujung`, 'y', xk, yk, zb + rh / 2 + 7, 4, 'custom', `Ujung kait ${i + 1}`, [15, 15]);
+        // kait menempel di sisi depan palang; ujung kait berdiri di atas kait, sisi luarnya rata dengan ujung kait
+        const zk = zb + rail[0] / 20;
+        add(`kait-${i + 1}`, 'z', xk, yk, zk, 7, 'custom', `Kait gantungan ${i + 1}`, [15, 15]);
+        add(`kait-${i + 1}-ujung`, 'y', xk, yk + 0.75, zk + 7 - 0.75, 4, 'custom', `Ujung kait ${i + 1}`, [15, 15]);
       }
       // rak topi di puncak: lengan menjulur dari tiang belakang
-      [x0, x1].forEach((x, j) => add(`topi-lengan-${j}`, 'z', x, yTopLvl, zb + L / 2, ds - L - zb, 'rail-z', `Lengan rak topi ${j ? 'kanan' : 'kiri'}`, rail));
-      add('topi-depan', 'x', x0 - L / 2, yTopLvl, ds - L / 2, x1 - x0 + L, 'rail-x', 'Palang depan rak topi', rail);
+      // lengan dari sisi depan tiang belakang sampai sisi belakang palang depan; palang depan menerus,
+      // ujungnya rata dengan sisi luar tiang, sisi depannya rata dengan tepi papan
+      const zTopi = ds - rail[0] / 20;
+      [x0, x1].forEach((x, j) => add(`topi-lengan-${j}`, 'z', x, yTopLvl, zb + L / 2, zTopi - rail[0] / 20 - zb - L / 2, 'rail-z', `Lengan rak topi ${j ? 'kanan' : 'kiri'}`, rail));
+      add('topi-depan', 'x', x0 - L / 2, yTopLvl, zTopi, x1 - x0 + L, 'rail-x', 'Palang depan rak topi', rail);
       add('topi-belakang', 'x', x0 + L / 2, yTopLvl, zb, x1 - x0 - L, 'rail-x', 'Palang belakang rak topi', rail);
       if (b > 0) boards.push(board('papan-topi', 'Papan rak topi', x0 + L / 2, x1 - L / 2, yTopLvl + rh / 2, yTopLvl + rh / 2 + b, 0, ds));
       outH = H + b;

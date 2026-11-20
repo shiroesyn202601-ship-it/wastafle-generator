@@ -1,6 +1,53 @@
 import { FrameHinge } from '../types/kitchen';
 import { Board, Params, ProductCheck, ProductDef } from './types';
 import { BOARD_THICK, board, materialParams, memberFactory, num, r1, str } from './common';
+import { angledFrame, cutAxisIndex, memberFromPoints } from '../utils/frameLayout';
+
+type P3 = [number, number, number];
+const INF = 1e9;
+/** Batang miring a→b sesudah dibulatkan seperti `line()`, beserta rangka penampangnya */
+function slanted(a: P3, b: P3, tube: [number, number]) {
+  const mm = memberFromPoints({ id: '_', role: 'custom', label: '', tubeSize: tube[0], tubeH: tube[1] }, a, b);
+  const f = angledFrame(mm, tube[0] / 10, tube[1] / 10);
+  return { f, di: cutAxisIndex(mm), s: [mm.x, mm.y, mm.z] as P3, e: (mm.end ? [mm.end.x, mm.end.y, mm.end.z] : b) as P3 };
+}
+/**
+ * Setengah lebar tapak potongan ujung batang miring a→b (bidang potong rata lantai / tegak lurus sumbu dominan),
+ * diukur sepanjang sumbu dunia `ax` dari as batang. Dipakai supaya ujung batang miring menempel rata di sisi
+ * batang lain, tidak masuk ke dalamnya.
+ */
+function footHalf(a: P3, b: P3, tube: [number, number], ax: number) {
+  const { f, di } = slanted(a, b, tube);
+  const g = (v: P3) => v[ax] - (v[di] / f.u[di]) * f.u[ax];
+  return (f.a / 2) * Math.abs(g(f.wd)) + (f.b / 2) * Math.abs(g(f.hd));
+}
+/**
+ * Sisi batang miring a→b yang ditemui ujung batang lurus: koordinat terjauh (sumbu `ax`, arah `dir`) dari bagian
+ * batang miring yang ada di dalam kotak `box` (rentang [min, max] per sumbu x, y, z). Batang lurus dipotong rata
+ * di koordinat ini supaya ujungnya menempel di muka batang miring tanpa menembusnya.
+ */
+function faceOf(a: P3, b: P3, tube: [number, number], ax: number, dir: 1 | -1, box: [number, number][]) {
+  const { f, di, s, e } = slanted(a, b, tube);
+  const lo = Math.min(s[di], e[di]);
+  const hi = Math.max(s[di], e[di]);
+  const ext = Math.max(f.a, f.b) * 3;
+  const n = Math.ceil((f.len + 2 * ext) / 0.2);
+  const G = 8;
+  let best = dir > 0 ? -INF : INF;
+  for (let i = 0; i <= n; i++) {
+    const tt = -f.len / 2 - ext + ((f.len + 2 * ext) * i) / n;
+    for (let j = 0; j <= G; j++)
+      for (let k = 0; k <= G; k++) {
+        const al = (f.a * (j / G - 0.5));
+        const be = (f.b * (k / G - 0.5));
+        const p = [0, 1, 2].map((q) => f.c[q] + f.u[q] * tt + f.wd[q] * al + f.hd[q] * be);
+        if (p[di] < lo || p[di] > hi) continue;
+        if (!p.every((v, q) => v >= box[q][0] && v <= box[q][1])) continue;
+        best = dir > 0 ? Math.max(best, p[ax]) : Math.min(best, p[ax]);
+      }
+  }
+  return Math.abs(best) >= INF ? NaN : best;
+}
 
 /**
  * Alat bermain anak (rumah, PAUD, taman). Bentuk rangka (param `model`):
@@ -355,40 +402,70 @@ export const ALAT_BERMAIN: ProductDef = {
       const zc = zm + off * Math.sin(ang);
       boards.push({ ...board(id, label, x0, x1, yc - b / 2, yc + b / 2, zc - len / 2, zc + len / 2), rotX: r1(ang / DEG) });
     };
-    /** Papan luncur dari panggung (z0, yTop) turun ke depan, rel samping di xa & xb */
+    /**
+     * Papan luncur dari panggung turun ke depan, rel samping di xa & xb. `z0` = as rangka panggung / tiang depan:
+     * rel miring dipotong rata dan menempel di muka depannya (z0 + L/2), ujung bawahnya duduk di atas rel datar,
+     * pagar luncur menempel di muka depan tiang dan berakhir di atas tiang pagar ujung.
+     */
     const slide = (xa: number, xb: number, z0: number, yTop: number, yPagar: number) => {
       const ang = Math.max(20, Math.min(45, num(p, 'sudut', 30))) * DEG;
       const yE = 25;
       const run = (yTop - yE) / Math.tan(ang);
       const z1 = z0 + run;
       const out = 35;
+      const zf = z0 + L / 2; // muka depan rangka panggung / tiang depan
+      const yLow = yE + L / 2; // ujung bawah rel miring = sisi atas rel datar
+      const zLow = z1 - L / 2 / Math.tan(ang);
+      let zs = zf + L;
+      for (let k = 0; k < 3; k++) zs = zf + footHalf([xa, yTop, zs], [xa, yLow, zLow], t, 2);
+      const fl = footHalf([xa, yTop, zs], [xa, yLow, zLow], t, 2);
+      const zd0 = zLow - fl; // rel datar mulai tepat di tumit rel miring
+      const zt = zLow + fl + rail[0] / 20; // tiang pagar ujung di depan kaki rel miring
+      const yPe = yE + 25;
+      let zps = zf + 1;
+      for (let k = 0; k < 3; k++) zps = zf + footHalf([xa, yPagar, zps], [xa, yPe, zt], rail, 2);
       [xa, xb].forEach((x, i) => {
         const nm = i ? 'kanan' : 'kiri';
-        line(`luncur-rel-${nm}`, [x, yTop, z0], [x, yE, z1], 'rail-z', `Rel papan luncur ${nm} (miring)`, t);
-        add(`luncur-datar-${nm}`, 'z', x, yE, z1, out, 'rail-z', `Rel ujung luncur ${nm} (datar)`, t);
+        line(`luncur-rel-${nm}`, [x, yTop, zs], [x, yLow, zLow], 'rail-z', `Rel papan luncur ${nm} (miring)`, t);
+        add(`luncur-datar-${nm}`, 'z', x, yE, zd0, z1 + out - zd0, 'rail-z', `Rel ujung luncur ${nm} (datar)`, t);
         add(`luncur-kaki-${nm}`, 'y', x, 0, z1 + out - L / 2, yE - L / 2, 'post', `Kaki ujung luncur ${nm}`, t);
-        line(`luncur-pagar-${nm}`, [x, yPagar, z0], [x, yE + 25, z1], 'custom', `Pagar papan luncur ${nm}`, rail);
-        add(`luncur-pagar-ujung-${nm}`, 'y', x, yE + L / 2, z1, 25 - L / 2, 'custom', `Tiang pagar ujung luncur ${nm}`, rail);
+        line(`luncur-pagar-${nm}`, [x, yPagar, zps], [x, yPe, zt], 'custom', `Pagar papan luncur ${nm}`, rail);
+        add(`luncur-pagar-ujung-${nm}`, 'y', x, yE + L / 2, zt, 25 - L / 2, 'custom', `Tiang pagar ujung luncur ${nm}`, rail);
       });
       [0.35, 0.7].forEach((f, k) => {
-        add(`luncur-silang-${k + 1}`, 'x', xa + L / 2, yTop - (yTop - yE) * f, z0 + run * f, xb - xa - L, 'rail-x', `Palang bawah papan luncur ${k + 1}`, rail);
+        add(`luncur-silang-${k + 1}`, 'x', xa + L / 2, yTop - (yTop - yLow) * f, zs + (zLow - zs) * f, xb - xa - L, 'rail-x', `Palang bawah papan luncur ${k + 1}`, rail);
       });
       add('luncur-silang-ujung', 'x', xa + L / 2, yE, z1 + out - L / 2, xb - xa - L, 'rail-x', 'Palang ujung luncur', rail);
-      slopeBoard('papan-luncur', 'Papan luncur', xa - L / 2, xb + L / 2, z0, yTop, z1, yE);
-      if (b > 0) boards.push(board('papan-luncur-ujung', 'Papan ujung luncur (datar)', xa - L / 2, xb + L / 2, yE + L / 2, yE + L / 2 + b, z1, z1 + out));
+      slopeBoard('papan-luncur', 'Papan luncur', xa - L / 2, xb + L / 2, zs, yTop, zLow, yLow);
+      if (b > 0) boards.push(board('papan-luncur-ujung', 'Papan ujung luncur (datar)', xa - L / 2, xb + L / 2, yE + L / 2, yE + L / 2 + b, zLow, z1 + out));
       return z1 + out;
     };
-    /** Tangga miring dari lantai (zBot) naik ke (zTop, yTop), rel di xa & xb */
-    const ladder = (id: string, nm: string, xa: number, xb: number, zBot: number, zTop: number, yTop: number) => {
+    /**
+     * Tangga miring dari lantai (zBot) naik ke (zTop, yTop), rel di xa & xb. Bila `faceZ` diisi, ujung atas rel
+     * dipotong rata dan menempel di muka belakang rangka panggung (z = faceZ), tidak masuk ke dalamnya.
+     */
+    const ladder = (id: string, nm: string, xa: number, xb: number, zBot: number, zTop: number, yTop: number, faceZ?: number) => {
+      if (faceZ !== undefined) {
+        zTop = faceZ - L / 2;
+        for (let k = 0; k < 3; k++) zTop = faceZ - footHalf([xa, 0, zBot], [xa, yTop, zTop], t, 2);
+      }
       [xa, xb].forEach((x, i) => line(`${id}-rel-${i ? 'kanan' : 'kiri'}`, [x, 0, zBot], [x, yTop, zTop], 'post', `Ibu ${nm} ${i ? 'kanan' : 'kiri'} (miring)`, t));
       levels(J, yTop - J * 0.5).forEach((y, k) => add(`${id}-anak-${k + 1}`, 'x', xa + L / 2, y, zBot + ((zTop - zBot) * y) / yTop, xb - xa - L, 'rail-x', `Anak ${nm} ${k + 1}`, t));
     };
-    /** Cincin palang mendatar di as tiang */
+    /** Cincin palang mendatar di as tiang (sudut diisi tiang: keempat palang berhenti di sisi tiang) */
     const ring = (id: string, nm: string, x0: number, x1: number, z0: number, z1: number, y: number, tube: [number, number]) => {
       add(`${id}-depan`, 'x', x0 + L / 2, y, z1, x1 - x0 - L, 'rail-x', `${nm} depan`, tube);
       add(`${id}-belakang`, 'x', x0 + L / 2, y, z0, x1 - x0 - L, 'rail-x', `${nm} belakang`, tube);
       add(`${id}-kiri`, 'z', x0, y, z0 + L / 2, z1 - z0 - L, 'rail-z', `${nm} kiri`, tube);
       add(`${id}-kanan`, 'z', x1, y, z0 + L / 2, z1 - z0 - L, 'rail-z', `${nm} kanan`, tube);
+    };
+    /** Cincin tertutup tanpa tiang sudut: palang depan & belakang menerus, palang kiri & kanan di antaranya */
+    const closedRing = (id: string, nm: string, x0: number, x1: number, z0: number, z1: number, y: number, tube: [number, number]) => {
+      const h = tube[0] / 20;
+      add(`${id}-depan`, 'x', x0 - h, y, z1, x1 - x0 + 2 * h, 'rail-x', `${nm} depan`, tube);
+      add(`${id}-belakang`, 'x', x0 - h, y, z0, x1 - x0 + 2 * h, 'rail-x', `${nm} belakang`, tube);
+      add(`${id}-kiri`, 'z', x0, y, z0 + h, z1 - z0 - 2 * h, 'rail-z', `${nm} kiri`, tube);
+      add(`${id}-kanan`, 'z', x1, y, z0 + h, z1 - z0 - 2 * h, 'rail-z', `${nm} kanan`, tube);
     };
 
     if (m === 'pikler' || m === 'dinding-panjat') {
@@ -421,18 +498,42 @@ export const ALAT_BERMAIN: ProductDef = {
         slopeBoard('papan-panjat', 'Papan panjat (pegangan panjat dibaut)', L / 2, W - L / 2, D - zb(y1), y1, D - zb(y0), y0);
       }
     } else if (m === 'piramida') {
+      // Kaki miring berdiri di atas sudut tapak lantai dan berhenti di bawah sudut cincin puncak kecil
+      // (bukan bertemu di satu titik). Palang cincin panjat dipotong per sisi, ujungnya rata di muka kaki miring.
       const S = W;
       D = S;
-      const c = (y: number) => L / 2 + ((S / 2 - L / 2) * y) / H;
-      const corners: [number, number][] = [[L / 2, L / 2], [S - L / 2, L / 2], [L / 2, S - L / 2], [S - L / 2, S - L / 2]];
-      corners.forEach(([x, z], k) => line(`kaki-${k + 1}`, [x, 0, z], [S / 2, H, S / 2], 'post', `Kaki miring ${k + 1}`, t));
-      const yt = L / 2;
-      const ct = c(yt);
-      ring('tapak', 'Tapak lantai', ct, S - ct, ct, S - ct, yt, t);
+      const g = Math.max(1.5 * L, 5); // setengah bentang as cincin puncak
+      const yBot = L;
+      const yTop = H - L / 2;
+      const cT = S / 2 - g;
+      const c = (y: number) => L / 2 + ((cT - L / 2) * (y - yBot)) / (yTop - yBot);
+      const legs: [P3, P3][] = [[L / 2, L / 2], [S - L / 2, L / 2], [L / 2, S - L / 2], [S - L / 2, S - L / 2]].map(([x, z]) => [
+        [x, yBot, z],
+        [x < S / 2 ? cT : S - cT, yTop, z < S / 2 ? cT : S - cT],
+      ]);
+      legs.forEach(([a0, a1], k) => line(`kaki-${k + 1}`, a0, a1, 'post', `Kaki miring ${k + 1}`, t));
+      closedRing('tapak', 'Tapak lantai', L / 2, S - L / 2, L / 2, S - L / 2, L / 2, t);
+      closedRing('puncak', 'Cincin puncak', cT, S - cT, cT, S - cT, H, t);
       levels(J, H - 25).forEach((y, k) => {
         const cy = c(y);
         if (S - 2 * cy < 20) return;
-        ring(`cincin-${k + 1}`, `Cincin panjat ${k + 1}`, cy, S - cy, cy, S - cy, y, t);
+        const yb: [number, number] = [y - L / 2, y + L / 2];
+        const sides: [string, 'x' | 'z', number, number, number][] = [
+          ['belakang', 'x', cy, 0, 1],
+          ['depan', 'x', S - cy, 2, 3],
+          ['kiri', 'z', cy, 0, 2],
+          ['kanan', 'z', S - cy, 1, 3],
+        ];
+        sides.forEach(([nm, ax, fix, i0, i1]) => {
+          const ai = ax === 'x' ? 0 : 2;
+          const band: [number, number] = [fix - L / 2, fix + L / 2];
+          const box = (lo: number, hi: number) => (ai === 0 ? [[lo, hi], yb, band] : [band, yb, [lo, hi]]) as [number, number][];
+          const s0 = faceOf(legs[i0][0], legs[i0][1], t, ai, 1, box(-INF, S / 2));
+          const s1 = faceOf(legs[i1][0], legs[i1][1], t, ai, -1, box(S / 2, INF));
+          if (!(s1 - s0 > 1)) return;
+          if (ax === 'x') add(`cincin-${k + 1}-${nm}`, 'x', s0, y, fix, s1 - s0, 'rail-x', `Cincin panjat ${k + 1} ${nm}`, t);
+          else add(`cincin-${k + 1}-${nm}`, 'z', fix, y, s0, s1 - s0, 'rail-z', `Cincin panjat ${k + 1} ${nm}`, t);
+        });
       });
       H = H + L / 2;
     } else if (m === 'jungle-gym') {
@@ -453,26 +554,37 @@ export const ALAT_BERMAIN: ProductDef = {
       add('lantai-dudukan', 'x', L, yl, D * 0.55, W - 2 * L, 'rail-x', 'Palang dudukan lantai tengah', t);
       if (b > 0) boards.push(board('lantai-tengah', 'Lantai tengah (setengah)', L, W - L, yl + L / 2, yl + L / 2 + b, L, D * 0.55 + L / 2));
     } else if (m === 'monkey-a') {
+      // Kaki A berhenti di sisi bawah kepala; rel gantung duduk di atas kepala. Palang panjat dipotong rata
+      // di muka dalam kedua kaki; siku penguat dilas di samping kaki dan ujung atasnya rata di bawah rel.
       W = num(p, 'panjang', 240);
       const lw = Math.max(30, Math.min(80, num(p, 'lebar', 45)));
       const zc = D / 2;
       const yT = H - L * 1.5;
       const yR = H - L / 2;
-      const zk = (y: number) => L / 2 + ((zc - lw / 2 - L / 2) * y) / yT;
+      const yLeg = yT - L / 2;
+      const zk = (y: number) => L / 2 + ((zc - lw / 2 - L / 2) * y) / yLeg;
       [L / 2, W - L / 2].forEach((x, i) => {
         const nm = i ? 'kanan' : 'kiri';
         const s = i ? -1 : 1;
-        line(`kaki-${nm}-b`, [x, 0, L / 2], [x, yT, zc - lw / 2], 'post', `Kaki ${nm} belakang (miring)`, t);
-        line(`kaki-${nm}-d`, [x, 0, D - L / 2], [x, yT, zc + lw / 2], 'post', `Kaki ${nm} depan (miring)`, t);
+        const kb: [P3, P3] = [[x, 0, L / 2], [x, yLeg, zc - lw / 2]];
+        const kd: [P3, P3] = [[x, 0, D - L / 2], [x, yLeg, zc + lw / 2]];
+        line(`kaki-${nm}-b`, kb[0], kb[1], 'post', `Kaki ${nm} belakang (miring)`, t);
+        line(`kaki-${nm}-d`, kd[0], kd[1], 'post', `Kaki ${nm} depan (miring)`, t);
         add(`kepala-${nm}`, 'z', x, yT, zc - lw / 2 - L / 2, lw + L, 'rail-z', `Kepala rangka A ${nm}`, t);
         levels(J, yT - J * 0.7).forEach((y, k) => {
-          const z0 = zk(y);
-          add(`panjat-${nm}-${k + 1}`, 'z', x, y, z0 + L / 2, D - 2 * z0 - L, 'rail-z', `Palang panjat ujung ${nm} ${k + 1}`, t);
+          const bx: [number, number] = [x - L / 2, x + L / 2];
+          const yb: [number, number] = [y - L / 2, y + L / 2];
+          const z0 = faceOf(kb[0], kb[1], t, 2, 1, [bx, yb, [-INF, zc]]);
+          const z1 = faceOf(kd[0], kd[1], t, 2, -1, [bx, yb, [zc, INF]]);
+          add(`panjat-${nm}-${k + 1}`, 'z', x, y, z0, z1 - z0, 'rail-z', `Palang panjat ujung ${nm} ${k + 1}`, t);
         });
         [-1, 1].forEach((sz, j) => {
           const yb = yT - 40;
           const zl = sz < 0 ? zk(yb) : D - zk(yb);
-          line(`siku-${nm}-${j}`, [x, yb, zl], [x + s * 40, yR, zc + (sz * lw) / 2], 'custom', `Siku penguat ${nm} ${j ? 'depan' : 'belakang'}`, rail);
+          const top: P3 = [x + s * 40, yR - L / 2, zc + (sz * lw) / 2];
+          let xs0 = x + s * L;
+          for (let q = 0; q < 3; q++) xs0 = x + s * (L / 2 + footHalf([xs0, yb, zl], top, rail, 0));
+          line(`siku-${nm}-${j}`, [xs0, yb, zl], top, 'custom', `Siku penguat ${nm} ${j ? 'depan' : 'belakang'}`, rail);
         });
       });
       [-1, 1].forEach((sz, j) => add(`rel-gantung-${j ? 'depan' : 'belakang'}`, 'x', 0, yR, zc + (sz * lw) / 2, W, 'rail-x', `Rel tangga gantung ${j ? 'depan' : 'belakang'}`, t));
@@ -484,11 +596,18 @@ export const ALAT_BERMAIN: ProductDef = {
       const ext = H > 100 ? 15 : 0;
       D = lw + 2 * ext;
       const a = W * 0.3;
-      const pts: [number, number][] = [[L / 2, L / 2], [a, H - L / 2], [W - a, H - L / 2], [W - L / 2, L / 2]];
+      // Rel naik berdiri di atas tapak melintang dan berhenti rata di sisi bawah rel datar atas;
+      // rel datar menerus sampai menutup tapak potongan kedua rel naik.
+      const pts: [number, number][] = [[L / 2, L], [a, H - L / 2], [W - a, H - L / 2], [W - L / 2, L]];
       const zs = [ext + L / 2, ext + lw - L / 2];
+      const fr = (H - L - pts[0][1]) / (pts[1][1] - pts[0][1]);
+      const xk = pts[0][0] + (pts[1][0] - pts[0][0]) * fr; // as rel naik di sisi bawah rel datar
       zs.forEach((z, i) => {
         const nm = i ? 'depan' : 'belakang';
-        for (let k = 0; k < 3; k++) line(`rel-${nm}-${k + 1}`, [pts[k][0], pts[k][1], z], [pts[k + 1][0], pts[k + 1][1], z], k === 1 ? 'rail-x' : 'post', `Rel busur ${nm} ruas ${k + 1}`, t);
+        const fh = footHalf([pts[0][0], pts[0][1], z], [xk, H - L, z], t, 0);
+        line(`rel-${nm}-1`, [pts[0][0], pts[0][1], z], [xk, H - L, z], 'post', `Rel busur ${nm} ruas 1`, t);
+        add(`rel-${nm}-2`, 'x', xk - fh, H - L / 2, z, W - 2 * xk + 2 * fh, 'rail-x', `Rel busur ${nm} ruas 2`, t);
+        line(`rel-${nm}-3`, [W - xk, H - L, z], [pts[3][0], pts[3][1], z], 'post', `Rel busur ${nm} ruas 3`, t);
       });
       const segs = [0, 1, 2].map((k) => Math.hypot(pts[k + 1][0] - pts[k][0], pts[k + 1][1] - pts[k][1]));
       const total = segs.reduce((s, v) => s + v, 0);
@@ -514,8 +633,15 @@ export const ALAT_BERMAIN: ProductDef = {
         add(`ibu-tembok-${nm}`, 'y', x, 0, L / 2, H - L, 'post', `Ibu tangga tembok ${nm} (dibaut)`, t);
         add(`rel-gantung-${nm}`, 'z', x, yT, 0, D, 'rail-z', `Rel tangga gantung ${nm}`, t);
         add(`kaki-depan-${nm}`, 'y', x, 0, D - L / 2, H - L, 'post', `Kaki depan ${nm}`, t);
-        line(`siku-tembok-${nm}`, [x, yT - 45, L / 2], [x, yT - L / 2, 45], 'custom', `Siku tembok ${nm}`, rail);
-        line(`siku-depan-${nm}`, [x, yT - 45, D - L / 2], [x, yT - L / 2, D - 45], 'custom', `Siku kaki depan ${nm}`, rail);
+        // siku: ujung bawah menempel di muka tiang, ujung atas rata di sisi bawah rel gantung
+        let zw = L * 1.5;
+        let zd = D - L * 1.5;
+        for (let q = 0; q < 3; q++) {
+          zw = L + footHalf([x, yT - 45, zw], [x, yT - L / 2, 45], rail, 2);
+          zd = D - L - footHalf([x, yT - 45, zd], [x, yT - L / 2, D - 45], rail, 2);
+        }
+        line(`siku-tembok-${nm}`, [x, yT - 45, zw], [x, yT - L / 2, 45], 'custom', `Siku tembok ${nm}`, rail);
+        line(`siku-depan-${nm}`, [x, yT - 45, zd], [x, yT - L / 2, D - 45], 'custom', `Siku kaki depan ${nm}`, rail);
       });
       levels(J * 0.6, yT - J * 0.6).forEach((y, k) => add(`anak-tembok-${k + 1}`, 'x', L, y, L / 2, W - 2 * L, 'rail-x', `Anak tangga tembok ${k + 1}`, t));
       for (let z = L + J * 0.6, k = 1; z <= D - L - J * 0.3; z += J, k++) add(`anak-gantung-${k}`, 'x', L, yT, r1(z), W - 2 * L, 'rail-x', `Anak tangga gantung ${k}`, t);
@@ -562,10 +688,11 @@ export const ALAT_BERMAIN: ProductDef = {
       const yP = Hp + pg - L / 2;
       const yE = Hp + 110;
       const rise = P * 0.35;
+      const bh = Math.max(40, L * 10) / 10; // tebal balok ayunan
       // tiang sudut
       xs.forEach((x, i) =>
         [zp0, zp1].forEach((z, j) => {
-          const top = m === 'rumah-panggung' ? yE : i === 1 ? yB - L * 1.5 : Hp + pg;
+          const top = m === 'rumah-panggung' ? yE : i === 1 ? yB - bh / 2 - L : Hp + pg;
           add(`tiang-${i}-${j}`, 'y', x, 0, z, top, 'post', `Tiang ${i ? 'kanan' : 'kiri'} ${j ? 'depan' : 'belakang'}`, t);
         })
       );
@@ -592,16 +719,20 @@ export const ALAT_BERMAIN: ProductDef = {
         jeruji(`${nm}-kanan`, 'x', z, xl[1] + L / 2, S - L);
         xl.forEach((x, i) => add(`bukaan-${nm}-${i ? 'kanan' : 'kiri'}`, 'y', x, Hp, z, pg, 'post', `Tiang bukaan ${nm} ${i ? 'kanan' : 'kiri'}`, t));
       });
-      ladder('tangga', 'tangga', xl[0], xl[1], z0, zp0, yR);
+      ladder('tangga', 'tangga', xl[0], xl[1], z0, zp0, yR, zp0 - L / 2);
       let Dout = slide(xl[0], xl[1], zp1, yR, Hp + pg * 0.6) + L / 2;
       let Htot = Hp + pg;
       if (m === 'rumah-panggung') {
         ring('lisplang', 'Ring atap', xs[0], xs[1], zp0, zp1, yE - L / 2, t);
         const yRidge = yE + rise;
+        // kuda-kuda: ujung atas dipotong rata di sisi bawah bubungan, kedua kuda-kuda bertemu rata di tengah
+        const yKt = yRidge - L / 2;
+        let zKt = zc - L;
+        for (let q = 0; q < 4; q++) zKt = zc - footHalf([xs[0], yE, zp0], [xs[0], yKt, zKt], t, 2);
         xs.forEach((x, i) => {
           const nm = i ? 'kanan' : 'kiri';
-          line(`kuda-${nm}-b`, [x, yE, zp0], [x, yRidge, zc], 'custom', `Kuda-kuda ${nm} belakang`, t);
-          line(`kuda-${nm}-d`, [x, yE, zp1], [x, yRidge, zc], 'custom', `Kuda-kuda ${nm} depan`, t);
+          line(`kuda-${nm}-b`, [x, yE, zp0], [x, yKt, zKt], 'custom', `Kuda-kuda ${nm} belakang`, t);
+          line(`kuda-${nm}-d`, [x, yE, zp1], [x, yKt, 2 * zc - zKt], 'custom', `Kuda-kuda ${nm} depan`, t);
         });
         add('bubungan', 'x', 0, yRidge, zc, S, 'rail-x', 'Balok bubungan', t);
         const k = rise / (P / 2);
@@ -613,13 +744,20 @@ export const ALAT_BERMAIN: ProductDef = {
         // balok ayunan menjulur ke kanan, kaki A di ujung
         const B = num(p, 'panjang', 200);
         const xe = S - L / 2 + B;
-        add('dudukan-balok', 'z', S - L / 2, yB - L, zp0 - L / 2, P + L, 'rail-z', 'Palang dudukan balok ayunan', t);
-        add('balok-ayunan', 'x', S - L, yB, zc, B + L * 1.5, 'rail-x', 'Balok ayunan', [Math.max(40, L * 10), Math.max(40, L * 10)]);
-        const yA = yB - L;
-        [-1, 1].forEach((s, j) => line(`kaki-a-${j ? 'depan' : 'belakang'}`, [xe, 0, zc + s * sp], [xe, yA, zc], 'post', `Kaki A ayunan ${j ? 'depan' : 'belakang'}`, t));
+        // balok ayunan duduk di atas palang dudukan (di atas tiang kanan menara); kaki A berhenti di sisi bawah
+        // balok dan kedua kakinya bertemu rata di tengah; palang kaki A dipotong rata di muka dalam kaki
+        add('dudukan-balok', 'z', S - L / 2, yB - bh / 2 - L / 2, zp0 - L / 2, P + L, 'rail-z', 'Palang dudukan balok ayunan', t);
+        add('balok-ayunan', 'x', S - L, yB, zc, B + L * 1.5, 'rail-x', 'Balok ayunan', [bh * 10, bh * 10]);
+        const yA = yB - bh / 2;
+        let zA = zc - L;
+        for (let q = 0; q < 4; q++) zA = zc - footHalf([xe, 0, zc - sp], [xe, yA, zA], t, 2);
+        const ka: [P3, P3][] = [-1, 1].map((s) => [[xe, 0, zc + s * sp], [xe, yA, s < 0 ? zA : 2 * zc - zA]]);
+        ka.forEach(([a0, a1], j) => line(`kaki-a-${j ? 'depan' : 'belakang'}`, a0, a1, 'post', `Kaki A ayunan ${j ? 'depan' : 'belakang'}`, t));
         const yt = yA * 0.3;
-        const st = sp * (1 - yt / yA);
-        add('kaki-a-palang', 'z', xe, yt, zc - st + L / 2, 2 * st - L, 'rail-z', 'Palang kaki A ayunan', t);
+        const kb: [number, number][] = [[xe - L / 2, xe + L / 2], [yt - L / 2, yt + L / 2]];
+        const za0 = faceOf(ka[0][0], ka[0][1], t, 2, 1, [...kb, [-INF, zc]]);
+        const za1 = faceOf(ka[1][0], ka[1][1], t, 2, -1, [...kb, [zc, INF]]);
+        add('kaki-a-palang', 'z', xe, yt, za0, za1 - za0, 'rail-z', 'Palang kaki A ayunan', t);
         const n = B >= 170 ? 2 : 1;
         for (let k = 1; k <= n; k++) {
           const xs2 = S + ((B - 10) * k) / (n + 1);
@@ -643,13 +781,23 @@ export const ALAT_BERMAIN: ProductDef = {
       const bal = Math.max(40, L * 10) / 10;
       [-1, 1].forEach((s, i) => add(`tapak-${i ? 'kanan' : 'kiri'}`, 'z', xc + s * sx, L / 2, 0, D, 'rail-z', `Tapak lantai ${i ? 'kanan' : 'kiri'}`, t));
       const yp = Hp - L / 2;
+      // kaki A berhenti di sisi bawah poros, kedua kakinya bertemu rata di tengah; palang kaki dipotong rata
+      // di muka dalam kaki
+      const yk = yp - L / 2;
+      let xk = xc - L;
+      for (let q = 0; q < 4; q++) xk = xc - footHalf([xc - sx, L, zc], [xk, yk, zc], t, 0);
       [zc - 12, zc + 12].forEach((z, j) => {
         const nm = j ? 'depan' : 'belakang';
-        line(`kaki-${nm}-kiri`, [xc - sx, L, z], [xc, yp, z], 'post', `Kaki poros ${nm} kiri (miring)`, t);
-        line(`kaki-${nm}-kanan`, [xc + sx, L, z], [xc, yp, z], 'post', `Kaki poros ${nm} kanan (miring)`, t);
+        const kl: [P3, P3] = [[xc - sx, L, z], [xk, yk, z]];
+        const kr: [P3, P3] = [[xc + sx, L, z], [2 * xc - xk, yk, z]];
+        line(`kaki-${nm}-kiri`, kl[0], kl[1], 'post', `Kaki poros ${nm} kiri (miring)`, t);
+        line(`kaki-${nm}-kanan`, kr[0], kr[1], 'post', `Kaki poros ${nm} kanan (miring)`, t);
         const yt = L + (yp - L) * 0.35;
-        const ht = sx * (1 - 0.35);
-        add(`palang-kaki-${nm}`, 'x', xc - ht + L / 2, yt, z, 2 * ht - L, 'rail-x', `Palang kaki poros ${nm}`, rail);
+        const rh = rail[0] / 20;
+        const bb: [number, number][] = [[yt - rh, yt + rh], [z - rh, z + rh]];
+        const x0 = faceOf(kl[0], kl[1], t, 0, 1, [[-INF, xc], ...bb]);
+        const x1 = faceOf(kr[0], kr[1], t, 0, -1, [[xc, INF], ...bb]);
+        add(`palang-kaki-${nm}`, 'x', x0, yt, z, x1 - x0, 'rail-x', `Palang kaki poros ${nm}`, rail);
       });
       add('poros', 'z', xc, yp, zc - 12 - L / 2, 24 + L, 'rail-z', 'Poros jungkit (pakai bos / bearing)', t);
       const yb = yp + L / 2 + bal / 2;
@@ -673,7 +821,7 @@ export const ALAT_BERMAIN: ProductDef = {
       const px = W > 200 ? [L / 2, W / 2, W - L / 2] : [L / 2, W - L / 2];
       px.forEach((x, i) => {
         add(`palang-lantai-${i + 1}`, 'z', x, L / 2, L, D - 2 * L, 'rail-z', `Palang lantai ${i + 1}`, t);
-        zs.forEach((z, j) => add(`tiang-${i + 1}-${j}`, 'y', x, L, z, H - L * 1.5, 'post', `Tiang pegangan ${i + 1} ${j ? 'depan' : 'belakang'}`, t));
+        zs.forEach((z, j) => add(`tiang-${i + 1}-${j}`, 'y', x, L, z, H - L * 2, 'post', `Tiang pegangan ${i + 1} ${j ? 'depan' : 'belakang'}`, t));
       });
       zs.forEach((z, j) => add(`pegangan-${j ? 'depan' : 'belakang'}`, 'x', 0, H - L / 2, z, W, 'rail-x', `Pegangan ${j ? 'depan' : 'belakang'}`, t));
       add('balok-titian', 'x', L, L * 1.5, zc, W - 2 * L, 'rail-x', 'Balok titian', t);
@@ -687,21 +835,34 @@ export const ALAT_BERMAIN: ProductDef = {
       const Hh = Hd + 60;
       boards.push({ ...board('plat-dasar', 'Plat dasar bundar', c - 30, c + 30, 0, 0.8, c - 30, c + 30), shape: 'round', steelMm: 8 });
       add('poros', 'y', c, 0.8, c, Hh + L / 2 - 0.8, 'post', 'Poros putar (pakai bearing)', t);
+      // Cincin segi delapan cara tukang las: sisi kiri-kanan menerus, sisi depan-belakang di antaranya pendek,
+      // sisi serong dipotong tegak lurus X: satu ujung rata di ujung sisi depan/belakang, ujung lain rata di
+      // muka dalam sisi kiri/kanan. Lengan lurus dari muka poros ke muka dalam cincin.
       const yA = Hd - L / 2;
-      const rr = R / 2 - L / 2;
-      const v = Array.from({ length: 8 }, (_, k) => {
-        const a = k * 45 * DEG;
-        return [r1(c + rr * Math.cos(a)), yA, r1(c + rr * Math.sin(a))] as [number, number, number];
-      });
-      v.forEach((pt, k) => line(`cincin-${k + 1}`, pt, v[(k + 1) % 8], 'rail-x', `Cincin lantai ruas ${k + 1}`, t));
+      const rr = R / 2 - L / 2; // as sisi lurus cincin
+      const e = rr * Math.tan(22.5 * DEG); // setengah sisi lurus depan/belakang
+      const dx = rr - L / 2 - e;
+      const dz = dx - 0.5; // sedikit lebih landai dari 45° supaya potongannya pasti tegak lurus X
+      const zE = rr - dz; // jarak as ujung serong dari pusat (sumbu Z)
+      const fz = footHalf([c + e, yA, c + rr], [c + e + dx, yA, c + zE], t, 2);
+      const hz = zE + fz; // setengah panjang sisi kiri/kanan
+      let k = 0;
+      const seg = (a0: P3, a1: P3) => {
+        k++;
+        line(`cincin-${k}`, a0, a1, 'rail-x', `Cincin lantai ruas ${k}`, t);
+      };
+      [-1, 1].forEach((s) => add(`cincin-${++k}`, 'z', c + s * rr, yA, c - hz, 2 * hz, 'rail-z', `Cincin lantai ruas ${k}`, t));
+      [-1, 1].forEach((s) => add(`cincin-${++k}`, 'x', c - e, yA, c + s * rr, 2 * e, 'rail-x', `Cincin lantai ruas ${k}`, t));
+      [-1, 1].forEach((sx) => [-1, 1].forEach((sz) => seg([c + sx * e, yA, c + sz * rr], [c + sx * (e + dx), yA, c + sz * zE])));
       const rp = R / 2 - 18;
-      [0, 2, 4, 6].forEach((k, i) => {
-        const a = k * 45 * DEG;
-        const ca = Math.cos(a);
-        const sa = Math.sin(a);
-        line(`lengan-${i + 1}`, [c + (L / 2) * ca, yA, c + (L / 2) * sa], v[k], 'rail-z', `Lengan lantai ${i + 1}`, t);
-        add(`pegangan-tiang-${i + 1}`, 'y', r1(c + rp * ca), Hd, r1(c + rp * sa), Hh - Hd, 'custom', `Tiang pegangan ${i + 1}`, t);
-        line(`pegangan-${i + 1}`, [c + (L / 2) * ca, Hh, c + (L / 2) * sa], [c + rp * ca, Hh, c + rp * sa], 'custom', `Jari-jari pegangan ${i + 1}`, t);
+      [0, 2, 4, 6].forEach((q, i) => {
+        const a = q * 45 * DEG;
+        const ca = Math.round(Math.cos(a));
+        const sa = Math.round(Math.sin(a));
+        line(`lengan-${i + 1}`, [c + (L / 2) * ca, yA, c + (L / 2) * sa], [c + (rr - L / 2) * ca, yA, c + (rr - L / 2) * sa], 'rail-z', `Lengan lantai ${i + 1}`, t);
+        // tiang pegangan berhenti di sisi bawah jari-jari; jari-jari dari muka poros sampai muka luar tiang
+        add(`pegangan-tiang-${i + 1}`, 'y', r1(c + rp * ca), Hd, r1(c + rp * sa), Hh - L / 2 - Hd, 'custom', `Tiang pegangan ${i + 1}`, t);
+        line(`pegangan-${i + 1}`, [c + (L / 2) * ca, Hh, c + (L / 2) * sa], [c + (rp + L / 2) * ca, Hh, c + (rp + L / 2) * sa], 'custom', `Jari-jari pegangan ${i + 1}`, t);
       });
       if (b > 0) boards.push({ ...board('lantai-putar', 'Lantai putar bundar', c - R / 2, c + R / 2, Hd, Hd + b, c - R / 2, c + R / 2), shape: 'round' });
       H = Hh + L;

@@ -16,6 +16,17 @@ const model = (p: Params) => {
   const m = str(p, 'model', 'rel');
   return MODELS.includes(m) ? m : 'rel';
 };
+/**
+ * Posisi z as ujung bawah batang miring (bidang y-z, dipotong datar) supaya sudut belakang potongannya
+ * tepat menempel di bidang z = face, bukan masuk ke batang tegak di belakangnya.
+ * ya/yb: tinggi ujung bawah/atas, ze: z ujung atas, half: setengah tebal pipa.
+ */
+const zButtFace = (face: number, ya: number, yb: number, ze: number, half: number) => {
+  const dy = Math.abs(yb - ya) || 1;
+  let z = face + half;
+  for (let k = 0; k < 8; k++) z = face + (half * Math.hypot(dy, ze - z)) / dy;
+  return z;
+};
 /** daun bisa dilipat */
 const folds = (p: Params) => (model(p) === 'rel' && bool(p, 'lipat')) || model(p) === 'kaki-depan' || model(p) === 'kotak';
 
@@ -204,7 +215,10 @@ export const MEJA_DINDING: ProductDef = {
         const nm = n === 3 && i === 1 ? 'tengah' : i ? 'kanan' : 'kiri';
         add(`siku-tiang-${i}`, 'y', x, y - L / 2 - hs, L / 2, hs, 'post', `Tiang siku ${nm} (dibaut ke tembok)`, t);
         add(`siku-lengan-${i}`, 'z', x, y, L, D - 2 * L, 'rail-z', `Lengan siku ${nm}`, t);
-        line(`siku-miring-${i}`, [x, y - L / 2 - hs + L, L], [x, y - L / 2, D * 0.72], 'custom', `Batang miring siku ${nm}`, t);
+        // Ujung bawah dipotong datar: sudut belakangnya pas menempel di sisi depan tiang (tidak masuk ke tiang)
+        const ya = y - L / 2 - hs + L;
+        const yb = y - L / 2;
+        line(`siku-miring-${i}`, [x, ya, zButtFace(L, ya, yb, D * 0.72, L / 2)], [x, yb, D * 0.72], 'custom', `Batang miring siku ${nm}`, t);
       });
       if (b > 0) boards.push(board('daun-meja', 'Daun meja', 0, W, yTop, H, 0, D));
     } else if (m === 'tiang') {
@@ -217,8 +231,14 @@ export const MEJA_DINDING: ProductDef = {
         add(`tiang-${i}`, 'y', x, 0, L / 2, y - L / 2, 'post', `Tiang lantai ${nm} (dibaut ke tembok)`, t);
         add(`lengan-${i}`, 'z', x, y, L, D - 2 * L, 'rail-z', `Lengan menjorok ${nm}`, t);
       });
-      add('palang-bawah', 'x', L, 10, L / 2, W - 2 * L, 'rail-x', 'Palang bawah (menempel tembok)', t);
-      add('palang-tengah', 'x', L, y / 2, L / 2, W - 2 * L, 'rail-x', 'Palang tengah (menempel tembok)', t);
+      // Palang tembok dipotong per bentang: ujungnya menempel rata di sisi tiang (tidak menembus tiang tengah)
+      const span = (id: string, yy: number, label: string) =>
+        xs.slice(1).forEach((x1, i) => {
+          const x0 = xs[i] + L / 2;
+          add(n > 2 ? `${id}-${i}` : id, 'x', x0, yy, L / 2, x1 - L / 2 - x0, 'rail-x', n > 2 ? `${label} ${i ? 'kanan' : 'kiri'}` : label, t);
+        });
+      span('palang-bawah', 10, 'Palang bawah (menempel tembok)');
+      span('palang-tengah', y / 2, 'Palang tengah (menempel tembok)');
       if (b > 0) boards.push(board('daun-meja', 'Daun meja', 0, W, yTop, H, 0, D));
     } else {
       // kotak (murphy): kotak rangka di tembok di atas daun, daun berengsel di palang bawah depan kotak
@@ -238,8 +258,10 @@ export const MEJA_DINDING: ProductDef = {
       add('kotak-bawah-belakang', 'x', 0, y0, L / 2, W, 'rail-x', 'Palang bawah belakang (dibaut ke tembok)', t);
       add('kotak-bawah-depan', 'x', 0, y0, kd - L / 2, W, 'rail-x', 'Palang bawah depan (engsel daun)', t);
       leaf(kd, D);
-      [L / 2, W - L / 2].forEach((x, i) =>
-        line(`penahan-${i}`, [x, y1 - 8, kd - L / 2], [x, y + L / 2, kd + D * 0.65], 'custom', `Batang penahan miring ${i ? 'kanan' : 'kiri'} (rantai / stay)`, [15, 15])
+      // Penahan dipasang di sisi DALAM tiang depan & rangka daun samping (bersebelahan, tidak menembus tiang)
+      const ps = 1.5;
+      [L + ps / 2, W - L - ps / 2].forEach((x, i) =>
+        line(`penahan-${i}`, [x, y1 - 8, kd - L / 2], [x, y, kd + D * 0.65], 'custom', `Batang penahan miring ${i ? 'kanan' : 'kiri'} (rantai / stay)`, [15, 15])
       );
       hinges.push(wallHinge('kotak-bawah-depan', 1, 'Engsel daun (dilipat naik menutup kotak)'));
       if (b > 0) {

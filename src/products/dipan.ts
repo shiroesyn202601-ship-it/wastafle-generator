@@ -161,17 +161,49 @@ export const DIPAN: ProductDef = {
       if (showKasur) boards.push({ ...board(id, 'Kasur (contoh)', 1, W - 1, y, y + 20, 1, D - 1), color: '#ece6da' });
     };
 
-    /** Alas kasur: rangka keliling + balok tengah (dipan lebar) + bilah 40×20 jarak ±12 cm. Kembalikan as rangka. */
-    const deck = (pre: string, h: number, lab: string) => {
+    /** Batang tegak yang menembus bidang alas: [as x, as z, setengah lebar] */
+    type Lewat = [number, number, number];
+    /** Rangka samping sepanjang z di x = xs, dipotong di tiap batang tegak yang lewat (ujung menempel rata di sisinya) */
+    const railZ = (id: string, xs: number, y: number, z0: number, z1: number, label: string, tembus: Lewat[]) => {
+      const cuts = tembus.filter(([x, , h]) => Math.abs(x - xs) < h + L / 2).sort((a, c) => a[1] - c[1]);
+      let za = z0;
+      let k = 0;
+      const seg = (zb: number) => {
+        if (zb - za > 0.5) add(cuts.length ? `${id}-${++k}` : id, 'z', xs, y, za, zb - za, 'rail-z', cuts.length ? `${label} ${k}` : label, t);
+      };
+      cuts.forEach(([, z, h]) => {
+        seg(z - h);
+        za = z + h;
+      });
+      seg(z1);
+    };
+    /**
+     * Alas kasur: rangka keliling + balok tengah (dipan lebar) + bilah 40×20 jarak ±12 cm. Kembalikan as rangka.
+     * `tembus`: batang tegak yang naik melewati alas (tiang tangga, tiang tengah pagar, jeruji) -> rangka samping
+     * dipotong dua di batang itu, bilah yang kena dipendekkan sampai menempel rata di sisinya.
+     */
+    const deck = (pre: string, h: number, lab: string, tembus: Lewat[] = []) => {
       const yr = h - 2 - L / 2; // as rangka keliling (bilah 2 cm di atasnya)
       add(`${pre}rangka-kepala`, 'x', L, yr, zh, W - 2 * L, 'rail-x', `${lab}Rangka sisi kepala`, t);
       add(`${pre}rangka-kaki`, 'x', L, yr, zf, W - 2 * L, 'rail-x', `${lab}Rangka sisi kaki`, t);
-      add(`${pre}rangka-kiri`, 'z', xl, yr, L, D - 2 * L, 'rail-z', `${lab}Rangka samping kiri`, t);
-      add(`${pre}rangka-kanan`, 'z', xr, yr, L, D - 2 * L, 'rail-z', `${lab}Rangka samping kanan`, t);
+      // batang yang mulai di atas rangka (jeruji) tidak memotong rangka
+      const tiang = tembus.filter(([, , hw]) => hw >= L / 2 - 0.01);
+      railZ(`${pre}rangka-kiri`, xl, yr, L, D - L, `${lab}Rangka samping kiri`, tiang);
+      railZ(`${pre}rangka-kanan`, xr, yr, L, D - L, `${lab}Rangka samping kanan`, tiang);
       if (W >= 120) add(`${pre}balok-tengah`, 'z', W / 2, yr, L, D - 2 * L, 'rail-z', `${lab}Balok tengah`, t);
       const n = Math.max(8, Math.floor((D - 2 * L) / 12));
       const pitch = (D - 2 * L - 4) / (n - 1);
-      for (let i = 0; i < n; i++) add(`${pre}bilah-${i + 1}`, 'x', 1, yr + L / 2 + 1, L + 2 + i * pitch, W - 2, 'custom', `${lab}Bilah alas ${i + 1}`, slatT);
+      for (let i = 0; i < n; i++) {
+        const zc = L + 2 + i * pitch; // bilah 40×20: as di sisi z, lebar 4 cm
+        let x0 = 1;
+        let x1 = W - 1;
+        tembus.forEach(([x, z, hw]) => {
+          if (Math.abs(z - zc) >= hw + 2) return;
+          if (x < W / 2) x0 = Math.max(x0, x + hw);
+          else x1 = Math.min(x1, x - hw);
+        });
+        add(`${pre}bilah-${i + 1}`, 'x', x0, yr + L / 2 + 1, zc, x1 - x0, 'custom', `${lab}Bilah alas ${i + 1}`, slatT);
+      }
       kasur(`${pre}kasur`, h);
       return yr;
     };
@@ -229,8 +261,14 @@ export const DIPAN: ProductDef = {
           const a = dir === 0 ? 22 : 25;
           const z1 = dir === 0 ? zF - a : zF - dir * a;
           const z2 = dir === 0 ? zF + a : zF + dir * a;
-          line(`kaki-v-${sx}-${nm}-1`, [x, 0, zF], [x, yT, Math.max(L, Math.min(D - L, z1))], 'post', `Kaki V ${sx} ${nm} 1`, t);
-          line(`kaki-v-${sx}-${nm}-2`, [x, 0, zF], [x, yT, z2], 'post', `Kaki V ${sx} ${nm} 2`, t);
+          // Ujung bawah kedua pipa dipotong rata lantai dan berdiri BERSEBELAHAN (sisi menempel, dilas memanjang),
+          // bukan dua pipa masuk ke satu titik. Setengah lebar potongan datar pipa miring = L/2 / cos(sudut).
+          const zt1 = Math.max(L, Math.min(D - L, z1));
+          const half = (zt: number) => ((L / 2) * Math.hypot(yT, zt - zF)) / yT;
+          const s1 = Math.sign(zt1 - zF) * half(zt1);
+          const s2 = Math.sign(z2 - zF) * half(z2);
+          line(`kaki-v-${sx}-${nm}-1`, [x, 0, zF + s1], [x, yT, zt1], 'post', `Kaki V ${sx} ${nm} 1`, t);
+          line(`kaki-v-${sx}-${nm}-2`, [x, 0, zF + s2], [x, yT, z2], 'post', `Kaki V ${sx} ${nm} 2`, t);
         })
       );
       return { members: list, boards, casters: [], W, D, H: Hb + (showKasur ? 20 : 0), boardThick: 0 };
@@ -241,6 +279,8 @@ export const DIPAN: ProductDef = {
       const lower = bool(p, 'ranjangBawah');
       const Ha = Math.max(Hb + 70, num(p, 'tinggiAtas', 130));
       const top = Ha + 35; // pagar pengaman ±30 cm di atas alas (kasur 15–20 cm)
+      const zL = zf - 45; // tiang tangga, 45 cm dari tiang kaki
+      const lewatTangga: Lewat[] = [[xr, zL, L / 2]]; // tiang tangga menerus, rangka kanan & bilah dipotong di sisinya
       [
         [xl, zh, 'kiri kepala'],
         [xr, zh, 'kanan kepala'],
@@ -249,7 +289,7 @@ export const DIPAN: ProductDef = {
       ].forEach(([x, z, nm], i) => add(`tiang-${i}`, 'y', x as number, 0, z as number, top, 'post', `Tiang ${nm}`, t));
       let yLow = 15;
       if (lower) {
-        const yr = deck('bawah-', Hb, 'Bawah: ');
+        const yr = deck('bawah-', Hb, 'Bawah: ', lewatTangga);
         yLow = yr;
         [xl, xr].forEach((x, i) => add(`kaki-samping-${i}`, 'y', x, 0, D / 2, yr - L / 2, 'post', `Kaki tengah bawah ${i ? 'kanan' : 'kiri'}`, t));
         if (W >= 120) add('kaki-tengah', 'y', W / 2, 0, D / 2, yr - L / 2, 'post', 'Kaki tengah bawah', t);
@@ -259,10 +299,9 @@ export const DIPAN: ProductDef = {
         add('pengaku-kaki', 'x', L, 15, zf, W - 2 * L, 'rail-x', 'Pengaku bawah sisi kaki', t);
         add('pengaku-kiri', 'z', xl, 15, L, D - 2 * L, 'rail-z', 'Pengaku bawah kiri', t);
       }
-      const yrA = deck('atas-', Ha, 'Atas: ');
+      const yrA = deck('atas-', Ha, 'Atas: ', lewatTangga);
       // Pagar: palang atas di kepala, kaki, sisi kiri penuh, sisi kanan terbuka di atas tangga
       const yG = top - L / 2;
-      const zL = zf - 45; // tiang tangga, 45 cm dari tiang kaki
       add('pagar-kepala', 'x', L, yG, zh, W - 2 * L, 'rail-x', 'Pagar atas sisi kepala', t);
       add('pagar-kaki', 'x', L, yG, zf, W - 2 * L, 'rail-x', 'Pagar atas sisi kaki', t);
       add('pagar-kiri', 'z', xl, yG, L, D - 2 * L, 'rail-z', 'Pagar atas samping kiri', t);
@@ -279,9 +318,17 @@ export const DIPAN: ProductDef = {
 
     if (model === 'daybed') {
       // Daybed: pagar jeruji di kepala, kaki, dan sisi belakang (kiri, menempel tembok)
-      const yr = deck('', Hb, '');
       const H = Math.max(Hb + 25, num(p, 'tinggiSandaran', 80));
       const yG = H - L / 2;
+      // Jeruji belakang berdiri di atas rangka kiri, rata sisi luar (x 0..2) supaya bilah alas cukup dipendekkan
+      // sampai sisinya; tiang tengah belakang menerus dari lantai ke pagar, rangka kiri dipotong dua di tiang itu.
+      const xJ = 1;
+      const nB = Math.max(2, Math.floor((D / 2 - 2 * L) / 12) - 1);
+      const zJ: number[] = [];
+      [0, 1].forEach((h) => {
+        for (let i = 1; i <= nB; i++) zJ.push((h ? D / 2 : L) + (i * (D / 2 - 1.5 * L)) / (nB + 1));
+      });
+      const yr = deck('', Hb, '', [[xl, D / 2, L / 2], ...zJ.map((z): Lewat => [xJ, z, 1])]);
       [
         [xl, zh, H, 'kiri kepala'],
         [xr, zh, H, 'kanan kepala'],
@@ -303,12 +350,10 @@ export const DIPAN: ProductDef = {
         jer(`jeruji-kepala-${i}`, x, zh, `Jeruji kepala ${i}`);
         jer(`jeruji-kaki-${i}`, x, zf, `Jeruji kaki ${i}`);
       }
-      const nB = Math.max(2, Math.floor((D / 2 - 2 * L) / 12) - 1);
-      [0, 1].forEach((h) => {
-        for (let i = 1; i <= nB; i++) {
-          const z = (h ? D / 2 : L) + (i * (D / 2 - 1.5 * L)) / (nB + 1);
-          jer(`jeruji-belakang-${h + 1}-${i}`, xl, z, `Jeruji belakang ${h * nB + i}`);
-        }
+      zJ.forEach((z, k) => {
+        const h = Math.floor(k / nB);
+        const i = (k % nB) + 1;
+        jer(`jeruji-belakang-${h + 1}-${i}`, xJ, z, `Jeruji belakang ${h * nB + i}`);
       });
       return { members: list, boards, casters: [], W, D, H, boardThick: 0 };
     }

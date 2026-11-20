@@ -301,6 +301,7 @@ export const PODIUM: ProductDef = {
     const rail: [number, number] = [20, 20];
     const thin: [number, number] = [15, 15];
     const hr = 2; // tebal rel kepala 20×20 (cm)
+    const side = L / 2 + hr / 2; // rel miring kepala dilas di sisi DALAM tiang, bukan menembus pucuk tiang
     const { list, add, line } = memberFactory();
     const boards: Board[] = [];
     let casters: Caster[] = [];
@@ -349,7 +350,7 @@ export const PODIUM: ProductDef = {
       const x1 = W - L / 2;
       const z0 = L / 2;
       const z1 = D - L / 2;
-      const h = head(x0, x1, 0, W, z1, z1 - z0, H);
+      const h = head(x0 + side, x1 - side, 0, W, z1, z1 - z0, H);
       [x0, x1].forEach((x, i) => {
         const nm = i ? 'kanan' : 'kiri';
         add(`tiang-${i}-b`, 'y', x, 0, z0, h.yLo - hr / 2, 'post', `Tiang ${nm} belakang`, pt);
@@ -435,7 +436,12 @@ export const PODIUM: ProductDef = {
       line('tiang', [xc, L, z0c], [xc, yT, zc], 'post', 'Tiang miring (condong ke depan)', pt);
       const yP = 40;
       const zP = z0c + ((zc - z0c) * (yP - L)) / (yT - L);
-      line('penguat', [xc, L, Math.min(D - 4, zP + 22)], [xc, yP, zP + L / 2], 'custom', 'Penguat miring tiang ke tapak', rail);
+      // penguat: muka atasnya (potong datar) menempel di sisi depan tiang miring, tidak masuk ke dalamnya
+      const zBot = Math.min(D - 4, zP + 22);
+      const wt = (L / 2) * (Math.hypot(yT - L, zc - z0c) / (yT - L)); // setengah lebar tiang diukur mendatar
+      let zPt = zP + wt + hr / 2;
+      for (let k = 0; k < 3; k++) zPt = zP + wt + (hr / 2) * (Math.hypot(yP - L, zBot - zPt) / (yP - L)) - 0.1;
+      line('penguat', [xc, L, zBot], [xc, yP, zPt], 'custom', 'Penguat miring tiang ke tapak', rail);
     } else if (m === 'kaki-a') {
       const xs = [L / 2, W - L / 2];
       const zc = D / 2;
@@ -461,11 +467,15 @@ export const PODIUM: ProductDef = {
       const dh = Math.min(D * 0.8, 45);
       xs.forEach((x, i) => add(`tapak-${i}`, 'z', x, c + L / 2, 0, D, 'rail-z', `Tapak ${i ? 'kanan' : 'kiri'} (dudukan roda)`, pt));
       add('tapak-tengah', 'x', L, c + L / 2, zc, W - 2 * L, 'rail-x', 'Palang tapak tengah', pt);
-      const h = head(xs[0], xs[1], 0, W, zc + dh / 2, dh, H);
+      const h = head(xs[0] + side, xs[1] - side, 0, W, zc + dh / 2, dh, H);
       xs.forEach((x, i) => add(`tiang-${i}`, 'y', x, c + L, zc, h.yMid - hr / 2 - c - L, 'post', `Tiang ${i ? 'kanan' : 'kiri'}`, pt));
       if (rak) {
         const yR = Math.round(c + (h.yLo - c) * 0.45);
-        xs.forEach((x, i) => add(`lengan-rak-${i}`, 'z', x, yR, zc - 14, 28, 'rail-z', `Lengan rak ${i ? 'kanan' : 'kiri'}`, rail));
+        xs.forEach((x, i) => {
+          // dipotong dua: menempel di sisi belakang & depan tiang
+          add(`lengan-rak-${i}`, 'z', x, yR, zc - 14, 14 - L / 2, 'rail-z', `Lengan rak ${i ? 'kanan' : 'kiri'} belakang`, rail);
+          add(`lengan-rak-${i}-d`, 'z', x, yR, zc + L / 2, 14 - L / 2, 'rail-z', `Lengan rak ${i ? 'kanan' : 'kiri'} depan`, rail);
+        });
         [zc - 13, zc + 13].forEach((z, j) => add(`palang-rak-${j}`, 'x', xs[0] + hr / 2, yR, z, xs[1] - xs[0] - hr, 'rail-x', `Palang rak ${j ? 'depan' : 'belakang'}`, rail));
         if (b > 0) boards.push(board('papan-rak', 'Papan rak', L, W - L, yR + 1, yR + 1 + b, zc - 14, zc + 14));
       }
@@ -485,7 +495,7 @@ export const PODIUM: ProductDef = {
       const yHi = H - b - hr / 2;
       const yLoMin = L + hr / 2 + 2;
       const ang = Math.atan(Math.max(0.05, Math.min(Math.tan(th), (yHi - yLoMin) / dh)));
-      const h = head(x0, x1, 0, W, z1, dh, H, ang);
+      const h = head(x0 + side, x1 - side, 0, W, z1, dh, H, ang);
       [x0, x1].forEach((x, i) => {
         const nm = i ? 'kanan' : 'kiri';
         add(`alas-${i}`, 'z', x, L / 2, 0, D, 'rail-z', `Alas samping ${nm}`, pt);
@@ -519,16 +529,37 @@ export const PODIUM: ProductDef = {
       // kepala papan baca: rel di sisi dalam tiang depan
       const h = head(L + hr / 2, W - L - hr / 2, 0, W, zPF, zPF - zHB, yPf + H);
       const yRoof = yPf + 210;
+      // Pegangan tangga miring di bidang tiang: tiang & jeruji di bawahnya dipotong rata di muka bawah pegangan
+      // (tidak menembus). Ujung atas pegangan masuk di bawah pagar lantai pijak (potong datar) atau menempel
+      // di sisi belakang tiang lantai pijak (potong tegak) — ikut arah potong batang miring.
+      const zk0 = zk[0];
+      const kR = (hP - RISE) / (zPB - zk0);
+      const phi = Math.atan(kR);
+      const cutY = Math.sin(phi) >= 0.35;
+      const wR = L / 2 / Math.sin(phi); // setengah lebar muka potong datar pegangan
+      const hcR = L / 2 / Math.cos(phi); // setengah tebal pegangan diukur tegak
+      const ze1 = cutY ? zPB - L / 2 - wR : zPB - L / 2;
+      const ye1 = cutY ? yPagar - L / 2 : yPagar - L / 2 - hcR;
+      const ze0 = cutY ? Math.max(zk0, wR) : zk0 - L / 2;
+      const yr = (z: number) => ye1 - (ze1 - z) * kR;
+      const ye0 = yr(ze0);
+      const zStub = cutY ? zPB - L / 2 - 2 * wR : zPB - L / 2; // pagar lantai pijak menjorok ke belakang menutup ujung pegangan
+      /** pucuk batang (setengah lebar hw) yang berdiri di bawah pegangan */
+      const underRail = (z: number, hw: number) => Math.min(yPagar - L / 2, Math.max(cutY ? ye0 : -1e9, yr(Math.max(z - hw, ze0)) - hcR));
       xs.forEach((x, i) => {
         const nm = i ? 'kanan' : 'kiri';
         // tiang anak tangga
-        zk.forEach((z, k) => add(`tiang-tangga-${i}-${k + 1}`, 'y', x, c, z, yh(z) - L / 2 - c, 'post', `Tiang tangga ${nm} ${k + 1}`, pt));
+        zk.forEach((z, k) => add(`tiang-tangga-${i}-${k + 1}`, 'y', x, c, z, underRail(z, L / 2) - c, 'post', `Tiang tangga ${nm} ${k + 1}`, pt));
         add(`tiang-pijak-b-${i}`, 'y', x, c, zPB, (atap ? yRoof - L / 2 : yPagar - L / 2) - c, 'post', `Tiang lantai pijak ${nm} belakang${atap ? ' (naik ke atap)' : ''}`, pt);
         add(`tiang-kepala-${i}`, 'y', x, c, zHB, Math.max(yPagar + L / 2, h.yLo) - c, 'post', `Tiang ${nm} di bawah papan baca`, pt);
         add(`tiang-pijak-d-${i}`, 'y', x, c, zPF, (atap ? yRoof - L / 2 : h.yHi + hr / 2) - c, 'post', `Tiang ${nm} depan${atap ? ' (naik ke atap)' : ''}`, pt);
         // pegangan tangga miring + pagar lantai pijak
-        line(`pegangan-${i}`, [x, yh(zk[0]), zk[0]], [x, yPagar, zPB], 'rail-z', `Pegangan tangga ${nm} (miring)`, pt);
-        add(`pagar-pijak-${i}`, 'z', x, yPagar, zPB + L / 2, zHB - zPB - L, 'rail-z', `Pagar lantai pijak ${nm}`, pt);
+        line(`pegangan-${i}`, [x, ye0, ze0], [x, ye1, ze1], 'rail-z', `Pegangan tangga ${nm} (miring)`, pt);
+        if (atap) {
+          // tiang belakang menerus ke atap: pagar dipotong dua di tiang
+          if (zPB - L / 2 - zStub > 0.5) add(`pagar-pijak-${i}-b`, 'z', x, yPagar, zStub, zPB - L / 2 - zStub, 'rail-z', `Pagar lantai pijak ${nm} (ujung belakang)`, pt);
+          add(`pagar-pijak-${i}`, 'z', x, yPagar, zPB + L / 2, zHB - zPB - L, 'rail-z', `Pagar lantai pijak ${nm}`, pt);
+        } else add(`pagar-pijak-${i}`, 'z', x, yPagar, zStub, zHB - L / 2 - zStub, 'rail-z', `Pagar lantai pijak ${nm}`, pt);
         add(`pagar-kepala-${i}`, 'z', x, yPagar, zHB + L / 2, zPF - zHB - L, 'rail-z', `Pagar depan ${nm}`, pt);
         // rel lantai di antara tiang
         const zl = [...zk, zPB, zHB, zPF];
@@ -545,9 +576,9 @@ export const PODIUM: ProductDef = {
             for (let j = 1; j <= cnt; j++) zj.push(zl[k] + (gap * j) / (cnt + 1));
           }
           zj.forEach((z, j) => {
-            const top = z < zPB ? yh(z) : yPagar;
+            const top = z < zPB ? underRail(z, thin[0] / 20) : yPagar - L / 2;
             const bot = z < zPB ? c + L : i === 0 && seat && z < zHB ? ys + hr / 2 + b : yPf;
-            add(`jeruji-${i}-${j + 1}`, 'y', x, bot, z, top - L / 2 - bot, 'custom', `Jeruji pagar ${nm} ${j + 1}`, thin);
+            add(`jeruji-${i}-${j + 1}`, 'y', x, bot, z, top - bot, 'custom', `Jeruji pagar ${nm} ${j + 1}`, thin);
           });
         }
       });
@@ -631,11 +662,20 @@ export const PODIUM: ProductDef = {
       const xb = W / 2 + Wp / 2 - L / 2;
       const zT = z1 + L;
       const dh = 38;
-      const h = head(xa, xb, W / 2 - Wp / 2, W / 2 + Wp / 2, zT, dh, hP + H);
+      const h = head(xa + side, xb - side, W / 2 - Wp / 2, W / 2 + Wp / 2, zT, dh, hP + H);
       [xa, xb].forEach((x, i) => {
         const nm = i ? 'kanan' : 'kiri';
         add(`tiang-podium-${i}`, 'y', x, 0, zT, h.yHi - hr / 2, 'post', `Tiang podium ${nm}`, pt);
-        line(`siku-podium-${i}`, [x, h.yLo - 25, zT - L / 2], [x, h.yLo - hr / 2, h.zB + 2], 'custom', `Siku penahan papan baca ${nm}`, rail);
+        // siku di bidang rel kepala (menempel sisi dalam tiang), pucuknya dipotong datar menempel di bawah rel
+        const xr = i ? x - side : x + side;
+        const zE = h.zB + 2;
+        const yS = h.yLo - 25;
+        let yE = h.yLo - hr / 2;
+        for (let k = 0; k < 3; k++) {
+          const ws = (hr / 2) * (Math.hypot(yE - yS, zT - L / 2 - zE) / (yE - yS));
+          yE = h.yLo + (zE - ws - h.zB) * Math.tan(th) - hr / 2 / Math.cos(th) - 0.1;
+        }
+        line(`siku-podium-${i}`, [xr, yS, zT - L / 2], [xr, yE, zE], 'custom', `Siku penahan papan baca ${nm}`, rail);
       });
       add('palang-podium-bawah', 'x', xa + L / 2, hP + 8, zT, xb - xa - L, 'rail-x', 'Palang podium bawah', rail);
       if (rak) {

@@ -1,5 +1,7 @@
 import { Board, Params, ProductCheck, ProductDef } from './types';
 import { BOARD_THICK, board, materialParams, memberFactory, num, r1, str } from './common';
+import { FrameMember } from '../types/kitchen';
+import { angledFrame, cutAxisIndex, memberFromPoints } from '../utils/frameLayout';
 
 /**
  * Gantungan berdiri (standing hanger / hall tree): mantel, tas, topi, helm. Berbasis KAIT / PASAK, tanpa rel
@@ -47,6 +49,81 @@ const WITH_ALAS = [...POLE, 'menara'];
 const WITH_DALAM = ['panel', 'kisi', 'sudut', 'pasak', 'tangga', 'kantilever'];
 const WITH_AMBALAN = ['panel', 'sudut', 'menara', 'dinding', 'tangga', 'helm'];
 const deg = (d: number) => (d * Math.PI) / 180;
+type V3 = [number, number, number];
+
+/** Volume batang (cm) seperti cara cek sambungan las: inside(p) dengan toleransi tol + titik sampel di permukaannya */
+function memberSolid(m: FrameMember, tol: number) {
+  const w = (m.tubeSize ?? 30) / 10;
+  const h = m.tubeH ? m.tubeH / 10 : w;
+  const samples: V3[] = [];
+  if (!m.end) {
+    const i = ['x', 'y', 'z'].indexOf(m.axis);
+    const sec: V3 = m.axis === 'y' ? [w, w, h] : [w, h, w];
+    const o: V3 = [m.x, m.y, m.z];
+    const min = o.map((v, k) => v - sec[k] / 2) as V3;
+    const max = o.map((v, k) => v + sec[k] / 2) as V3;
+    min[i] = o[i];
+    max[i] = o[i] + m.length;
+    const n = [0, 1, 2].map((k) => Math.max(2, Math.ceil(max[k] - min[k])));
+    for (let a = 0; a <= n[0]; a++)
+      for (let b = 0; b <= n[1]; b++)
+        for (let c = 0; c <= n[2]; c++)
+          if (a === 0 || a === n[0] || b === 0 || b === n[1] || c === 0 || c === n[2])
+            samples.push([min[0] + ((max[0] - min[0]) * a) / n[0], min[1] + ((max[1] - min[1]) * b) / n[1], min[2] + ((max[2] - min[2]) * c) / n[2]]);
+    return { samples, inside: (p: V3) => p.every((v, k) => v > min[k] + tol && v < max[k] - tol) };
+  }
+  const f = angledFrame(m, w, h);
+  const di = cutAxisIndex(m);
+  const un = f.u[di] || 1e-6;
+  const e0 = f.c[di] - (f.u[di] * f.len) / 2;
+  const e1 = f.c[di] + (f.u[di] * f.len) / 2;
+  const lo = Math.min(e0, e1);
+  const hi = Math.max(e0, e1);
+  const dot = (a: V3, b: V3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const n = Math.max(2, Math.ceil(f.len));
+  for (const [j, k] of [[-1, -1], [-1, 1], [1, -1], [1, 1], [0, -1], [0, 1], [-1, 0], [1, 0]]) {
+    const off = [0, 1, 2].map((q) => (f.wd[q] * j * f.a) / 2 + (f.hd[q] * k * f.b) / 2);
+    const t0 = -off[di] / un;
+    for (let i = 0; i <= n; i++) {
+      const tq = -f.len / 2 + (f.len * i) / n + t0;
+      samples.push([0, 1, 2].map((q) => f.c[q] + f.u[q] * tq + off[q]) as V3);
+    }
+  }
+  const inside = (p: V3) => {
+    const d: V3 = [p[0] - f.c[0], p[1] - f.c[1], p[2] - f.c[2]];
+    return p[di] > lo + tol && p[di] < hi - tol && Math.abs(dot(d, f.wd)) < f.a / 2 - tol && Math.abs(dot(d, f.hd)) < f.b / 2 - tol;
+  };
+  return { samples, inside };
+}
+const overlaps = (a: FrameMember, b: FrameMember, tol = 0.15) => {
+  const A = memberSolid(a, tol);
+  const B = memberSolid(b, tol);
+  return A.samples.some(B.inside) || B.samples.some(A.inside);
+};
+/**
+ * Palang di antara dua batang miring (titik as P di batang a, Q di batang b): kedua ujung dipotong mundur
+ * sampai menempel rata di sisi batang (tidak masuk ke dalamnya). Hasil: titik as ujung palang yang baru.
+ */
+function fitBetween(P: V3, Q: V3, a: FrameMember, b: FrameMember, tube: [number, number]): [V3, V3] {
+  const len = Math.hypot(Q[0] - P[0], Q[1] - P[1], Q[2] - P[2]);
+  const v = [0, 1, 2].map((k) => (Q[k] - P[k]) / len);
+  const pt = (s: number) => [0, 1, 2].map((k) => P[k] + v[k] * s) as V3;
+  const bar = (s0: number, s1: number) => memberFromPoints({ id: 'fit', role: 'custom', label: '', tubeSize: tube[0], tubeH: tube[1] !== tube[0] ? tube[1] : undefined }, pt(s0), pt(s1));
+  const search = (hit: (s: number) => boolean) => {
+    let lo = 0;
+    let hi = len / 2 - 1;
+    if (!hit(lo)) return lo;
+    for (let it = 0; it < 18; it++) {
+      const mid = (lo + hi) / 2;
+      if (hit(mid)) lo = mid;
+      else hi = mid;
+    }
+    return hi;
+  };
+  const s0 = search((s) => overlaps(bar(s, len / 2), a));
+  const s1 = len - search((s) => overlaps(bar(len / 2, len - s), b));
+  return [pt(s0), pt(s1)];
+}
 
 export const GANTUNGAN_BERDIRI: ProductDef = {
   id: 'gantungan-berdiri',
@@ -383,21 +460,59 @@ export const GANTUNGAN_BERDIRI: ProductDef = {
     let outH = H;
     let wall = false;
 
-    /** Kait: keluar dari muka batang (base) ke arah (dx, dz), naik miring, ujung tegak pendek */
-    const hook = (id: string, label: string, base: [number, number, number], dx: number, dz: number, len = 8) => {
-      const p1: [number, number, number] = [r1(base[0] + dx * len), r1(base[1] + len * 0.6), r1(base[2] + dz * len)];
-      line(id, base, p1, 'custom', label, thin);
-      line(`${id}-ujung`, p1, [p1[0], p1[1] + 3, p1[2]], 'custom', `${label} (ujung)`, thin);
+    /**
+     * Lengan / kait / pasak / cabang yang dilas RATA di muka batang. base = titik as di permukaan muka batang,
+     * a = arah mendatar (rad). Naiknya landai (rise ≤ 0,3 × reach) sehingga pangkalnya dipotong tegak, rata
+     * menempel muka batang (tidak masuk ke dalam). Ujung tegak (tip) dilas di depan potongan ujung lengan:
+     * muka belakangnya rata dengan potongan itu, mulai dari sisi bawah lengan.
+     */
+    const arm = (id: string, label: string, base: V3, a: number, reach: number, rise: number, tube: [number, number], tip?: { len: number; label: string; tube: [number, number] }) => {
+      const dx = Math.cos(a);
+      const dz = Math.sin(a);
+      const e: V3 = [r1(base[0] + dx * reach), r1(base[1] + rise), r1(base[2] + dz * reach)];
+      line(id, base, e, 'custom', label, tube);
+      if (!tip) return;
+      const w = tip.tube[0] / 20;
+      const h = tube[1] / 20;
+      const alongX = Math.abs(dx) >= Math.abs(dz);
+      const tx = alongX ? e[0] + Math.sign(dx) * w : e[0];
+      const tz = alongX ? e[2] : e[2] + Math.sign(dz) * w;
+      add(`${id}-ujung`, 'y', tx, e[1] - h, tz, tip.len + h, 'custom', tip.label, tip.tube);
+    };
+    /** Kait: keluar tegak lurus dari muka batang (base di permukaan muka) ke arah (dx, dz), naik landai, ujung tegak pendek */
+    const hook = (id: string, label: string, base: V3, dx: number, dz: number, len = 8) =>
+      arm(id, label, base, Math.atan2(dz, dx), len, len * 0.3, thin, { len: 3, label: `${label} (ujung)`, tube: thin });
+    /**
+     * Lengan menyebar di sekeliling tiang persegi (cx, cz) lebar L pada tinggi y: tiap lengan dilas di muka tiang
+     * yang paling dekat arahnya (pangkal di tengah muka, arah dibatasi ±42° dari tegak lurus muka supaya
+     * potongannya tetap rata muka). Lengan yang berbagi satu muka ditumpuk bergantian ke atas/bawah setebal pipa.
+     */
+    const postArms = (cx: number, cz: number, y: number, angles: number[], tube: [number, number], fn: (k: number, base: V3, a: number) => void) => {
+      const TAU = 2 * Math.PI;
+      const maxRel = deg(42);
+      const items = angles.map((a0, k) => {
+        const an = ((a0 % TAU) + TAU) % TAU;
+        const f = Math.floor((an + Math.PI / 4 - 1e-6) / (Math.PI / 2)) % 4;
+        let rel = an - (f * Math.PI) / 2;
+        if (rel > Math.PI) rel -= TAU;
+        if (rel < -Math.PI) rel += TAU;
+        return { k, f, rel: Math.max(-maxRel, Math.min(maxRel, rel)) };
+      });
+      const s = tube[1] / 10 + 0.8;
+      [0, 1, 2, 3].forEach((f) => {
+        const on = items.filter((it) => it.f === f).sort((p1, p2) => p1.rel - p2.rel);
+        on.forEach((it, j) => {
+          const fa = (f * Math.PI) / 2;
+          const base: V3 = [cx + (Math.cos(fa) * L) / 2, y + (j - (on.length - 1) / 2) * s, cz + (Math.sin(fa) * L) / 2];
+          fn(it.k, base, fa + it.rel);
+        });
+      });
     };
     /** Kait melingkar di sekeliling tiang (cx, cz) pada tinggi y */
-    const radialHooks = (pre: string, nm: string, cx: number, cz: number, y: number, n: number, off: number, len = 8) => {
-      for (let k = 0; k < n; k++) {
-        const a = off + (2 * Math.PI * k) / n;
-        const dx = Math.cos(a);
-        const dz = Math.sin(a);
-        hook(`${pre}-${k + 1}`, `Kait ${nm} ${k + 1}`, [cx + (dx * L) / 2, y, cz + (dz * L) / 2], dx, dz, len);
-      }
-    };
+    const radialHooks = (pre: string, nm: string, cx: number, cz: number, y: number, n: number, off: number, len = 8) =>
+      postArms(cx, cz, y, Array.from({ length: n }, (_, k) => off + (2 * Math.PI * k) / n), thin, (k, base, a) =>
+        arm(`${pre}-${k + 1}`, `Kait ${nm} ${k + 1}`, base, a, len, len * 0.3, thin, { len: 3, label: `Kait ${nm} ${k + 1} (ujung)`, tube: thin }),
+      );
     /** Posisi kait berjajar di antara x0..x1 */
     const spread = (x0: number, x1: number, n: number) => Array.from({ length: n }, (_, j) => x0 + ((x1 - x0) * (j + 0.5)) / n);
 
@@ -414,16 +529,30 @@ export const GANTUNGAN_BERDIRI: ProductDef = {
       const cz = A / 2;
       const R = A / 2 - L / 2;
       const yA = H - 28;
-      const apex: [number, number, number] = [cx, yA, cz];
-      const feet = [-90, 30, 150].map((d) => [cx + R * Math.cos(deg(d)), L / 2, cz + R * Math.sin(deg(d))] as [number, number, number]);
+      // Ketiga kaki tidak bertemu di satu titik (saling tembus): ujung atasnya dipotong rata dan dilas di bawah
+      // plat kepala, kepala gantungan berdiri di atas plat. Kaki dipotong rata lantai.
+      const r0 = L + 0.5;
+      const angsK = [-90, 30, 150].map(deg);
+      const tops = angsK.map((a) => [cx + r0 * Math.cos(a), yA, cz + r0 * Math.sin(a)] as V3);
+      const feet = angsK.map((a) => [cx + R * Math.cos(a), 0, cz + R * Math.sin(a)] as V3);
       const names = ['belakang', 'kanan depan', 'kiri depan'];
-      feet.forEach((f, i) => line(`kaki-${i + 1}`, f, apex, 'post', `Kaki miring ${names[i]}`, t));
-      add('kepala', 'y', cx, yA, cz, H - yA, 'post', 'Kepala gantungan', t);
-      // cincin segitiga penguat
-      const yr = r1(H * 0.3);
-      const tt = (yr - L / 2) / (yA - L / 2);
-      const ring = feet.map((f) => [f[0] + (apex[0] - f[0]) * tt, yr, f[2] + (apex[2] - f[2]) * tt] as [number, number, number]);
-      ring.forEach((pt, i) => line(`cincin-${i + 1}`, pt, ring[(i + 1) % 3], 'custom', `Palang penguat segitiga ${i + 1}`, rail));
+      feet.forEach((f, i) => line(`kaki-${i + 1}`, f, tops[i], 'post', `Kaki miring ${names[i]}`, t));
+      boards.push({ ...board('plat-kepala', 'Plat kepala tripod', cx - 6, cx + 6, yA, yA + 0.6, cz - 6, cz + 6), steelMm: 6 });
+      add('kepala', 'y', cx, yA + 0.6, cz, H - yA - 0.6, 'post', 'Kepala gantungan', t);
+      // cincin segitiga penguat: tiap palang dipotong pendek, kedua ujungnya menempel rata di sisi kaki
+      // (tidak menembus kaki); ketiga palang beda tinggi setebal palang supaya tidak saling tembus di pojok.
+      const legs = [1, 2, 3].map((k) => list.find((mm) => mm.id === `kaki-${k}`)!);
+      const yr0 = r1(H * 0.3);
+      [0, 1, 2].forEach((i) => {
+        const j = (i + 1) % 3;
+        const yr = yr0 + (i - 1) * (rail[1] / 10 + 0.2);
+        const at = (k: number) => {
+          const tt = yr / yA;
+          return [feet[k][0] + (tops[k][0] - feet[k][0]) * tt, yr, feet[k][2] + (tops[k][2] - feet[k][2]) * tt] as V3;
+        };
+        const [P, Q] = fitBetween(at(i), at(j), legs[i], legs[j], rail);
+        line(`cincin-${i + 1}`, P, Q, 'custom', `Palang penguat segitiga ${i + 1}`, rail);
+      });
       const n = Math.min(kait, 8);
       const lv = Math.max(1, Math.min(baris, Math.floor((H - yA - 6) / 10)));
       for (let i = 0; i < lv; i++) radialHooks(`kait-${i + 1}`, `tingkat ${i + 1}`, cx, cz, H - 6 - i * 10, n, deg(90) + (i % 2 ? Math.PI / n : 0));
@@ -433,25 +562,28 @@ export const GANTUNGAN_BERDIRI: ProductDef = {
       const cz = A / 2;
       const R = A / 2 - 2;
       const hj = 24;
-      add('tiang', 'y', cx, 10, cz, H - 10, 'post', 'Tiang tengah', t);
+      // Kaki bintang: ujung atas keempat kaki dipotong rata dan dilas di bawah plat dudukan, tiang berdiri di atas plat
+      // (kaki tidak bertemu di dalam tiang / saling tembus).
+      const r0 = L + 1;
+      boards.push({ ...board('plat-dudukan', 'Plat dudukan tiang', cx - 6, cx + 6, hj, hj + 0.6, cz - 6, cz + 6), steelMm: 6 });
+      add('tiang', 'y', cx, hj + 0.6, cz, H - hj - 0.6, 'post', 'Tiang tengah', t);
       [45, 135, 225, 315].forEach((d, i) => {
         const dx = Math.cos(deg(d));
         const dz = Math.sin(deg(d));
-        line(`kaki-${i + 1}`, [cx + (dx * L) / 2, hj, cz + (dz * L) / 2], [cx + dx * R, L / 2, cz + dz * R], 'post', `Kaki miring ${i + 1}`, t);
+        line(`kaki-${i + 1}`, [cx + dx * r0, hj, cz + dz * r0], [cx + dx * R, 0, cz + dz * R], 'post', `Kaki miring ${i + 1}`, t);
       });
       const n = Math.min(kait, 6);
       for (let i = 0; i < baris; i++) {
         const y = H - 16 - i * 28;
         const off = i % 2 ? Math.PI / n : 0;
-        for (let k = 0; k < n; k++) {
-          const a = off + (2 * Math.PI * k) / n;
-          const dx = Math.cos(a);
-          const dz = Math.sin(a);
-          const s: [number, number, number] = [cx + (dx * L) / 2, y, cz + (dz * L) / 2];
-          const e: [number, number, number] = [r1(cx + dx * 15), y + 12, r1(cz + dz * 15)];
-          line(`cabang-${i + 1}-${k + 1}`, s, e, 'custom', `Cabang tingkat ${i + 1} no. ${k + 1}`, rail);
-          line(`cabang-${i + 1}-${k + 1}-ujung`, e, [e[0], e[1] + 3, e[2]], 'custom', `Ujung cabang ${i + 1}-${k + 1}`, thin);
-        }
+        const angs = Array.from({ length: n }, (_, k) => off + (2 * Math.PI * k) / n);
+        postArms(cx, cz, y, angs, rail, (k, base, a) =>
+          arm(`cabang-${i + 1}-${k + 1}`, `Cabang tingkat ${i + 1} no. ${k + 1}`, base, a, 15 - L / 2, 4.5, rail, {
+            len: 6,
+            label: `Ujung cabang ${i + 1}-${k + 1}`,
+            tube: thin,
+          }),
+        );
       }
     } else if (m === 'helm') {
       const cx = A / 2;
@@ -467,14 +599,14 @@ export const GANTUNGAN_BERDIRI: ProductDef = {
       for (let i = 0; i < baris; i++) {
         const y = H - 12 - i * 30;
         const off = deg(45) + (i % 2 ? Math.PI / n : 0);
-        for (let k = 0; k < n; k++) {
-          const a = off + (2 * Math.PI * k) / n;
-          const dx = Math.cos(a);
-          const dz = Math.sin(a);
-          const e: [number, number, number] = [r1(cx + dx * (L / 2 + 16)), y + 3, r1(cz + dz * (L / 2 + 16))];
-          line(`pasak-${i + 1}-${k + 1}`, [cx + (dx * L) / 2, y, cz + (dz * L) / 2], e, 'custom', `Pasak helm tingkat ${i + 1} no. ${k + 1}`, rail);
-          line(`pasak-${i + 1}-${k + 1}-ujung`, e, [e[0], e[1] + 4, e[2]], 'custom', `Penahan ujung pasak ${i + 1}-${k + 1}`, thin);
-        }
+        const angs = Array.from({ length: n }, (_, k) => off + (2 * Math.PI * k) / n);
+        postArms(cx, cz, y, angs, rail, (k, base, a) =>
+          arm(`pasak-${i + 1}-${k + 1}`, `Pasak helm tingkat ${i + 1} no. ${k + 1}`, base, a, 16, 3, rail, {
+            len: 4,
+            label: `Penahan ujung pasak ${i + 1}-${k + 1}`,
+            tube: thin,
+          }),
+        );
       }
       if (ambalan && b > 0) {
         boards.push({ ...board('dudukan-atas', 'Dudukan helm bundar di pucuk', cx - 11, cx + 11, H, H + b, cz - 11, cz + 11), shape: 'round' });
@@ -499,12 +631,14 @@ export const GANTUNGAN_BERDIRI: ProductDef = {
       const n = Math.min(kait, 8);
       for (let i = 0; i < baris; i++) {
         const y = H - 8 - i * 20;
-        for (let k = 0; k < n; k++) {
-          const a = n === 1 ? Math.PI / 2 : (Math.PI * k) / (n - 1);
-          const dx = Math.cos(a);
-          const dz = Math.sin(a);
-          hook(`kait-${i + 1}-${k + 1}`, `Kait tingkat ${i + 1} no. ${k + 1}`, [xm + (dx * L) / 2, y, L / 2 + (dz * L) / 2], dx, dz);
-        }
+        const angs = Array.from({ length: n }, (_, k) => (n === 1 ? Math.PI / 2 : (Math.PI * k) / (n - 1)));
+        postArms(xm, L / 2, y, angs, thin, (k, base, a) =>
+          arm(`kait-${i + 1}-${k + 1}`, `Kait tingkat ${i + 1} no. ${k + 1}`, base, a, 8, 2.4, thin, {
+            len: 3,
+            label: `Kait tingkat ${i + 1} no. ${k + 1} (ujung)`,
+            tube: thin,
+          }),
+        );
       }
       outH = H + 1;
     } else if (m === 'plafon') {
@@ -539,7 +673,8 @@ export const GANTUNGAN_BERDIRI: ProductDef = {
         if (ambalan) {
           const zb = zc - L / 2 - Math.max(b, 0);
           if (b > 0) boards.push(board('ambalan', 'Ambalan topi', 0, Wp, H, H + b, zb, zc + 22));
-          xs.forEach((x, i) => line(`siku-ambalan-${i}`, [x, H - 16, zc + L / 2], [x, H - 1, zc + 16], 'custom', `Siku ambalan ${i ? 'kanan' : 'kiri'}`, thin));
+          // siku ambalan: lengan mendatar dilas rata di muka depan tiang, sisi atasnya rata dengan bawah ambalan
+          xs.forEach((x, i) => add(`siku-ambalan-${i}`, 'z', x, H - thin[1] / 20, zc + L / 2, 16 - L / 2, 'rail-z', `Siku ambalan ${i ? 'kanan' : 'kiri'}`, thin));
           outH = H + b;
           D = Math.max(Dp, zc + 22);
         }
@@ -637,7 +772,8 @@ export const GANTUNGAN_BERDIRI: ProductDef = {
       D = zf + L / 2 + 10;
       if (ambalan && b > 0) {
         boards.push(board('ambalan', 'Ambalan atas', 0, Wp, y1, y1 + b, 0, 22));
-        [L / 2, Wp - L / 2].forEach((x, i) => line(`siku-ambalan-${i}`, [x, y1 - 14, zf + L / 2], [x, y1 - 1, 18], 'custom', `Siku ambalan ${i ? 'kanan' : 'kiri'}`, thin));
+        // siku ambalan: lengan mendatar dilas rata di muka depan bingkai, sisi atasnya rata dengan bawah ambalan
+        [L / 2, Wp - L / 2].forEach((x, i) => add(`siku-ambalan-${i}`, 'z', x, y1 - thin[1] / 20, zf + L / 2, 18 - zf - L / 2, 'rail-z', `Siku ambalan ${i ? 'kanan' : 'kiri'}`, thin));
         outH = y1 + b;
         D = Math.max(D, 22);
       }
@@ -697,13 +833,14 @@ export const GANTUNGAN_BERDIRI: ProductDef = {
       const angs = n === 1 ? [0] : n === 2 ? [-30, 30] : [-40, 0, 40];
       for (let i = 0; i < baris; i++) {
         const y = H - 8 - i * 28;
-        angs.forEach((ad, k) => {
-          const dx = Math.sin(deg(ad));
-          const dz = Math.cos(deg(ad));
-          const e: [number, number, number] = [r1(cx + dx * R), y + 4, r1(z0 + dz * R)];
-          line(`lengan-${i + 1}-${k + 1}`, [cx + (dx * L) / 2, y, z0 + (dz * L) / 2], e, 'custom', `Lengan tingkat ${i + 1} no. ${k + 1}`, rail);
-          line(`lengan-${i + 1}-${k + 1}-ujung`, e, [e[0], e[1] + 5, e[2]], 'custom', `Ujung lengan ${i + 1}-${k + 1}`, thin);
-        });
+        // lengan diukur dari arah depan (sumbu z): sudut mendatar = 90° − ad
+        postArms(cx, z0, y, angs.map((ad) => deg(90 - ad)), rail, (k, base, a) =>
+          arm(`lengan-${i + 1}-${k + 1}`, `Lengan tingkat ${i + 1} no. ${k + 1}`, base, a, R - L / 2, 4, rail, {
+            len: 5,
+            label: `Ujung lengan ${i + 1}-${k + 1}`,
+            tube: thin,
+          }),
+        );
       }
     }
 

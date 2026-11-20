@@ -46,6 +46,12 @@ const HANG_MODELS = ['tiang-dinding', 'kait-lipat', 'gravitasi'];
 
 /** Celah bersih antar batang (cm) per jenis ban */
 const GAP: Record<string, number> = { tipis: 4.5, mtb: 7, fat: 12 };
+/**
+ * Setengah lebar jejak potongan rata lantai dari batang miring berpenampang t (cm) yang
+ * menempuh (dh mendatar, dy tegak): ujung yang dipotong datar melebar menjadi (t/2)/|cos|.
+ */
+const flatHalf = (t: number, dh: number, dy: number) => (t / 2) * (Math.hypot(dh, dy) / Math.max(1e-6, Math.abs(dy)));
+
 /** Diameter roda luar (cm) */
 const wheelDia = (p: Params) => num(p, 'ban', 26) * 2.54 + (str(p, 'lebarBan', 'mtb') === 'fat' ? 10 : 5);
 /** Jarak sumbu roda (cm), perkiraan */
@@ -377,9 +383,14 @@ export const RAK_SEPEDA: ProductDef = {
           const x = xc + sg * off;
           const nm = `celah ${i + 1} ${k ? 'kanan' : 'kiri'}`;
           const yb = L + 1;
-          add(`alas-${i}-${k}`, 'z', x, yb, L, D - 2 * L, 'rail-z', `Alas ${nm}`, rail);
+          // alas menumpang di atas kedua rel; tegak berdiri di atas alas; miring dipotong datar,
+          // ujung atasnya menempel di muka depan tegak (rata atas), ujung bawah duduk di atas alas
+          add(`alas-${i}-${k}`, 'z', x, yb, 0, D, 'rail-z', `Alas ${nm}`, rail);
           add(`tegak-${i}-${k}`, 'y', x, yb + 1, zu, H - yb - 1, 'custom', `Batang tegak ${nm}`, rail);
-          line(`miring-${i}-${k}`, [x, H - 1, zu + 1], [x, yb + 1, D - L - 2], 'custom', `Batang miring ${nm}`, rail);
+          const zb = D - L - 2;
+          let ez = 1;
+          for (let it = 0; it < 4; it++) ez = flatHalf(2, zb - (zu + 1 + ez), H - yb - 1);
+          line(`miring-${i}-${k}`, [x, H, zu + 1 + ez + 0.05], [x, yb + 1, zb], 'custom', `Batang miring ${nm}`, rail);
         });
       }
     } else if (m === 'dua-sisi') {
@@ -415,12 +426,24 @@ export const RAK_SEPEDA: ProductDef = {
         const x = Math.min(W - L / 2, Math.max(L / 2, i * hw));
         add(`kaki-${i}`, 'z', x, L / 2, 0, D, 'rail-z', `Kaki melintang ${i + 1}`, pt);
       }
+      // Tiap lembah: batang pendek mendatar menumpang di atas kaki melintang; tiap puncak: batang pendek
+      // mendatar. Batang naik & turun dipotong datar dan dilas di atas lembah / di bawah puncak,
+      // berdampingan (tidak saling tembus di satu titik).
+      const dy = H - 3 * L;
+      let ex = L / 2;
+      for (let it = 0; it < 6; it++) ex = flatHalf(L, hw / 2 - 2 * ex, dy);
+      for (let i = 0; i <= humps; i++) {
+        const x0 = i === 0 ? 0 : i === humps ? W - 2 * ex : i * hw - 2 * ex;
+        const len = i === 0 || i === humps ? 2 * ex : 4 * ex;
+        add(`lembah-${i}`, 'x', x0, L + L / 2, zc, len, 'rail-x', `Lembah gelombang ${i + 1}`, pt);
+      }
       for (let i = 0; i < humps; i++) {
-        const x0 = Math.max(L / 2, i * hw);
-        const x1 = Math.min(W - L / 2, (i + 1) * hw);
+        const xa = i * hw + ex;
+        const xb = (i + 1) * hw - ex;
         const xm = i * hw + hw / 2;
-        line(`naik-${i}`, [x0, L, zc], [xm, H - L / 2, zc], 'post', `Gelombang ${i + 1} naik`, pt);
-        line(`turun-${i}`, [xm, H - L / 2, zc], [x1, L, zc], 'post', `Gelombang ${i + 1} turun`, pt);
+        add(`puncak-${i}`, 'x', xm - 2 * ex, H - L / 2, zc, 4 * ex, 'post', `Puncak gelombang ${i + 1}`, pt);
+        line(`naik-${i}`, [xa, 2 * L, zc], [xm - ex, H - L, zc], 'post', `Gelombang ${i + 1} naik`, pt);
+        line(`turun-${i}`, [xm + ex, H - L, zc], [xb, 2 * L, zc], 'post', `Gelombang ${i + 1} turun`, pt);
       }
     } else if (m === 'gawang-u') {
       const hoops = Math.max(1, Math.ceil(n / 2));
@@ -445,35 +468,77 @@ export const RAK_SEPEDA: ProductDef = {
       H = Hp;
       const c = R;
       const rr = R - L / 2;
-      // kaki silang lantai
-      add('kaki-x', 'x', c - rr, L / 2, c, 2 * rr, 'rail-x', 'Kaki silang kiri–kanan', pt);
-      add('kaki-z-b', 'z', c, L / 2, c - rr, rr - L / 2, 'rail-z', 'Kaki silang belakang', pt);
-      add('kaki-z-d', 'z', c, L / 2, c + L / 2, rr - L / 2, 'rail-z', 'Kaki silang depan', pt);
-      add('tiang', 'y', c, L, c, H - L, 'post', 'Tiang tengah', pt);
-      const poly = (id: string, nm: string, rad: number, y: number, tube: [number, number]) => {
-        const v = Array.from({ length: 8 }, (_, q) => {
-          const a = ((q * 45 + 22.5) * Math.PI) / 180;
-          return [r1(c + rad * Math.cos(a)), y, r1(c + rad * Math.sin(a))] as [number, number, number];
-        });
-        v.forEach((pp, q) => line(`${id}-${q + 1}`, pp, v[(q + 1) % 8], 'rail-x', `${nm} ruas ${q + 1}`, tube));
+      const C8 = Math.cos(Math.PI / 8);
+      const S8 = Math.sin(Math.PI / 8);
+      // Cincin segi delapan cara tukang las: ruas depan & belakang (sejajar X) menerus, ruas kiri & kanan
+      // (sejajar Z) pendek; ruas serong dipotong rata (bidang Z) — satu ujung menempel di sisi dalam ruas
+      // depan/belakang, ujung lain di muka ujung ruas kiri/kanan. Tidak ada ruas yang saling tembus.
+      const ring = (id: string, nm: string, rad: number, y: number, tube: [number, number]) => {
+        const t = tube[0] / 10;
+        const ap = rad * C8;
+        const h = rad * S8;
+        const hx = h + t / 2;
+        const hz = h - t;
+        [-1, 1].forEach((sz, j) => add(`${id}-x${j}`, 'x', c - hx, y, c + sz * ap, 2 * hx, 'rail-x', `${nm} ruas ${sz < 0 ? 'belakang' : 'depan'}`, tube));
+        [-1, 1].forEach((sx, j) => add(`${id}-z${j}`, 'z', c + sx * ap, y, c - hz, 2 * hz, 'rail-z', `${nm} ruas ${sx < 0 ? 'kiri' : 'kanan'}`, tube));
+        const dxs = ap - h;
+        const dzs = ap - h + t / 2;
+        const ex = (t / 2) * (Math.hypot(dxs, dzs) / dzs);
+        let q = 0;
+        [-1, 1].forEach((sx) =>
+          [-1, 1].forEach((sz) => {
+            q++;
+            line(`${id}-s${q}`, [c + sx * (ap - ex + t / 2), y, c + sz * hz], [c + sx * (hx - ex), y, c + sz * (ap - t / 2)], 'rail-x', `${nm} ruas serong ${q}`, tube);
+          })
+        );
+        return { ap, t };
       };
-      const r0 = 14;
+      /** Jarak dari titik (c+ox, c+oz) searah (ux, uz) sampai garis as segi delapan berjari-jari rad */
+      const hitRing = (rad: number, ox: number, oz: number, ux: number, uz: number) => {
+        let best = Infinity;
+        for (let q = 0; q < 8; q++) {
+          const a0 = ((q * 45 + 22.5) * Math.PI) / 180;
+          const a1 = (((q + 1) * 45 + 22.5) * Math.PI) / 180;
+          const px = rad * Math.cos(a0), pz = rad * Math.sin(a0);
+          const ex = rad * Math.cos(a1) - px, ez = rad * Math.sin(a1) - pz;
+          const den = ux * ez - uz * ex;
+          if (Math.abs(den) < 1e-9) continue;
+          const tt = ((px - ox) * ez - (pz - oz) * ex) / den;
+          const ss = ((px - ox) * uz - (pz - oz) * ux) / den;
+          if (tt > 0 && ss >= -1e-6 && ss <= 1 + 1e-6) best = Math.min(best, tt);
+        }
+        return best;
+      };
+      // kaki silang lantai: kiri–kanan menerus, belakang & depan dipotong menempel di sisinya;
+      // ujung kaki menempel di sisi dalam cincin lantai
+      const fl = ring('cincin-lantai', 'Cincin lantai', rr, L / 2, pt);
+      const kin = fl.ap - L / 2;
+      add('kaki-x', 'x', c - kin, L / 2, c, 2 * kin, 'rail-x', 'Kaki silang kiri–kanan', pt);
+      add('kaki-z-b', 'z', c, L / 2, c - kin, kin - L / 2, 'rail-z', 'Kaki silang belakang', pt);
+      add('kaki-z-d', 'z', c, L / 2, c + L / 2, kin - L / 2, 'rail-z', 'Kaki silang depan', pt);
+      add('tiang', 'y', c, L, c, H - L, 'post', 'Tiang tengah', pt);
+      // cincin atas: cukup besar supaya batang celah yang bersebelahan tidak beradu
+      const r0 = Math.max(14, r1((k * (2 * off + 4)) / (2 * Math.PI * C8)));
       const yTop = H - 1;
-      poly('cincin-lantai', 'Cincin lantai', rr, L / 2, pt);
-      poly('cincin-atas', 'Cincin atas', r0, yTop, rail);
-      const rm = r0 * Math.cos((22.5 * Math.PI) / 180);
-      [0, 90, 180, 270].forEach((deg, q) => {
-        const a = (deg * Math.PI) / 180;
-        line(`jari-${q + 1}`, [c + (L / 2) * Math.cos(a), yTop, c + (L / 2) * Math.sin(a)], [c + rm * Math.cos(a), yTop, c + rm * Math.sin(a)], 'custom', `Jari-jari cincin atas ${q + 1}`, rail);
-      });
-      const rf = rr * Math.cos((22.5 * Math.PI) / 180) - L / 2;
+      const tr = ring('cincin-atas', 'Cincin atas', r0, yTop, rail);
+      // jari-jari: dari sisi tiang ke sisi dalam ruas cincin atas (lurus, sejajar sumbu)
+      const jin = tr.ap - tr.t / 2 - L / 2;
+      add('jari-1', 'x', c + L / 2, yTop, c, jin, 'custom', 'Jari-jari cincin atas 1', rail);
+      add('jari-2', 'z', c, yTop, c + L / 2, jin, 'custom', 'Jari-jari cincin atas 2', rail);
+      add('jari-3', 'x', c - L / 2 - jin, yTop, c, jin, 'custom', 'Jari-jari cincin atas 3', rail);
+      add('jari-4', 'z', c, yTop, c - L / 2 - jin, jin, 'custom', 'Jari-jari cincin atas 4', rail);
+      // batang celah: dipotong datar, ujung atas di bawah cincin atas, ujung bawah berdiri di atas cincin lantai
       for (let i = 0; i < k; i++) {
         const a = (2 * Math.PI * i) / k + Math.PI / k;
         const u = [Math.cos(a), Math.sin(a)];
         const pv = [-Math.sin(a), Math.cos(a)];
         [-1, 1].forEach((sg, q) => {
-          const top: [number, number, number] = [c + rm * u[0] + sg * off * pv[0], yTop, c + rm * u[1] + sg * off * pv[1]];
-          const bot: [number, number, number] = [c + rf * u[0] + sg * off * pv[0], L, c + rf * u[1] + sg * off * pv[1]];
+          const ox = sg * off * pv[0];
+          const oz = sg * off * pv[1];
+          const tT = hitRing(r0, ox, oz, u[0], u[1]);
+          const tB = hitRing(rr, ox, oz, u[0], u[1]);
+          const top: [number, number, number] = [c + ox + tT * u[0], yTop - tr.t / 2, c + oz + tT * u[1]];
+          const bot: [number, number, number] = [c + ox + tB * u[0], L, c + oz + tB * u[1]];
           line(`celah-${i}-${q}`, top, bot, 'custom', `Batang celah ${i + 1} ${q ? 'kanan' : 'kiri'}`, rail);
         });
       }
@@ -543,7 +608,11 @@ export const RAK_SEPEDA: ProductDef = {
           const nm = `tingkat ${t + 1} ${j ? 'kanan' : 'kiri'}`;
           line(`lengan-${t}-${j}`, [x, y, L], [x, y + rise, L + A], 'custom', `Lengan ${nm}`, pt);
           add(`ujung-${t}-${j}`, 'y', x, y + rise + L / 2, L + A - 1, 6, 'custom', `Penahan ujung lengan ${nm}`, thin);
-          line(`siku-${t}-${j}`, [x, y - 16, L + 0.6], [x, y + rise * 0.6 - L / 2 - 0.6, L + A * 0.6], 'custom', `Siku penguat ${nm}`, thin);
+          // siku dipotong datar: ujung bawah menempel di muka tiang (tidak masuk ke dalam tiang)
+          const yS1 = y + rise * 0.6 - L / 2 - 0.6;
+          let ez = 0.75;
+          for (let it = 0; it < 4; it++) ez = flatHalf(1.5, A * 0.6 - ez, yS1 - (y - 16));
+          line(`siku-${t}-${j}`, [x, y - 16, L + ez + 0.05], [x, yS1, L + A * 0.6], 'custom', `Siku penguat ${nm}`, thin);
         })
       );
       D = L + A + 1;
@@ -653,7 +722,10 @@ export const RAK_SEPEDA: ProductDef = {
             const z0 = zc + sg * (L / 2);
             line(`lengan-${t}-${j}-${q}`, [x, y, z0], [x, y, z0 + sg * A], 'custom', `Lengan ${nm}`, pt);
             add(`ujung-${t}-${j}-${q}`, 'y', x, y + L / 2, z0 + sg * (A - 1), 6, 'custom', `Penahan ujung ${nm}`, thin);
-            line(`siku-${t}-${j}-${q}`, [x, y - 15, z0 + sg * 0.6], [x, y - L / 2 - 0.6, z0 + sg * A * 0.6], 'custom', `Siku penguat ${nm}`, thin);
+            // siku dipotong datar: ujung bawah menempel di muka tiang (tidak masuk ke dalam tiang)
+            let ez = 0.75;
+            for (let it = 0; it < 4; it++) ez = flatHalf(1.5, A * 0.6 - ez, 15 - L / 2 - 0.6);
+            line(`siku-${t}-${j}-${q}`, [x, y - 15, z0 + sg * (ez + 0.05)], [x, y - L / 2 - 0.6, z0 + sg * A * 0.6], 'custom', `Siku penguat ${nm}`, thin);
           })
         );
       }

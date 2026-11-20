@@ -179,10 +179,12 @@ export const PAPAN_MENU: ProductDef = {
       add('palang-atas', 'x', L, top - L / 2, zt, W - 2 * L, 'rail-x', 'Palang atas', t);
       line('kaki-belakang', [W / 2, 0, zR(0)], [W / 2, top - L, zt - L], 'post', 'Kaki belakang', t);
       const yl = Math.max(15, top - L - fh - 6); // bibir penahan papan
-      add('bibir-penahan', 'x', 0, yl, zAt(yl) + L / 2, W, 'rail-x', 'Bibir penahan papan', t);
+      // Bibir dilas di MUKA DEPAN kedua kaki (bukan menembus kaki): sisi belakangnya menempel di titik terdepan kaki miring
+      const zLip = zAt(yl - L / 2) + L / (2 * Math.cos(th)) + L / 2;
+      add('bibir-penahan', 'x', 0, yl, zLip, W, 'rail-x', 'Bibir penahan papan', t);
       line('rantai-penahan', [W / 2, yl - 3, zR(yl - 3) + L / 2], [W / 2, yl - 3, zAt(yl - 3) - L / 2], 'custom', 'Batang penahan bukaan kaki belakang', [15, 15]);
       if (bt > 0) {
-        boards.push(board('bibir', 'Papan bibir penahan', 0, W, yl + L / 2, yl + L / 2 + 1.2, zAt(yl) - L / 2, zAt(yl) + L / 2 + 6));
+        boards.push(board('bibir', 'Papan bibir penahan', 0, W, yl + L / 2, yl + L / 2 + 1.2, zLip - L / 2, zLip + L / 2 + 6));
         const ym = yl + L / 2 + 1.2 + fh / 2;
         const hgt = fh / Math.cos(th);
         const zFace = zAt(ym) + L / 2 + bt / 2 + 0.5;
@@ -217,13 +219,20 @@ export const PAPAN_MENU: ProductDef = {
       const zc = Fz / 2;
       const armEnd = xp + 8 + W + 6;
       const footEnd = xp + Math.max(30, W * 0.8);
-      add('telapak-panjang', 'x', 0, L / 2, zc, footEnd, 'rail-x', 'Kaki silang memanjang (di lantai)', t);
+      // Kaki melintang menerus; kaki memanjang dipotong dua dan dilas rata di kedua sisinya
+      add('telapak-panjang-0', 'x', 0, L / 2, zc, xp - L / 2, 'rail-x', 'Kaki silang memanjang (di lantai)', t);
+      add('telapak-panjang-1', 'x', xp + L / 2, L / 2, zc, footEnd - xp - L / 2, 'rail-x', 'Kaki silang memanjang (di lantai)', t);
       add('telapak-lintang', 'z', xp, L / 2, 0, Fz, 'rail-z', 'Kaki silang melintang (di lantai)', t);
       add('tiang', 'y', xp, L, zc, H - 2 * L, 'post', 'Tiang utama', t);
       add('lengan', 'x', xp - L / 2, H - L / 2, zc, armEnd - xp + L / 2, 'rail-x', 'Lengan atas', t);
-      line('siku-lengan', [xp + L / 2, H - 28, zc], [xp + 22, H - L, zc], 'custom', 'Siku miring lengan', thin);
       const pTop = H - L - 6;
       const x0 = xp + 8;
+      // Siku 45° di pojok tiang-lengan, muat di celah antara tiang dan bingkai papan (tidak menembus bingkai / ring).
+      // Ujung dipotong datar: atas rata di bawah lengan, sudut bawah menempel di sisi tiang.
+      const sh = (thin[0] / 10 / 2) * Math.SQRT2; // setengah lebar potongan datar batang 45°
+      const sk = x0 + 4 - (xp + L / 2) - 2 * sh; // sudut kanan atas berhenti sebelum ring gantungan kiri (x0 + 5)
+      const sx = xp + L / 2 + sh;
+      line('siku-lengan', [sx, H - L - sk, zc], [sx + sk, H - L, zc], 'custom', 'Siku miring lengan', thin);
       [x0 + 5, x0 + W - 5].forEach((x, i) => add(`gantungan-${i}`, 'y', x, pTop, zc, 6, 'post', `Rantai / ring gantungan ${i ? 'kanan' : 'kiri'}`, [10, 10]));
       framedPanel('papan-nama', x0, W, pTop - fh, fh, zc, thin);
       return { members: list, boards, casters: [], W: Math.max(armEnd, footEnd), D: Fz, H, boardThick: 0 };
@@ -238,7 +247,8 @@ export const PAPAN_MENU: ProductDef = {
     const yb = H - fh;
     boards.push({ ...board('alas', 'Alas plat besi', xc - ps / 2, xc + ps / 2, 0, 0.8, 0, ps), steelMm: 8 });
     add('tiang', 'y', xc, 0.8, zc, yb - 0.8, 'post', 'Tiang tengah', t);
-    add('dudukan-tiang', 'x', xc - 10, 0.8 + 1, zc, 20, 'rail-x', 'Penguat kaki tiang (di atas plat)', thin);
+    // Penguat dipotong dua, dilas rata di kiri & kanan tiang (tidak menembus tiang)
+    [-1, 1].forEach((s, i) => add(`dudukan-tiang-${i}`, 'x', s < 0 ? xc - 10 : xc + L / 2, 0.8 + 1, zc, 10 - L / 2, 'rail-x', 'Penguat kaki tiang (di atas plat)', thin));
     framedPanel('bingkai', x0, W, yb, fh, zc, thin);
     return { members: list, boards, casters: [], W: Wt, D: ps, H, boardThick: 0 };
   },

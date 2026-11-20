@@ -179,24 +179,28 @@ export const MEJA_PIKNIK: ProductDef = {
     const ends = [inset, W - inset];
     if (W > 220) ends.splice(1, 0, W / 2); // rangka tengah untuk meja panjang
 
+    // Palang bangku dilas menempel di SISI DALAM kedua kaki A (bukan menembus kaki)
+    const seatX = ends.map((x, i) => x + (i === ends.length - 1 ? -1 : 1) * (L / 2 + 1));
     ends.forEach((x, i) => {
       const n = i === 0 ? 'kiri' : i === ends.length - 1 ? 'kanan' : 'tengah';
       add(`palang-meja-${n}`, 'z', x, yTopRail, zt0 + 3, lm - 6, 'rail-z', `Palang daun meja ${n}`, rail);
-      add(`palang-bangku-${n}`, 'z', x, ySeatRail, 2, Dt - 4, 'rail-z', `Palang bangku ${n}`, rail);
+      add(`palang-bangku-${n}`, 'z', seatX[i], ySeatRail, 2, Dt - 4, 'rail-z', `Palang bangku ${n}`, rail);
       // Kaki A: dari lantai di bawah tengah bangku sampai bawah palang daun meja
       const yLegTop = yTopRail - 2;
       line(`kaki-${n}-b`, [x, 0, lb * 0.5], [x, yLegTop, zt0 + lm * 0.25], 'post', `Kaki miring ${n} belakang`, leg);
       line(`kaki-${n}-d`, [x, 0, Dt - lb * 0.5], [x, yLegTop, zt1 - lm * 0.25], 'post', `Kaki miring ${n} depan`, leg);
     });
 
-    // Gelagar memanjang di bawah daun meja & kedua bangku, plus palang pengaku di tengah
+    // Gelagar memanjang di bawah daun meja & kedua bangku, plus palang pengaku di tengah.
+    // Gelagar meja menerus, palang meja menempel di sisinya; gelagar bangku & pengaku dipotong di tiap palang bangku.
     const x0 = 2;
     const len = W - 4;
+    const seatCuts = seatX.map((x): [number, number] => [x - 1, x + 1]);
     add('gelagar-meja-b', 'x', x0, yTopRail, zt0 + 2, len, 'rail-x', 'Gelagar daun meja belakang', [20, 20]);
     add('gelagar-meja-d', 'x', x0, yTopRail, zt1 - 2, len, 'rail-x', 'Gelagar daun meja depan', [20, 20]);
-    add('gelagar-bangku-b', 'x', x0, ySeatRail, lb / 2, len, 'rail-x', 'Gelagar bangku belakang', [20, 20]);
-    add('gelagar-bangku-d', 'x', x0, ySeatRail, Dt - lb / 2, len, 'rail-x', 'Gelagar bangku depan', [20, 20]);
-    add('pengaku', 'x', ends[0] + 1, ySeatRail, Dt / 2, ends[ends.length - 1] - ends[0] - 2, 'rail-x', 'Palang pengaku tengah', [20, 20]);
+    runX(add, 'gelagar-bangku-b', x0, W - 2, ySeatRail, lb / 2, 'Gelagar bangku belakang', [20, 20], seatCuts);
+    runX(add, 'gelagar-bangku-d', x0, W - 2, ySeatRail, Dt - lb / 2, 'Gelagar bangku depan', [20, 20], seatCuts);
+    runX(add, 'pengaku', seatX[0], seatX[seatX.length - 1], ySeatRail, Dt / 2, 'Palang pengaku tengah', [20, 20], seatCuts);
 
     const boards: Board[] = [];
     if (b > 0) {
@@ -249,6 +253,29 @@ interface Dim {
 
 const SLANT = Math.tan((14 * Math.PI) / 180);
 
+type AddFn = ReturnType<typeof memberFactory>['add'];
+
+/**
+ * Batang memanjang (sumbu x) dari xa ke xb yang dipotong di tiap batang melintang (blockers = rentang x
+ * batang itu): tiap ruas dilas rata di sisi batang melintang, tidak menembusnya.
+ */
+function runX(add: AddFn, id: string, xa: number, xb: number, y: number, z: number, label: string, tube: [number, number], blockers: [number, number][]) {
+  const segs: [number, number][] = [];
+  let cur = xa;
+  for (const [lo, hi] of [...blockers].sort((a, b) => a[0] - b[0])) {
+    if (hi <= cur) continue;
+    if (lo >= xb) break;
+    if (lo > cur) segs.push([cur, lo]);
+    cur = Math.max(cur, hi);
+  }
+  if (cur < xb) segs.push([cur, xb]);
+  const many = segs.length > 1;
+  segs.forEach(([a, b], k) => add(many ? `${id}-${k + 1}` : id, 'x', a, y, z, b - a, 'rail-x', many ? `${label} (ruas ${k + 1})` : label, tube));
+}
+
+/** Setengah lebar mendatar penampang batang miring (bidang y-z) yang dipotong rata lantai: half / cos(sudut dari tegak) */
+const halfFlat = (dy: number, dz: number, half: number) => (half * Math.hypot(dy, dz)) / Math.abs(dy);
+
 /** Rangka kotak (2 bangku), satu sisi / meja sekolah (1 bangku, boleh bersandaran), trapesium miring (1 bangku) */
 function buildOther(p: Params, model: string, d: Dim): ProductBuild {
   const { W, lm, Hm, Hb, lb, gap, L, b } = d;
@@ -278,24 +305,30 @@ function buildOther(p: Params, model: string, d: Dim): ProductBuild {
   const zb0 = zt1 + gap;
   const zb1 = zb0 + lb;
   const Dt = trap ? zb1 + SLANT * ySeat : zb1;
+  const zRail0 = Math.min(SLANT * yTop, lm * 0.4); // trapesium: awal palang daun meja (ujung atas tiang miring)
+  const zSeatEnd = zb1 - 2; // trapesium: ujung palang bangku, rata sisi gelagar bangku depan
 
   ends.forEach((x, i) => {
     const n = nm(i);
     if (trap) {
       // Loop: rel lantai, tiang belakang condong naik ke meja, palang meja, palang bangku, kaki depan miring
-      const lean = SLANT * yTop;
-      const zRail0 = Math.min(lean, lm * 0.4);
-      const backFoot: P3 = [x, yFloor, L / 2];
-      const backTop: P3 = [x, yTop - 2, zRail0 + L / 2];
-      const frontFoot: P3 = [x, yFloor, Dt - L / 2];
-      const frontTop: P3 = [x, ySeat - 2, zb1 - 3];
-      add(`rel-${n}`, 'z', x, yFloor, L, Dt - 2 * L, 'rail-z', `Rel lantai ${n}`, leg);
+      // Tiang & kaki berdiri DI ATAS rel lantai (dipotong rata), sisi luarnya rata dengan ujung rel;
+      // ujung atasnya rata di bawah palang, sisi luarnya rata dengan ujung palang.
+      const yT = yTop - 2;
+      const yK = ySeat - 2;
+      const hwT = halfFlat(yT - L, zRail0, L / 2);
+      const hwK = halfFlat(yK - L, Dt - zSeatEnd, L / 2);
+      const backFoot: P3 = [x, L, hwT];
+      const backTop: P3 = [x, yT, zRail0 + hwT];
+      const frontFoot: P3 = [x, L, Dt - hwK];
+      const frontTop: P3 = [x, yK, zSeatEnd - hwK];
+      add(`rel-${n}`, 'z', x, yFloor, 0, Dt, 'rail-z', `Rel lantai ${n}`, leg);
       line(`tiang-${n}`, backFoot, backTop, 'post', `Tiang miring meja ${n}`, leg);
       line(`kaki-${n}`, frontFoot, frontTop, 'post', `Kaki miring bangku ${n}`, leg);
-      add(`palang-meja-${n}`, 'z', x, yTop, zRail0, Math.max(10, zt1 - 4 - zRail0), 'rail-z', `Palang daun meja ${n}`, rail);
-      const t = (ySeat - yFloor) / (yTop - 2 - yFloor);
-      const zBackAtSeat = backFoot[2] + (backTop[2] - backFoot[2]) * t;
-      add(`palang-bangku-${n}`, 'z', x, ySeat, zBackAtSeat + L / 2, zb1 - 3 - zBackAtSeat - L / 2, 'rail-z', `Palang bangku ${n}`, rail);
+      add(`palang-meja-${n}`, 'z', x, yTop, zRail0, Math.max(10, zt1 - 3 - zRail0), 'rail-z', `Palang daun meja ${n}`, rail);
+      // palang bangku menempel di muka depan tiang miring (diukur di tepi atas palang, jadi tidak masuk ke tiang)
+      const zFace = hwT + (zRail0 * (ySeat + 2 - L)) / (yT - L) + hwT;
+      add(`palang-bangku-${n}`, 'z', x, ySeat, zFace, zSeatEnd - zFace, 'rail-z', `Palang bangku ${n}`, rail);
       return;
     }
     add(`rel-${n}`, 'z', x, yFloor, 2, Dt - 4, 'rail-z', `Rel lantai ${n}`, leg);
@@ -304,25 +337,29 @@ function buildOther(p: Params, model: string, d: Dim): ProductBuild {
     add(`palang-meja-${n}`, 'z', x, yTop, zt0 + 3, lm - 6, 'rail-z', `Palang daun meja ${n}`, rail);
     const bench = (k: string, z0: number, z1: number, label: string, tall: boolean) => {
       add(`kaki-bangku-${k}-${n}-a`, 'y', x, L, z0 + 2 + L / 2, ySeat - 2 - L, 'post', `Kaki ${label} ${n}`, leg);
-      add(`kaki-bangku-${k}-${n}-b`, 'y', x, L, z1 - 2 - L / 2, (tall ? Hback - 1 : ySeat - 2) - L, 'post', tall ? `Kaki + tiang sandaran ${n}` : `Kaki ${label} ${n}`, leg);
-      add(`palang-bangku-${k}-${n}`, 'z', x, ySeat, z0 + 2, z1 - z0 - 4, 'rail-z', `Palang ${label} ${n}`, rail);
+      // tiang sandaran menerus sampai bawah palang sandaran atas; palang bangku dilas rata di sisi belakangnya
+      add(`kaki-bangku-${k}-${n}-b`, 'y', x, L, z1 - 2 - L / 2, (tall ? Hback - 2 : ySeat - 2) - L, 'post', tall ? `Kaki + tiang sandaran ${n}` : `Kaki ${label} ${n}`, leg);
+      add(`palang-bangku-${k}-${n}`, 'z', x, ySeat, z0 + 2, z1 - z0 - 4 - (tall ? L : 0), 'rail-z', `Palang ${label} ${n}`, rail);
     };
     if (two) bench('b', 0, zbA1, 'bangku belakang', false);
     bench('d', zb0, zb1, two ? 'bangku depan' : 'bangku', back);
   });
 
-  // Gelagar memanjang di bawah daun meja & bangku
-  add('gelagar-meja-b', 'x', x0, yTop, zt0 + 3, len, 'rail-x', 'Gelagar daun meja belakang', thin);
-  add('gelagar-meja-d', 'x', x0, yTop, zt1 - 4, len, 'rail-x', 'Gelagar daun meja depan', thin);
-  add('gelagar-bangku-b', 'x', x0, ySeat, zb0 + 3, len, 'rail-x', 'Gelagar bangku belakang', thin);
-  add('gelagar-bangku-d', 'x', x0, ySeat, zb1 - 4, len, 'rail-x', 'Gelagar bangku depan', thin);
+  // Gelagar memanjang di bawah daun meja & bangku: menerus, ujung palang dilas rata di sisinya.
+  // Trapesium: palang bangku melintasi gelagar bangku belakang & pengaku, jadi keduanya dipotong di tiap palang.
+  const railCuts = ends.map((x): [number, number] => [x - 1, x + 1]);
+  add('gelagar-meja-b', 'x', x0, yTop, trap ? zRail0 - 1 : zt0 + 2, len, 'rail-x', 'Gelagar daun meja belakang', thin);
+  add('gelagar-meja-d', 'x', x0, yTop, zt1 - 2, len, 'rail-x', 'Gelagar daun meja depan', thin);
+  if (trap) runX(add, 'gelagar-bangku-b', x0, W - 2, ySeat, zb0 + 1, 'Gelagar bangku belakang', thin, railCuts);
+  else add('gelagar-bangku-b', 'x', x0, ySeat, zb0 + 1, len, 'rail-x', 'Gelagar bangku belakang', thin);
+  add('gelagar-bangku-d', 'x', x0, ySeat, zb1 - 1, len, 'rail-x', 'Gelagar bangku depan', thin);
   if (two) {
-    add('gelagar-bangku2-b', 'x', x0, ySeat, 3, len, 'rail-x', 'Gelagar bangku 2 belakang', thin);
-    add('gelagar-bangku2-d', 'x', x0, ySeat, zbA1 - 4, len, 'rail-x', 'Gelagar bangku 2 depan', thin);
+    add('gelagar-bangku2-b', 'x', x0, ySeat, 1, len, 'rail-x', 'Gelagar bangku 2 belakang', thin);
+    add('gelagar-bangku2-d', 'x', x0, ySeat, zbA1 - 1, len, 'rail-x', 'Gelagar bangku 2 depan', thin);
   }
-  const span = ends[ends.length - 1] - ends[0] - 2;
-  if (trap) add('pengaku', 'x', ends[0] + 1, ySeat, (zt1 + zb0) / 2, span, 'rail-x', 'Palang pengaku tengah', thin);
-  else add('pengaku', 'x', ends[0] + 1, yFloor, Dt / 2, span, 'rail-x', 'Pengaku lantai tengah', thin);
+  const last = ends[ends.length - 1];
+  if (trap) runX(add, 'pengaku', ends[0], last, ySeat, (zt1 + zb0) / 2, 'Palang pengaku tengah', thin, railCuts);
+  else runX(add, 'pengaku', ends[0], last, yFloor, Dt / 2, 'Pengaku lantai tengah', thin, ends.map((x): [number, number] => [x - L / 2, x + L / 2]));
   if (back) add('sandaran-atas', 'x', x0, Hback - 1, zb1 - 2 - L / 2, len, 'rail-x', 'Palang sandaran atas', thin);
 
   if (b > 0) {
@@ -391,20 +428,51 @@ function buildExtra(p: Params, model: string, d: Dim): ProductBuild {
   const inset = Math.min(30, W * 0.15);
   const ends = [inset, W - inset];
   if (W > 220) ends.splice(1, 0, W / 2);
-  const span = ends[ends.length - 1] - ends[0];
   let yCross = 0;
+
+  const silang = model === 'silang';
+  // Kaki silang: dua kaki bersebelahan (digeser setengah pipa ke kiri & kanan as rangka) supaya tidak saling tembus;
+  // palang bangku dilas di sisi dalam pasangan kaki itu.
+  const seatX = ends.map((x, i) => (silang ? x + (i === ends.length - 1 ? -1 : 1) * (L + 1) : x));
+  const seatCuts = seatX.map((x): [number, number] => [x - 1, x + 1]);
+  // Topang miring dari sisi tiang (zFace, menjauh ke arah dir) naik ke bawah palang (yU, zU).
+  // Curam: dipotong rata mendatar, ujung bawah digeser supaya potongannya tidak masuk tiang.
+  // Landai: dipotong tegak rata di muka tiang, ujung atas diturunkan supaya tidak masuk palang.
+  const strut = (id: string, x: number, y0: number, zFace: number, dir: number, yU: number, zU: number, label: string) => {
+    let ya = y0;
+    let za = zFace;
+    let yb = yU;
+    for (let k = 0; k < 5; k++) {
+      const dy = yb - ya;
+      const dz = zU - za;
+      const len = Math.hypot(dy, dz);
+      if (Math.abs(dy) / len >= 0.35) {
+        ya = y0;
+        yb = yU;
+        za = zFace + dir * (len / Math.abs(dy));
+      } else {
+        const hv = len / Math.abs(dz);
+        za = zFace;
+        ya = y0 - hv;
+        yb = yU - hv;
+      }
+    }
+    line(id, [x, ya, za], [x, yb, zU], 'custom', label, thin);
+  };
 
   ends.forEach((x, i) => {
     const n = i === 0 ? 'kiri' : i === ends.length - 1 ? 'kanan' : 'tengah';
     add(`palang-meja-${n}`, 'z', x, yTop, zt0 + 3, lm - 6, 'rail-z', `Palang daun meja ${n}`, rail);
-    add(`palang-bangku-${n}`, 'z', x, ySeat, 2, Dt - 4, 'rail-z', `Palang bangku ${n}`, rail);
-    if (model === 'silang') {
-      // X: kaki dari bawah bangku belakang naik ke tepi depan meja, dan sebaliknya
+    add(`palang-bangku-${n}`, 'z', seatX[i], ySeat, 2, Dt - 4, 'rail-z', `Palang bangku ${n}`, rail);
+    if (silang) {
+      // X: kaki dari bawah bangku belakang naik ke tepi depan meja, dan sebaliknya; ujung atas dipotong rata
+      // di bawah palang meja, sisi luarnya rata dengan ujung palang
       const yT = yTop - 2;
       const zA = lb * 0.5;
-      const zB = zt1 - 4;
-      line(`kaki-${n}-1`, [x, 0, zA], [x, yT, zB], 'post', `Kaki silang ${n} 1`, leg);
-      line(`kaki-${n}-2`, [x, 0, Dt - zA], [x, yT, zt0 + 4], 'post', `Kaki silang ${n} 2`, leg);
+      let zB = zt1 - 3;
+      for (let k = 0; k < 5; k++) zB = zt1 - 3 - halfFlat(yT, zB - zA, L / 2);
+      line(`kaki-${n}-1`, [x - L / 2, 0, zA], [x - L / 2, yT, zB], 'post', `Kaki silang ${n} 1`, leg);
+      line(`kaki-${n}-2`, [x + L / 2, 0, Dt - zA], [x + L / 2, yT, Dt - zB], 'post', `Kaki silang ${n} 2`, leg);
       yCross = (yT * (zc - zA)) / (zB - zA);
       return;
     }
@@ -413,21 +481,24 @@ function buildExtra(p: Params, model: string, d: Dim): ProductBuild {
     add(`tiang-bawah-${n}`, 'y', x, L, zc, ySeat - 2 - L, 'post', `Tiang tengah bawah ${n}`, leg);
     add(`tiang-atas-${n}`, 'y', x, ySeat + 2, zc, yTop - 2 - (ySeat + 2), 'post', `Tiang tengah atas ${n}`, leg);
     const yb = ySeat * 0.35;
-    line(`topang-bangku-${n}-b`, [x, yb, zc - L / 2], [x, ySeat - 2, lb * 0.5], 'custom', `Topang bangku belakang ${n}`, thin);
-    line(`topang-bangku-${n}-d`, [x, yb, zc + L / 2], [x, ySeat - 2, Dt - lb * 0.5], 'custom', `Topang bangku depan ${n}`, thin);
+    strut(`topang-bangku-${n}-b`, x, yb, zc - L / 2, -1, ySeat - 2, lb * 0.5, `Topang bangku belakang ${n}`);
+    strut(`topang-bangku-${n}-d`, x, yb, zc + L / 2, 1, ySeat - 2, Dt - lb * 0.5, `Topang bangku depan ${n}`);
     const ym = yTop - Math.min(18, (yTop - ySeat) * 0.6);
-    line(`topang-meja-${n}-b`, [x, ym, zc - L / 2], [x, yTop - 2, zt0 + 6], 'custom', `Topang meja belakang ${n}`, thin);
-    line(`topang-meja-${n}-d`, [x, ym, zc + L / 2], [x, yTop - 2, zt1 - 6], 'custom', `Topang meja depan ${n}`, thin);
+    strut(`topang-meja-${n}-b`, x, ym, zc - L / 2, -1, yTop - 2, zt0 + 6, `Topang meja belakang ${n}`);
+    strut(`topang-meja-${n}-d`, x, ym, zc + L / 2, 1, yTop - 2, zt1 - 6, `Topang meja depan ${n}`);
   });
 
   const x0 = 2;
   const len = W - 4;
-  add('gelagar-meja-b', 'x', x0, yTop, zt0 + 3, len, 'rail-x', 'Gelagar daun meja belakang', thin);
-  add('gelagar-meja-d', 'x', x0, yTop, zt1 - 4, len, 'rail-x', 'Gelagar daun meja depan', thin);
-  add('gelagar-bangku-b', 'x', x0, ySeat, lb / 2, len, 'rail-x', 'Gelagar bangku belakang', thin);
-  add('gelagar-bangku-d', 'x', x0, ySeat, Dt - lb / 2, len, 'rail-x', 'Gelagar bangku depan', thin);
-  if (model === 'silang') add('pengaku', 'x', ends[0] + 1, yCross, zc, span - 2, 'rail-x', 'Palang pengaku di titik silang', thin);
-  else add('pengaku', 'x', ends[0] + L / 2, ySeat * 0.6, zc, span - L, 'rail-x', 'Balok tulang tengah antar tiang', leg);
+  // Gelagar meja menerus, palang meja dilas di sisinya; gelagar bangku dipotong di tiap palang bangku
+  add('gelagar-meja-b', 'x', x0, yTop, zt0 + 2, len, 'rail-x', 'Gelagar daun meja belakang', thin);
+  add('gelagar-meja-d', 'x', x0, yTop, zt1 - 2, len, 'rail-x', 'Gelagar daun meja depan', thin);
+  runX(add, 'gelagar-bangku-b', x0, W - 2, ySeat, lb / 2, 'Gelagar bangku belakang', thin, seatCuts);
+  runX(add, 'gelagar-bangku-d', x0, W - 2, ySeat, Dt - lb / 2, 'Gelagar bangku depan', thin, seatCuts);
+  const last = ends[ends.length - 1];
+  // pengaku dipotong di tiap rangka, dilas rata di sisi kaki silang / tiang tengah
+  if (silang) runX(add, 'pengaku', ends[0], last, yCross, zc, 'Palang pengaku di titik silang', thin, ends.map((x): [number, number] => [x - L, x + L]));
+  else runX(add, 'pengaku', ends[0], last, ySeat * 0.6, zc, 'Balok tulang tengah antar tiang', leg, ends.map((x): [number, number] => [x - L / 2, x + L / 2]));
 
   if (b > 0) {
     boards.push(board('daun-meja', 'Daun meja', 0, W, Hm - b, Hm, zt0, zt1));

@@ -23,6 +23,17 @@ const model = (p: Params) => {
 };
 /** Model yang memakai pegangan dorong (toggle) di sisi kiri */
 const handleToggle = (p: Params) => ['rak', 'buku', 'perkakas'].includes(model(p));
+/**
+ * Batang miring yang ujungnya dipotong rata lantai (horizontal) lalu dilas ke SISI tegak batang lain:
+ * as ujungnya harus mundur dari sisi itu sejauh setengah lebar potongan horizontal, supaya sudut potongan
+ * menempel rata di sisi batang dan tidak masuk ke dalamnya. dh0 = jarak datar as-ke-sisi, dv = beda tinggi,
+ * t = tebal batang. Hasil: jarak mundur (cm).
+ */
+const flushBack = (dh0: number, dv: number, t: number) => {
+  let off = 0;
+  for (let i = 0; i < 6; i++) off = ((t / 2) * Math.hypot(dh0 - off, dv)) / Math.abs(dv);
+  return off;
+};
 const handleOn = (p: Params) => (handleToggle(p) && bool(p, 'pegangan')) || model(p) === 'platform';
 const shelved = (p: Params) => ['rak', 'buku', 'perkakas', 'saji-lipat'].includes(model(p));
 const tiered = (p: Params) => shelved(p) || bikeCart(p);
@@ -234,8 +245,12 @@ export const TROLI: ProductDef = {
       xs.forEach((x, i) => {
         const nm = i ? 'kanan' : 'kiri';
         add(`tegak-${i}`, 'y', x, 0, zu, hh - 10, 'post', `Rangka tegak ${nm}`, post);
-        line(`gagang-${i}`, [x, hh - 10, zu], [x, hh - L / 2, zu - 10], 'post', `Gagang miring ${nm}`, post);
-        line(`dudukan-as-${i}`, [x, r, zw], [x, r + 16, zu - L / 2], 'custom', `Dudukan as roda ${nm}`, [20, 20]);
+        // gagang: dari ujung atas rangka tegak, dipotong rata di bawah pipa pegangan
+        line(`gagang-${i}`, [x, hh - 10, zu], [x, hh - L, zu - 10], 'post', `Gagang miring ${nm}`, post);
+        // dudukan as: berdiri di atas as roda, ujung atas menempel di sisi depan rangka tegak
+        const yAs = r + 1; // permukaan atas as Ø20
+        const back = flushBack(zu - L / 2 - zw, r + 16 - yAs, 2);
+        line(`dudukan-as-${i}`, [x, yAs, zw], [x, r + 16, zu - L / 2 - back], 'custom', `Dudukan as roda ${nm}`, [20, 20]);
       });
       add('pegangan', 'x', ox, hh - L / 2, zu - 10, W, 'rail-x', 'Pegangan atas', post);
       const rungs = Math.max(3, Math.round((hh - 20) / 28));
@@ -412,7 +427,8 @@ export const TROLI: ProductDef = {
       const nz = Math.max(2, Math.ceil(W / 45) + 1);
       for (let k = 0; k < nz; k++) {
         const x = xl + ((xr - xl) * k) / (nz - 1);
-        add(`lantai-lintang-${k + 1}`, 'z', x, yd, L, D - 2 * L, 'rail-z', k === 0 || k === nz - 1 ? `Rangka lantai ${k ? 'kanan' : 'kiri'}` : `Palang lantai ${k}`, rail);
+        // lintang dilas rata di sisi dalam rangka lantai depan & belakang (lebar pipa rangka = rail[0])
+        add(`lantai-lintang-${k + 1}`, 'z', x, yd, zb + rail[0] / 20, zf - zb - rail[0] / 10, 'rail-z', k === 0 || k === nz - 1 ? `Rangka lantai ${k ? 'kanan' : 'kiri'}` : `Palang lantai ${k}`, rail);
       }
       if (b > 0) boards.push(board('lantai', 'Papan lantai troli', 0, W, yd + rh / 2, deckTop, L, D - L));
       let H = deckTop;
@@ -423,7 +439,9 @@ export const TROLI: ProductDef = {
         [zb, zf].forEach((z, i) => {
           const nm = i ? 'depan' : 'belakang';
           add(`pegangan-tegak-${i}`, 'y', xl, y0, z, hh - y0, 'post', `Tiang pegangan ${nm}`, post);
-          line(`siku-pegangan-${i}`, [xl + L / 2, y0 + 32, z], [xl + 30, y0 + 1, z], 'custom', `Siku miring pegangan ${nm}`, [20, 20]);
+          // siku: ujung atas menempel di sisi tiang, ujung bawah berdiri di atas rangka lantai
+          const back = flushBack(30 - L / 2, 32, 2);
+          line(`siku-pegangan-${i}`, [xl + L / 2 + back, y0 + 32, z], [xl + 30, y0, z], 'custom', `Siku miring pegangan ${nm}`, [20, 20]);
         });
         add('pegangan', 'z', xl, hh - L / 2, L, D - 2 * L, 'rail-z', 'Pegangan dorong', post);
         add('pegangan-tengah', 'z', xl, (y0 + hh) / 2 + 5, L, D - 2 * L, 'rail-z', 'Palang tengah pegangan', [20, 20]);
@@ -446,14 +464,22 @@ export const TROLI: ProductDef = {
           add(`pagar-kiri-${k}`, 'z', xl, y, L, D - 2 * L, 'rail-z', `Pipa pagar ${nm} kiri`, [20, 20]);
           add(`pagar-kanan-${k}`, 'z', xr, y, L, D - 2 * L, 'rail-z', `Pipa pagar ${nm} kanan`, [20, 20]);
         });
+        // Jeruji sebidang dengan pipa pagar: dipotong pendek di antara pipa (bawah → pipa tengah → pipa atas),
+        // tiap potong dilas rata di permukaan pipa pagar. Jeruji belakang berdiri di rangka lantai belakang,
+        // jeruji samping berdiri di atas papan lantai.
+        const hr = 1; // setengah tinggi pipa pagar 20×20
+        const jeruji = (id: string, label: string, x: number, z: number, yStart: number) => {
+          add(`${id}-bawah`, 'y', x, yStart, z, yMid - hr - yStart, 'post', `${label} bawah`, bar);
+          add(`${id}-atas`, 'y', x, yMid + hr, z, yTop - hr - (yMid + hr), 'post', `${label} atas`, bar);
+        };
         const gap = 15;
         const nb = Math.max(1, Math.round((W - 2 * L) / gap) - 1);
-        for (let k = 1; k <= nb; k++) add(`jeruji-belakang-${k}`, 'y', L + ((W - 2 * L) * k) / (nb + 1), deckTop, zb, yTop - deckTop, 'post', `Jeruji belakang ${k}`, bar);
+        for (let k = 1; k <= nb; k++) jeruji(`jeruji-belakang-${k}`, `Jeruji belakang ${k}`, L + ((W - 2 * L) * k) / (nb + 1), zb, y0);
         const ns = Math.max(1, Math.round((D - 2 * L) / gap) - 1);
         for (let k = 1; k <= ns; k++) {
           const z = L + ((D - 2 * L) * k) / (ns + 1);
-          add(`jeruji-kiri-${k}`, 'y', xl, deckTop, z, yTop - deckTop, 'post', `Jeruji kiri ${k}`, bar);
-          add(`jeruji-kanan-${k}`, 'y', xr, deckTop, z, yTop - deckTop, 'post', `Jeruji kanan ${k}`, bar);
+          jeruji(`jeruji-kiri-${k}`, `Jeruji kiri ${k}`, xl, z, deckTop);
+          jeruji(`jeruji-kanan-${k}`, `Jeruji kanan ${k}`, xr, z, deckTop);
         }
         H = hp;
       }
@@ -534,7 +560,9 @@ export const TROLI: ProductDef = {
 
     if (m === 'buku') {
       // tiang tengah di kedua ujung + sekat tengah
-      const ht = topSurface + 12;
+      // tiang sekat kiri berada tepat di bawah pipa pegangan: bila ada pegangan, sekat dipendekkan
+      // supaya ujung tiang sekat menempel rata di sisi bawah pegangan (tidak menembusnya)
+      const ht = handle ? Math.min(topSurface + 12, hh - L) : topSurface + 12;
       [xl, xr].forEach((x, k) => add(`tiang-tengah-${k}`, 'y', x, c + rh, zc, ht - c - rh, 'post', `Tiang sekat ${k ? 'kanan' : 'kiri'}`, post));
       add('sekat-atas', 'x', ox + L, ht - 1, zc, W - 2 * L, 'rail-x', 'Palang atas sekat', [20, 20]);
       if (b > 0) boards.push(board('sekat', 'Papan sekat tengah', ox + L, ox + W - L, yBottom - drop + rh / 2, ht - 2, zc - 0.6, zc + 0.6));
@@ -558,7 +586,10 @@ export const TROLI: ProductDef = {
           const zn = k ? 'depan' : 'belakang';
           const xEnd = xs + s * (ld - 2);
           add(`lengan-${nm}-${k}`, 'x', Math.min(xs, xEnd), yArm, z, ld - 2, 'rail-x', `Lengan sayap ${nm} ${zn}`, [20, 20]);
-          line(`siku-sayap-${nm}-${k}`, [xs, yArm - Math.max(15, ld * 0.8), z], [xs + s * ld * 0.7, yArm - 1, z], 'custom', `Siku sayap ${nm} ${zn}`, [20, 20]);
+          // siku: ujung bawah menempel di sisi luar tiang, ujung atas rata di bawah lengan sayap
+          const yS = yArm - Math.max(15, ld * 0.8);
+          const back = flushBack(ld * 0.7, yArm - 1 - yS, 2);
+          line(`siku-sayap-${nm}-${k}`, [xs + s * back, yS, z], [xs + s * ld * 0.7, yArm - 1, z], 'custom', `Siku sayap ${nm} ${zn}`, [20, 20]);
         });
         if (b > 0) boards.push(board(`sayap-${nm}`, `Daun sayap ${nm}`, s < 0 ? 0 : ox + W, s < 0 ? ox : ox + W + ld, postTop, postTop + b, 0, D));
       });

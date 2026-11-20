@@ -169,6 +169,20 @@ export const RAK_DINDING: ProductDef = {
     const y0 = hang ? Math.max(60, ceil - 70 - (n - 1) * gap) : num(p, 'tinggiMulai', 135);
     const ys = Array.from({ length: n }, (_, i) => y0 + i * gap);
     const yArm = (y: number) => y - b - L / 2;
+    /**
+     * Penguat miring dari permukaan tembok/plat (zWall, setinggi yLo) ke sisi bawah lengan (yHi, zEnd).
+     * Kedua ujung dipotong datar (rata permukaan bawah lengan); titik awal as digeser maju supaya
+     * sudut belakang potongan pas di permukaan plat, tidak masuk ke dalamnya.
+     */
+    const brace = (id: string, x: number, yLo: number, zWall: number, yHi: number, zEnd: number, label: string, w: number) => {
+      let z0 = zWall + w / 2;
+      for (let i = 0; i < 4; i++) {
+        const dy = yHi - yLo;
+        const uy = dy / Math.hypot(dy, zEnd - z0);
+        z0 = zWall + w / 2 / uy;
+      }
+      line(id, [x, yLo, z0], [x, yHi, zEnd], 'custom', label, [w * 10, w * 10]);
+    };
 
     if (model === 'pipa' || model === 'kotak' || model === 'kisi' || model === 'rel') {
       const nb = Math.max(2, Math.ceil((W - 24) / 80) + 1);
@@ -217,18 +231,23 @@ export const RAK_DINDING: ProductDef = {
         add('kisi-bawah', 'x', L, gy0 + L / 2, zg, W - 2 * L, 'rail-x', 'Rangka kisi bawah', t);
         const feet: [number, number][] = [[L / 2, gy0 + 6], [W - L / 2, gy0 + 6], [L / 2, gy1 - 6], [W - L / 2, gy1 - 6]];
         feet.forEach(([x, y], i) => add(`kisi-dudukan-${i}`, 'z', x, y, 0, zg - L / 2, 'custom', `Dudukan kisi ke tembok ${i + 1}`, thin));
+        // Kisi 10 mm: jeruji tegak di bidang belakang, jeruji datar di bidang depan (ditumpuk, bukan bersilangan
+        // di bidang yang sama); keduanya tetap di dalam tebal rangka kisi dan dilas di titik temu.
+        const g = 1;
         const nv = Math.max(1, Math.round((W - 2 * L) / 12) - 1);
-        for (let i = 1; i <= nv; i++) add(`kisi-tegak-${i}`, 'y', L + ((W - 2 * L) * i) / (nv + 1), gy0 + L, zg, gy1 - gy0 - 2 * L, 'custom', `Kisi tegak ${i}`, [10, 10]);
+        for (let i = 1; i <= nv; i++) add(`kisi-tegak-${i}`, 'y', L + ((W - 2 * L) * i) / (nv + 1), gy0 + L, zg - g / 2, gy1 - gy0 - 2 * L, 'custom', `Kisi tegak ${i}`, [10, 10]);
         const nh = Math.max(1, Math.round((gy1 - gy0 - 2 * L) / 12) - 1);
-        for (let i = 1; i <= nh; i++) add(`kisi-datar-${i}`, 'x', L, gy0 + L + ((gy1 - gy0 - 2 * L) * i) / (nh + 1), zg, W - 2 * L, 'custom', `Kisi datar ${i}`, [10, 10]);
+        for (let i = 1; i <= nh; i++) add(`kisi-datar-${i}`, 'x', L, gy0 + L + ((gy1 - gy0 - 2 * L) * i) / (nh + 1), zg + g / 2, W - 2 * L, 'custom', `Kisi datar ${i}`, [10, 10]);
+        const zf = zg + g; // muka depan kisi
         const sw = Math.max(30, W * 0.5);
         ys.forEach((y, k) => {
           const x0 = k % 2 === 0 ? 6 : W - 6 - sw;
           const ya = y - b - 0.75;
           [x0 + 1, x0 + sw - 1].forEach((x, j) => {
-            add(`rak-${k + 1}-lengan-${j}`, 'z', x, ya, zg + 0.5, Dp - zg - 0.5, 'rail-z', `Lengan rak kecil ${k + 1} ${j ? 'kanan' : 'kiri'}`, thin);
-            line(`rak-${k + 1}-penguat-${j}`, [x, ya - 12, zg + 0.5], [x, ya - 0.75, Dp * 0.6], 'custom', `Penguat rak kecil ${k + 1} ${j ? 'kanan' : 'kiri'}`, [10, 10]);
-            add(`rak-${k + 1}-bibir-tiang-${j}`, 'y', x, ya + 0.75, Dp - 1, b + 3, 'custom', `Tiang bibir rak kecil ${k + 1} ${j ? 'kanan' : 'kiri'}`, [10, 10]);
+            add(`rak-${k + 1}-lengan-${j}`, 'z', x, ya, zf, Dp - zf, 'rail-z', `Lengan rak kecil ${k + 1} ${j ? 'kanan' : 'kiri'}`, thin);
+            brace(`rak-${k + 1}-penguat-${j}`, x, ya - 12, zf, ya - 0.75, Dp * 0.6, `Penguat rak kecil ${k + 1} ${j ? 'kanan' : 'kiri'}`, 1);
+            // tiang bibir berhenti di sisi bawah pipa bibir (bibir menerus di atasnya)
+            add(`rak-${k + 1}-bibir-tiang-${j}`, 'y', x, ya + 0.75, Dp - 1, b + 3 - 0.5, 'custom', `Tiang bibir rak kecil ${k + 1} ${j ? 'kanan' : 'kiri'}`, [10, 10]);
           });
           add(`rak-${k + 1}-bibir`, 'x', x0, ya + 0.75 + b + 3, Dp - 1, sw, 'rail-x', `Bibir rak kecil ${k + 1}`, [10, 10]);
           if (b > 0) boards.push(board(`papan-${k + 1}`, `Papan rak kecil ${k + 1}`, x0, x0 + sw, y - b, y, zg + 1, Dp));
@@ -241,13 +260,14 @@ export const RAK_DINDING: ProductDef = {
         ys.forEach((y, k) => {
           xs.forEach((x, i) => {
             add(`plat-${i}-r${k + 1}`, 'y', x, y - 7, L / 2, 14, 'post', `Plat dudukan ${i + 1} rel ${k + 1}`, t);
-            add(`dudukan-${i}-r${k + 1}`, 'z', x, y, L, zr - L, 'rail-z', `Dudukan rel ${i + 1} rel ${k + 1}`, t);
+            // dudukan berhenti di sisi belakang rel (rel menerus, dilas di ujung dudukan)
+            add(`dudukan-${i}-r${k + 1}`, 'z', x, y, L, zr - L - L / 2, 'rail-z', `Dudukan rel ${i + 1} rel ${k + 1}`, t);
           });
           add(`rel-${k + 1}`, 'x', 4, y, zr, W - 8, 'rail-x', `Rel gantung ${k + 1}`, t);
           for (let i = 0; i < nk; i++) {
             const xk = 8 + ((W - 16) * (i + 0.5)) / nk;
             add(`kait-${k + 1}-${i + 1}`, 'y', xk, y - L / 2 - 9, zr, 9, 'custom', `Kait S rel ${k + 1} no. ${i + 1}`, [8, 8]);
-            add(`kait-${k + 1}-${i + 1}-ujung`, 'z', xk, y - L / 2 - 9, zr, 2.5, 'custom', `Ujung kait S rel ${k + 1} no. ${i + 1}`, [8, 8]);
+            add(`kait-${k + 1}-${i + 1}-ujung`, 'z', xk, y - L / 2 - 9 + 0.4, zr + 0.4, 2.1, 'custom', `Ujung kait S rel ${k + 1} no. ${i + 1}`, [8, 8]);
           }
         });
       }
@@ -270,13 +290,17 @@ export const RAK_DINDING: ProductDef = {
       // Siku di beberapa titik sepanjang rak (maks. 80 cm antar siku)
       const nb = Math.max(2, Math.ceil((W - 20) / 80) + 1);
       const xs = Array.from({ length: nb }, (_, i) => 10 + ((W - 20) * i) / (nb - 1));
+      // siku miring + gantungan gelas: tiang gantungan di depan ujung atas penguat (tidak memotong penguat),
+      // tetap di bawah lengan (lengan berakhir di Dp - 2)
+      const zGelas = model === 'siku-miring' ? Math.min(Dp - 2 - 0.75, Dp * 0.65 + 2.5) : Dp * 0.55;
+      const zBrace = model === 'siku-miring' && bool(p, 'gantunganGelas') ? Math.min(Dp * 0.65, zGelas - 2.5) : Dp * 0.65;
       xs.forEach((x, i) => {
         if (model === 'tiang') add(`tiang-${i}`, 'y', x, yArm(ys[0]) - 12, L / 2, ys[n - 1] + 4 - (yArm(ys[0]) - 12), 'post', `Tiang dinding ${i + 1}`, t);
         ys.forEach((y, k) => {
           const ya = yArm(y);
           if (model !== 'tiang') add(`plat-${i}-t${k + 1}`, 'y', x, ya - (model === 'siku-miring' ? 18 : 12), L / 2, (model === 'siku-miring' ? 18 : 12) + L / 2, 'post', `Siku dinding ${i + 1} tingkat ${k + 1}`, t);
           add(`lengan-${i}-t${k + 1}`, 'z', x, ya, L, Dp - L - 2, 'rail-z', `Lengan siku ${i + 1} tingkat ${k + 1}`, t);
-          if (model === 'siku-miring') line(`penguat-${i}-t${k + 1}`, [x, ya - 16, L + 0.6], [x, ya - L / 2 - 0.6, Dp * 0.65], 'custom', `Penguat miring ${i + 1} tingkat ${k + 1}`, thin);
+          if (model === 'siku-miring') brace(`penguat-${i}-t${k + 1}`, x, ya - 16, L, ya - L / 2, zBrace, `Penguat miring ${i + 1} tingkat ${k + 1}`, 1.5);
         });
       });
       // Bibir penahan: tiang kecil di ujung lengan + pipa tepi depan
@@ -288,8 +312,9 @@ export const RAK_DINDING: ProductDef = {
         });
       if (bool(p, 'gantunganGelas')) {
         const ya = yArm(ys[0]);
-        xs.forEach((x, i) => add(`gelas-tiang-${i}`, 'y', x, ya - L / 2 - 10, Dp * 0.55, 10, 'custom', `Tiang gantungan gelas ${i + 1}`, thin));
-        add('gantungan-gelas', 'x', xs[0] - 5, ya - L / 2 - 10 - 0.75, Dp * 0.55, xs[nb - 1] - xs[0] + 10, 'rail-x', 'Batang gantungan gelas', thin);
+        const zg = zGelas;
+        xs.forEach((x, i) => add(`gelas-tiang-${i}`, 'y', x, ya - L / 2 - 10, zg, 10, 'custom', `Tiang gantungan gelas ${i + 1}`, thin));
+        add('gantungan-gelas', 'x', xs[0] - 5, ya - L / 2 - 10 - 0.75, zg, xs[nb - 1] - xs[0] + 10, 'rail-x', 'Batang gantungan gelas', thin);
       }
     }
     if (hang && bool(p, 'gantunganGelas')) {

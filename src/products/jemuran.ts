@@ -286,6 +286,30 @@ export const JEMURAN: ProductDef = {
       add(`${id}-kiri`, 'z', x0, y, z0 + L / 2, z1 - z0 - L, 'rail-z', `Palang ${nm} kiri`, tube);
       add(`${id}-kanan`, 'z', x1, y, z0 + L / 2, z1 - z0 - L, 'rail-z', `Palang ${nm} kanan`, tube);
     };
+    type P3 = [number, number, number];
+    /**
+     * Setengah lebar jejak potongan rata lantai (horizontal) batang miring dari a ke b, diukur mendatar searah batang.
+     * Batang miring yang cukup tegak dipotong rata lantai di kedua ujung, jadi jejaknya melebar (h/2)/sin(sudut).
+     */
+    const footHalf = (a: P3, b: P3, tube: [number, number]) => {
+      const hl = Math.hypot(b[0] - a[0], b[2] - a[2]);
+      const dy = Math.abs(b[1] - a[1]) || 1e-6;
+      return (tube[1] / 20) * (Math.hypot(hl, dy) / dy);
+    };
+    /**
+     * Penguat miring cara tukang las: a = titik di sisi batang tegak tempat tepi bawah potongan menempel
+     * (bukan as batang), b = tengah potongan atas yang menempel rata di bawah palang/lengan. Titik awal as
+     * digeser mendatar searah batang setengah lebar jejaknya, jadi ujung bawah tidak masuk ke dalam tiang.
+     */
+    const strut = (id: string, a: P3, b: P3, label: string, tube: [number, number]) => {
+      let s: P3 = [...a];
+      for (let i = 0; i < 4; i++) {
+        const hl = Math.hypot(b[0] - s[0], b[2] - s[2]) || 1e-6;
+        const off = footHalf(s, b, tube) + 0.1;
+        s = [a[0] + ((b[0] - s[0]) / hl) * off, a[1], a[2] + ((b[2] - s[2]) / hl) * off];
+      }
+      line(id, s, b, 'custom', label, tube);
+    };
     /** z merata di antara za..zb (tidak termasuk ujung) */
     const spread = (cnt: number, za: number, zb: number) => Array.from({ length: cnt }, (_, k) => za + ((zb - za) * (k + 1)) / (cnt + 1));
 
@@ -344,8 +368,9 @@ export const JEMURAN: ProductDef = {
         boards.push({ ...board(`plat-${i}`, `Plat dasar tiang ${i + 1}`, x - 10, x + 10, 0, plat, zc - 10, zc + 10), steelMm: 8 });
         add(`tiang-${i}`, 'y', x, plat, zc, H - plat - L, 'post', `Tiang ${i + 1}`, pt);
         add(`lengan-${i}`, 'z', x, H - L / 2, 0, D, 'rail-z', `Lengan T tiang ${i + 1}`, pt);
+        // penguat: ujung bawah menempel di sisi tiang, ujung atas rata di bawah lengan T
         [-1, 1].forEach((s, j) =>
-          line(`penguat-${i}-${j}`, [x, H - 35, zc + (s * L) / 2], [x, H - L, zc + s * Math.min(D / 2 - 4, D * 0.35)], 'custom', `Penguat lengan tiang ${i + 1} ${j ? 'depan' : 'belakang'}`, thin)
+          strut(`penguat-${i}-${j}`, [x, H - 35, zc + (s * L) / 2], [x, H - L, zc + s * Math.min(D / 2 - 4, D * 0.35)], `Penguat lengan tiang ${i + 1} ${j ? 'depan' : 'belakang'}`, thin)
         );
       });
       const tube = jem((W - L) / (nT - 1));
@@ -361,18 +386,36 @@ export const JEMURAN: ProductDef = {
       boards.push({ ...board('plat-dasar', 'Plat dasar bundar', cc - pr, cc + pr, 0, plat, cc - pr, cc + pr), shape: 'round', steelMm: 8 });
       const Hp = H - 15 - L;
       add('tiang', 'y', cc, plat, cc, Hp - plat, 'post', 'Tiang tengah (bisa diputar)', pt);
-      const rr = (R - 1) * Math.SQRT2; // ujung lengan di sudut cincin terluar (sisi = panjang)
-      const yTip = H - 1;
+      // Cara tukang las: 4 lengan dilas tegak lurus di keempat sisi pucuk tiang (ujung lengan dipotong rata
+      // menempel di sisi tiang), naik sedikit ke luar. Cincin palang persegi DITUMPUK di atas lengan, bukan
+      // menembus lengan: sisi depan/belakang menerus, sisi kiri/kanan dipotong rata di antaranya.
       const nR = clampI(n, 2, 6);
-      const angs = [45, 135, 225, 315].map((d) => (d * Math.PI) / 180);
-      const P = (a: number, f: number): [number, number, number] => [r1(cc + f * rr * Math.cos(a)), r1(Hp + f * (yTip - Hp)), r1(cc + f * rr * Math.sin(a))];
-      angs.forEach((a, k) => {
-        line(`lengan-${k + 1}`, [cc, Hp, cc], P(a, 1), 'custom', `Lengan miring ${k + 1}`, rail);
-        line(`topang-${k + 1}`, [cc + (L / 2) * Math.cos(a), Hp - 40, cc + (L / 2) * Math.sin(a)], P(a, 0.45), 'custom', `Topang lengan ${k + 1}`, thin);
+      const ra = rail[1] / 20; // setengah tebal lengan
+      const rh = thin[0] / 20; // setengah tebal palang cincin
+      const s0 = L / 2; // lengan mulai di sisi tiang
+      const dOut = R - rh; // as sisi cincin terluar (tepi luarnya di R)
+      let k = 0.2;
+      let yS = Hp - ra;
+      for (let i = 0; i < 4; i++) {
+        const sec = Math.sqrt(1 + k * k); // 1/cos kemiringan lengan
+        yS = Hp - ra * sec - 0.05; // jejak ujung lengan masih di dalam sisi tiang
+        k = (H - 2 * rh - ra * sec - yS) / (dOut - s0);
+      }
+      const sec = Math.sqrt(1 + k * k);
+      const armY = (s: number) => yS + k * (s - s0); // as lengan pada jarak s dari as tiang
+      const dirs: [number, number][] = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+      dirs.forEach(([dx, dz], j) => {
+        line(`lengan-${j + 1}`, [cc + dx * s0, yS, cc + dz * s0], [cc + dx * R, armY(R), cc + dz * R], 'custom', `Lengan miring ${j + 1}`, rail);
+        const st = R * 0.45;
+        strut(`topang-${j + 1}`, [cc + dx * s0, Hp - 40, cc + dz * s0], [cc + dx * st, armY(st) - ra * sec, cc + dz * st], `Topang lengan ${j + 1}`, thin);
       });
       for (let r = 1; r <= nR; r++) {
-        const f = 0.25 + (0.75 * r) / nR;
-        angs.forEach((a, k) => line(`jemur-${r}-${k + 1}`, P(a, f), P(angs[(k + 1) % 4], f), 'custom', `Cincin palang ${r} sisi ${k + 1}`, thin));
+        const d = (0.25 + (0.75 * r) / nR) * dOut;
+        const y = armY(d) + ra * sec + rh; // duduk di atas lengan
+        add(`jemur-${r}-1`, 'x', cc - d - rh, y, cc + d, 2 * d + 2 * rh, 'custom', `Cincin palang ${r} sisi 1`, thin);
+        add(`jemur-${r}-2`, 'z', cc - d, y, cc - d + rh, 2 * d - 2 * rh, 'custom', `Cincin palang ${r} sisi 2`, thin);
+        add(`jemur-${r}-3`, 'x', cc - d - rh, y, cc - d, 2 * d + 2 * rh, 'custom', `Cincin palang ${r} sisi 3`, thin);
+        add(`jemur-${r}-4`, 'z', cc + d, y, cc - d + rh, 2 * d - 2 * rh, 'custom', `Cincin palang ${r} sisi 4`, thin);
       }
       outD = W;
     } else if (m === 'tenda') {
@@ -404,16 +447,21 @@ export const JEMURAN: ProductDef = {
       const yT = H - L / 2;
       const zb = zo + L / 2;
       const zf = zo + D - L / 2;
+      // Kaki silang seperti engsel gunting: dua kaki bersebelahan (kaki 2 digeser ke dalam setebal pipa),
+      // dibaut di titik silang, bukan saling tembus. Ujung atas rata di bawah rangka atas.
+      const yK = yT - L / 2;
       [L / 2, W - L / 2].forEach((x, i) => {
         const nm = i ? 'kanan' : 'kiri';
-        line(`kaki-${i}-a`, [x, 0, zb], [x, yT - L, zf], 'post', `Kaki silang ${nm} 1`, pt);
-        line(`kaki-${i}-b`, [x, 0, zf], [x, yT - L, zb], 'post', `Kaki silang ${nm} 2`, pt);
+        const xi = x + (i ? -L : L);
+        line(`kaki-${i}-a`, [x, 0, zb], [x, yK, zf], 'post', `Kaki silang ${nm} 1`, pt);
+        line(`kaki-${i}-b`, [xi, 0, zf], [xi, yK, zb], 'post', `Kaki silang ${nm} 2`, pt);
       });
       add('rangka-belakang', 'x', 0, yT, zb, W, 'rail-x', 'Rangka atas belakang', pt);
       add('rangka-depan', 'x', 0, yT, zf, W, 'rail-x', 'Rangka atas depan', pt);
       add('rangka-kiri', 'z', L / 2, yT, zb + L / 2, D - 2 * L, 'rail-z', 'Rangka atas kiri', pt);
       add('rangka-kanan', 'z', W - L / 2, yT, zb + L / 2, D - 2 * L, 'rail-z', 'Rangka atas kanan', pt);
-      add('palang-silang', 'x', L, (yT - L) / 2, zo + D / 2, W - 2 * L, 'rail-x', 'Palang di titik silang', rail);
+      // palang silang dipotong rata di antara kedua kaki dalam
+      add('palang-silang', 'x', 2 * L, yK / 2, zo + D / 2, W - 4 * L, 'rail-x', 'Palang di titik silang', rail);
       const tube = jem(W - 2 * L);
       spread(n, zb, zf).forEach((z, k) => add(`jemur-${k + 1}`, 'x', L, yT, z, W - 2 * L, 'custom', `Palang jemur tengah ${k + 1}`, tube));
       const ns = Math.max(1, Math.round(S / 15));
@@ -466,21 +514,32 @@ export const JEMURAN: ProductDef = {
       const hs = 18;
       const yHi = H;
       const yLo = H - hs;
-      const cz = (D - L) / nc;
+      // Gunting asli: batang naik & turun di dua bidang bersebelahan (turun digeser ke dalam setebal pipa),
+      // dibaut di titik silang & di tiap simpul, bukan saling tembus. Simpul pertama mundur dari rel tembok
+      // setengah jejak potongan, jadi ujung batang menempel rata di sisi rel.
+      let z0 = L + 1;
+      let cz = (D - 1 - z0) / nc;
+      for (let it = 0; it < 4; it++) {
+        z0 = L + footHalf([0, yLo, 0], [0, yHi, cz], rail) + 0.1;
+        cz = (D - 1 - z0) / nc;
+      }
+      const rw = rail[0] / 10;
       [L / 2, W - L / 2].forEach((x, i) => {
         const nm = i ? 'kanan' : 'kiri';
+        const xt = x + (i ? -rw : rw);
         add(`rel-tembok-${i}`, 'y', x, yLo - 6, L / 2, hs + 12, 'post', `Rel tembok ${nm} (dudukan gunting)`, pt);
         for (let k = 0; k < nc; k++) {
-          const za = L + k * cz;
+          const za = z0 + k * cz;
           const zb = za + cz;
           line(`gunting-${i}-${k + 1}-a`, [x, yLo, za], [x, yHi, zb], 'custom', `Gunting ${nm} ruas ${k + 1} (naik)`, rail);
-          line(`gunting-${i}-${k + 1}-b`, [x, yHi, za], [x, yLo, zb], 'custom', `Gunting ${nm} ruas ${k + 1} (turun)`, rail);
+          line(`gunting-${i}-${k + 1}-b`, [xt, yHi, za], [xt, yLo, zb], 'custom', `Gunting ${nm} ruas ${k + 1} (turun)`, rail);
         }
       });
       [yLo - 6 + L / 2, yHi + 6 - L / 2].forEach((y, k) => add(`rel-tembok-${k ? 'atas' : 'bawah'}`, 'x', L, y, L / 2, W - 2 * L, 'rail-x', `Rel tembok ${k ? 'atas' : 'bawah'}`, pt));
       const tube = jem(W - L);
-      for (let k = 1; k <= nc; k++) add(`jemur-${k}`, 'x', 0, yHi + 2, L + k * cz, W, 'custom', `Palang jemur ruas ${k}`, tube);
-      add('pengikat-ujung', 'x', 0, yLo - 2, L + nc * cz, W, 'rail-x', 'Palang pengikat ujung bawah', rail);
+      // palang jemur duduk di atas simpul atas, pengikat menempel di bawah simpul ujung
+      for (let k = 1; k <= nc; k++) add(`jemur-${k}`, 'x', 0, yHi + tube[1] / 20, z0 + k * cz, W, 'custom', `Palang jemur ruas ${k}`, tube);
+      add('pengikat-ujung', 'x', 0, yLo - rail[1] / 20, z0 + nc * cz, W, 'rail-x', 'Palang pengikat ujung bawah', rail);
       outH = yHi + 6;
     } else if (m === 'plafon') {
       // Rel plafon, batang turun, bingkai palang menggantung
@@ -506,8 +565,10 @@ export const JEMURAN: ProductDef = {
       [L / 2, W - L / 2].forEach((x, i) => {
         const nm = i ? 'kanan' : 'kiri';
         add(`tapak-${i}`, 'z', x, L / 2, 0, D, 'rail-z', `Tapak lantai ${nm}`, pt);
-        line(`kaki-${i}-b`, [x, L, L / 2], [x, yTop, zc - tw / 2], 'post', `Kaki ${nm} belakang (miring)`, pt);
-        line(`kaki-${i}-d`, [x, L, D - L / 2], [x, yTop, zc + tw / 2], 'post', `Kaki ${nm} depan (miring)`, pt);
+        // kaki miring: ujung atas dipotong rata di bawah palang atas (bukan masuk ke as palang)
+        const yK = yTop - L / 2;
+        line(`kaki-${i}-b`, [x, L, L / 2], [x, yK, zBack(yK)], 'post', `Kaki ${nm} belakang (miring)`, pt);
+        line(`kaki-${i}-d`, [x, L, D - L / 2], [x, yK, zFront(yK)], 'post', `Kaki ${nm} depan (miring)`, pt);
         add(`atas-${i}`, 'z', x, yTop, zc - tw / 2 - L / 2, tw + L, 'rail-z', `Palang atas ${nm}`, pt);
       });
       const tube = jem(W - 2 * L);
@@ -553,7 +614,8 @@ export const JEMURAN: ProductDef = {
         yLow = y;
         add(`jemur-${k + 1}`, 'x', L, y, zc, W - L, 'custom', `Palang handuk ${k + 1}`, tube);
       }
-      line('penguat', [L, yLow - 22, zc], [Math.min(W * 0.35, 22), yLow - 1, zc], 'custom', 'Penguat miring palang bawah', thin);
+      // penguat: tepi bawah potongan menempel di sisi tiang, ujung atas rata di bawah palang terbawah
+      strut('penguat', [L, yLow - 22, zc], [Math.min(W * 0.35, 22), yLow - tube[1] / 20, zc], 'Penguat miring palang bawah', thin);
     }
 
     const casters = roda ? casterSet(casterXs, casterZs, inch, bool(p, 'remRoda')) : [];

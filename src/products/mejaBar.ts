@@ -18,6 +18,8 @@ const model = (p: Params) => {
 };
 const isCounter = (p: Params) => model(p) === 'counter' || model(p) === 'L';
 const ledgeOn = (p: Params) => isCounter(p) && bool(p, 'mejaTamu');
+/** Potongan batang di antara tiang berurutan (as cs, setengah lebar tiang h): [mulai, panjang] dari sisi ke sisi. */
+const gaps = (cs: number[], h: number): [number, number][] => cs.slice(1).map((c, i) => [cs[i] + h, c - cs[i] - 2 * h]);
 
 export const MEJA_BAR: ProductDef = {
   id: 'meja-bar',
@@ -172,9 +174,14 @@ export const MEJA_BAR: ProductDef = {
         add(`telapak-${i}`, 'z', x, L / 2, 1, D - 2, 'rail-z', `Telapak kaki ${i + 1} (di lantai)`, post);
         add(`lengan-${i}`, 'z', x, ya, 1, D - 2, 'rail-z', `Lengan atas ${i + 1}`, rail);
       });
-      add('gelagar-atas', 'x', 0, ya - 4, zc, W, 'rail-x', 'Gelagar atas tengah', thin);
-      if (bool(p, 'pijakanKaki')) add('pijakan-kaki', 'x', 5, 22, zc, W - 10, 'rail-x', 'Pipa pijakan kaki (tembus kaki)', [40, 40]);
-      else add('palang-bawah', 'x', xs[0], 15, zc, xs[n - 1] - xs[0], 'rail-x', 'Palang bawah antar kaki', thin);
+      // gelagar tengah dipotong di antara kaki, menempel di bawah lengan atas
+      gaps(xs, L / 2).forEach(([x0, len], i) => add(`gelagar-atas-${i}`, 'x', x0, ya - 3, zc, len, 'rail-x', `Gelagar atas tengah ${i + 1}`, thin));
+      if (bool(p, 'pijakanKaki')) {
+        // pijakan dipotong per kaki: ujung luar menjorok dari kaki tepi, potongan tengah di antara kaki
+        add('pijakan-kaki-kiri', 'x', 5, 22, zc, xs[0] - L / 2 - 5, 'rail-x', 'Pipa pijakan kaki ujung kiri', [40, 40]);
+        gaps(xs, L / 2).forEach(([x0, len], i) => add(`pijakan-kaki-${i}`, 'x', x0, 22, zc, len, 'rail-x', `Pipa pijakan kaki ${i + 1}`, [40, 40]));
+        add('pijakan-kaki-kanan', 'x', xs[n - 1] + L / 2, 22, zc, W - 5 - xs[n - 1] - L / 2, 'rail-x', 'Pipa pijakan kaki ujung kanan', [40, 40]);
+      } else gaps(xs, L / 2).forEach(([x0, len], i) => add(`palang-bawah-${i}`, 'x', x0, 15, zc, len, 'rail-x', `Palang bawah antar kaki ${i + 1}`, thin));
       if (b > 0) boards.push(board('daun', 'Daun meja bar', 0, W, yTop, H, 0, D));
       return { members: list, boards, casters: [], W, D, H, boardThick: 0 };
     }
@@ -192,20 +199,23 @@ export const MEJA_BAR: ProductDef = {
         add(`ujung-${i}-depan`, 'y', x, 0, zf, ya - 2, 'post', `Rangka ujung ${nm} tiang depan`, post);
         add(`ujung-${i}-atas`, 'z', x, ya, L, D - 2 * L, 'rail-z', `Rangka ujung ${nm} atas`, rail);
         add(`ujung-${i}-bawah`, 'z', x, L / 2, L, D - 2 * L, 'rail-z', `Rangka ujung ${nm} bawah (di lantai)`, post);
-        if (over > 3) add(`lengan-${i}`, 'z', x, ya, D, over - 3, 'rail-z', `Lengan daun menjorok ${nm}`, rail);
+        // lengan menyambung ujung palang atas (rata), duduk di atas tiang depan
+        if (over > 3) add(`lengan-${i}`, 'z', x, ya, D - L, over - 3 + L, 'rail-z', `Lengan daun menjorok ${nm}`, rail);
       });
       const span = xe[1] - xe[0] - L;
       add('gelagar-belakang', 'x', xe[0] + L / 2, ya, zb, span, 'rail-x', 'Gelagar atas belakang', rail);
       add('gelagar-depan', 'x', xe[0] + L / 2, ya, zf, span, 'rail-x', 'Gelagar atas depan', rail);
-      add('palang-tengah-bawah', 'x', xe[0] + L / 2, 12, D / 2, span, 'rail-x', 'Palang bawah tengah', rail);
-      if (over > 3 && W > 150) add('lengan-tengah', 'z', W / 2, ya, D, over - 3, 'rail-z', 'Lengan daun menjorok tengah', rail);
+      // palang bawah tengah di lantai, ujungnya menempel sisi rangka ujung bawah
+      add('palang-tengah-bawah', 'x', xe[0] + L / 2, 2, D / 2, span, 'rail-x', 'Palang bawah tengah', rail);
+      // lengan tengah menempel sisi gelagar atas depan
+      if (over > 3 && W > 150) add('lengan-tengah', 'z', W / 2, ya, zf + 1, D + over - 3 - zf - 1, 'rail-z', 'Lengan daun menjorok tengah', rail);
       for (let k = 0; k < shelves; k++) {
         const y = 20 + k * Math.min(28, (yTop - 45) / Math.max(1, shelves));
         add(`rak-${k + 1}-b`, 'x', xe[0] + L / 2, y, zb, span, 'rail-x', `Palang rak ${k + 1} belakang`, thin);
         add(`rak-${k + 1}-d`, 'x', xe[0] + L / 2, y, zf, span, 'rail-x', `Palang rak ${k + 1} depan`, thin);
         if (b > 0) boards.push(board(`papan-rak-${k + 1}`, `Papan rak ${k + 1}`, xe[0] + L / 2, xe[1] - L / 2, y + 1, y + 1 + b, L, D - L));
       }
-      if (bool(p, 'pijakanKaki')) add('pijakan-kaki', 'x', xe[0] + L / 2, 22, zf, span, 'rail-x', 'Pipa pijakan kaki tamu', [40, 40]);
+      if (bool(p, 'pijakanKaki')) add('pijakan-kaki', 'x', xe[0] + L / 2, 23, zf, span, 'rail-x', 'Pipa pijakan kaki tamu', [40, 40]);
       if (b > 0) {
         boards.push(board('daun', 'Daun island', 0, W, yTop, H, 0, D + over));
         boards.push(board('samping-kiri', 'Papan samping kiri (waterfall)', 0, b, 0, yTop, 0, D + over));
@@ -224,7 +234,7 @@ export const MEJA_BAR: ProductDef = {
       xs.forEach((x, i) => {
         if (i === 0 || i === n - 1) {
           add(`tiang-b-${i}`, 'y', x, 0, zb, ya - 2, 'post', `Tiang belakang ${i ? 'kanan' : 'kiri'}`, post);
-          add(`palang-atas-${i}`, 'z', x, ya, o + L, D - 2 * L, 'rail-z', `Palang atas ${i ? 'kanan' : 'kiri'}`, rail);
+          add(`palang-atas-${i}`, 'z', x, ya, zb + 1, zf - zb - 2, 'rail-z', `Palang atas ${i ? 'kanan' : 'kiri'}`, rail);
         }
         add(`tiang-d-${i}`, 'y', x, 0, zf, ya - 2, 'post', i === 0 || i === n - 1 ? `Tiang depan ${i ? 'kanan' : 'kiri'}` : `Tiang sekat kotak ${i}`, post);
       });
@@ -235,13 +245,14 @@ export const MEJA_BAR: ProductDef = {
       const levels = Array.from({ length: lv + 1 }, (_, k) => yb + ((ya - 6 - yb) * k) / (lv + 1));
       levels.forEach((y, k) => {
         const nm = k === 0 ? 'alas' : `sekat ${k}`;
-        add(`rak-${k}-b`, 'x', o, y, zb, W, 'rail-x', `Palang ${nm} belakang`, thin);
-        add(`rak-${k}-d`, 'x', o, y, zf, W, 'rail-x', `Palang ${nm} depan`, thin);
+        // palang rak menerus menempel di muka dalam tiang (tidak menembus tiang), papan bertumpu di atasnya
+        add(`rak-${k}-b`, 'x', o, y, zb + L / 2 + 1, W, 'rail-x', `Palang ${nm} belakang`, thin);
+        add(`rak-${k}-d`, 'x', o, y, zf - L / 2 - 1, W, 'rail-x', `Palang ${nm} depan`, thin);
         if (b > 0) boards.push(board(`papan-rak-${k}`, `Papan ${nm} kotak pajang`, o + L, o + W - L, y + 1, y + 1 + b, o + L, o + D - L));
       });
       // palang lintang bawah di tiap tiang sekat (menahan papan alas)
       xs.slice(1, -1).forEach((x, i) => {
-        add(`sekat-lintang-${i}`, 'z', x, levels[0], o + L, D - 2 * L, 'rail-z', `Palang lintang bawah sekat ${i + 1}`, thin);
+        add(`sekat-lintang-${i}`, 'z', x, levels[0], o + L + 2, D - 2 * L - 4, 'rail-z', `Palang lintang bawah sekat ${i + 1}`, thin);
       });
       if (b > 0) {
         boards.push(board('punggung', 'Panel punggung (sisi kasir)', o, o + W, 6, yTop, 0, o));
@@ -269,22 +280,31 @@ export const MEJA_BAR: ProductDef = {
     xs.forEach((x, i) => {
       add(`tiang-b-${i}`, 'y', x, 0, zb, yTop - 4, 'post', `Tiang sisi barista ${i + 1}`, post);
       add(`tiang-d-${i}`, 'y', x, 0, zf, ledge ? yLedgeRail - 2 : yTop - 4, 'post', `Tiang sisi tamu ${i + 1}`, post);
-      add(`palang-atas-${i}`, 'z', x, ya, zo + L, D - 2 * L, 'rail-z', `Palang atas ${i + 1}`, rail);
+      // palang atas di antara gelagar atas (dengan meja tamu: sampai sisi tiang tamu yang menerus ke atas)
+      const zEnd = ledge ? zf - L / 2 : zf - 1;
+      add(`palang-atas-${i}`, 'z', x, ya, zb + 1, zEnd - zb - 1, 'rail-z', `Palang atas ${i + 1}`, rail);
       if (i === 0 || i === n - 1) add(`palang-bawah-${i}`, 'z', x, 8, zo + L, D - 2 * L, 'rail-z', `Palang bawah ujung ${i ? 'kanan' : 'kiri'}`, thin);
       if (ledge) add(`lengan-tamu-${i}`, 'z', x, yLedgeRail, zD - 8, lw - 2, 'rail-z', `Lengan meja tamu ${i + 1}`, rail);
-      else if (over > 3) add(`lengan-overhang-${i}`, 'z', x, ya, zD, over - 3, 'rail-z', `Lengan daun menjorok ${i + 1}`, rail);
+      else if (over > 3) add(`lengan-overhang-${i}`, 'z', x, ya, zf + 1, zD + over - 3 - zf - 1, 'rail-z', `Lengan daun menjorok ${i + 1}`, rail);
     });
     add('gelagar-atas-b', 'x', 0, ya, zb, W, 'rail-x', 'Gelagar atas sisi barista', rail);
-    add('gelagar-atas-d', 'x', 0, ya, zf, W, 'rail-x', 'Gelagar atas sisi tamu', rail);
-    add('gelagar-bawah-b', 'x', 0, 8, zb, W, 'rail-x', 'Gelagar bawah sisi barista', thin);
-    add('gelagar-bawah-d', 'x', 0, 8, zf, W, 'rail-x', 'Gelagar bawah sisi tamu', thin);
-    if (ledge) add('gelagar-tamu', 'x', 0, yLedgeRail, zf, W, 'rail-x', 'Gelagar meja tamu', rail);
+    // dengan meja tamu, tiang tamu menerus ke atas: gelagar atas tamu dipotong di antara tiang
+    if (ledge) gaps(xs, L / 2).forEach(([x0, len], i) => add(`gelagar-atas-d-${i}`, 'x', x0, ya, zf, len, 'rail-x', `Gelagar atas sisi tamu ${i + 1}`, rail));
+    else add('gelagar-atas-d', 'x', 0, ya, zf, W, 'rail-x', 'Gelagar atas sisi tamu', rail);
+    // gelagar bawah sebidang tiang: dipotong di antara tiang
+    gaps(xs, L / 2).forEach(([x0, len], i) => {
+      add(`gelagar-bawah-b-${i}`, 'x', x0, 8, zb, len, 'rail-x', `Gelagar bawah sisi barista ${i + 1}`, thin);
+      add(`gelagar-bawah-d-${i}`, 'x', x0, 8, zf, len, 'rail-x', `Gelagar bawah sisi tamu ${i + 1}`, thin);
+    });
+    // gelagar meja tamu dipotong di antara lengan (lengan menerus di atas tiang tamu)
+    if (ledge) gaps(xs, 1).forEach(([x0, len], i) => add(`gelagar-tamu-${i}`, 'x', x0, yLedgeRail, zf, len, 'rail-x', `Gelagar meja tamu ${i + 1}`, rail));
 
     // Rak sisi barista
     for (let k = 0; k < shelves; k++) {
       const y = 25 + k * Math.min(30, (yTop - 40) / Math.max(1, shelves));
-      add(`rak-${k + 1}-b`, 'x', 0, y, zb, W, 'rail-x', `Palang rak ${k + 1} barista`, thin);
-      add(`rak-${k + 1}-d`, 'x', 0, y, zf, W, 'rail-x', `Palang rak ${k + 1} tamu`, thin);
+      // palang rak menerus menempel di muka dalam tiang, papan rak bertumpu di atasnya
+      add(`rak-${k + 1}-b`, 'x', 0, y, zb + L / 2 + 1, W, 'rail-x', `Palang rak ${k + 1} barista`, thin);
+      add(`rak-${k + 1}-d`, 'x', 0, y, zf - L / 2 - 1, W, 'rail-x', `Palang rak ${k + 1} tamu`, thin);
       if (b > 0) boards.push(board(`papan-rak-${k + 1}`, `Papan rak ${k + 1}`, L, W - L, y + 1, y + 1 + b, zo + L, zD - L));
     }
 
@@ -293,17 +313,24 @@ export const MEJA_BAR: ProductDef = {
       const xi = W - D + L / 2; // tiang sayap dalam
       const xo = W - L / 2; // tiang sayap luar (segaris tiang kanan counter)
       const nw = Math.max(1, Math.ceil(wing / 100));
+      const zs: number[] = [];
       for (let k = 0; k < nw; k++) {
         const z = L / 2 + ((zo - L / 2) * k) / nw;
+        zs.push(z);
         add(`sayap-tiang-dalam-${k}`, 'y', xi, 0, z, yTop - 4, 'post', `Tiang sayap dalam ${k + 1}`, post);
         add(`sayap-tiang-luar-${k}`, 'y', xo, 0, z, yTop - 4, 'post', `Tiang sayap luar ${k + 1}`, post);
       }
       [xi, xo].forEach((x, i) => {
         const nm = i ? 'luar' : 'dalam';
-        add(`sayap-atas-${i}`, 'z', x, ya, L / 2, zo, 'rail-z', `Gelagar atas sayap ${nm}`, rail);
-        add(`sayap-bawah-${i}`, 'z', x, 8, L / 2, zo, 'rail-z', `Gelagar bawah sayap ${nm}`, thin);
+        // gelagar atas duduk di atas tiang sayap: ujung rata muka luar tiang, ujung lain menempel sisi gelagar atas barista
+        add(`sayap-atas-${i}`, 'z', x, ya, 0, zb - 1, 'rail-z', `Gelagar atas sayap ${nm}`, rail);
+        // gelagar bawah sebidang tiang: dipotong di antara tiang sayap; potongan terakhir menempel tiang barista / gelagar bawah barista
+        const onPost = xs.some((c) => Math.abs(c - x) < L / 2 + 1);
+        const zLast = onPost ? zo : zb - 1;
+        const cuts: [number, number][] = [...gaps(zs, L / 2), [zs[nw - 1] + L / 2, zLast - zs[nw - 1] - L / 2]];
+        cuts.forEach(([z0, len], k) => add(`sayap-bawah-${i}-${k}`, 'z', x, 8, z0, len, 'rail-z', `Gelagar bawah sayap ${nm}${cuts.length > 1 ? ` ${k + 1}` : ''}`, thin));
       });
-      add('sayap-ujung-atas', 'x', xi + L / 2, ya, L / 2, xo - xi - L, 'rail-x', 'Palang atas ujung sayap', rail);
+      add('sayap-ujung-atas', 'x', xi + 1, ya, L / 2, xo - xi - 2, 'rail-x', 'Palang atas ujung sayap', rail);
       add('sayap-ujung-bawah', 'x', xi + L / 2, 8, L / 2, xo - xi - L, 'rail-x', 'Palang bawah ujung sayap', thin);
       if (b > 0) {
         boards.push(board('daun-sayap', 'Daun sayap samping', W - D, W, yTop, H, 0, zo));
