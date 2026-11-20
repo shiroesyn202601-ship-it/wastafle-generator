@@ -345,6 +345,16 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [def, stepIdx, structureKey]);
 
+  // dasar gambar pilihan: angka dari contoh, bentuk dari desain sekarang (geser slider tidak memicu render ulang)
+  const previewBase = useMemo(() => {
+    const out: Params = { ...base };
+    def.params.forEach((p) => {
+      if (p.type !== 'number') out[p.key] = design.params[p.key];
+    });
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [base, def, structureKey]);
+
   const renderParam = (p: ParamDef) => (
     <ParamControl
       key={p.key}
@@ -353,7 +363,7 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
       base={base[p.key]}
       onChange={(v) => setParams({ [p.key]: v })}
       onHover={onHover(p.key)}
-      preview={pictureKeys.has(p.key) ? { product: def.id, params: (v) => ({ ...design.params, [p.key]: v }) } : undefined}
+      preview={pictureKeys.has(p.key) ? { product: def.id, params: (v) => ({ ...previewBase, [p.key]: v }) } : undefined}
     />
   );
 

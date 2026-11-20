@@ -7,6 +7,7 @@ import { KitchenConfig } from '../types/kitchen';
 import { ProductBuild } from '../products/types';
 import { HingeAnimState, HingePart } from './frameBuilder';
 import { buildProductModel } from './productModel';
+import { FrameSketch } from './FrameSketch';
 import { createFloorTileTexture } from '../utils/proceduralTextures';
 import { getValidHinges } from '../utils/frameHinges';
 import { getFrameMembers } from '../utils/frameLayout';
@@ -161,7 +162,7 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
     camera.position.set(2, 1.6, 2.4);
     cameraRef.current = camera;
     renderer.setSize(w, h, false);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // ringan untuk GPU laptop
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.shadowMap.enabled = true;
@@ -576,16 +577,20 @@ export const ThreeProductScene: React.FC<Props> = ({ host, build, paint, boardMa
     <div className="relative w-full h-full overflow-hidden bg-[#eeece7]">
       <div ref={mountRef} className="absolute inset-0 cursor-grab active:cursor-grabbing touch-none" />
       {glError && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 p-6 bg-[#eeece7] text-center text-sm text-stone-600">
-          <p className="max-w-md">
-            Tampilan 3D belum bisa dimuat (kartu grafis / WebGL browser sedang tidak tersedia). Pengaturan, Bengkel 2D dan potongan besi tetap bisa dipakai.
-          </p>
-          <button onClick={() => setAttempt((a) => a + 1)} className="px-4 py-2 rounded-xl bg-sky-600 text-white font-semibold cursor-pointer">
-            Coba muat ulang 3D
-          </button>
-          <p className="max-w-md text-xs text-stone-500">
-            Kalau tetap gagal: tutup semua jendela Chrome lalu buka lagi, dan pastikan Setelan → Sistem → “Gunakan akselerasi grafis” menyala.
-          </p>
+        <div className="absolute inset-0 z-20 flex flex-col bg-[#eeece7]">
+          {/* 3D tidak tersedia: tetap tampilkan rangkanya sebagai gambar biasa */}
+          <div className="flex-1 min-h-0 p-6 pt-14">
+            <FrameSketch host={host} paint={paint} selectedId={selectedId} />
+          </div>
+          <div className="shrink-0 m-2 p-3 rounded-xl bg-white/95 border border-amber-300 text-xs text-stone-700 flex flex-wrap items-center gap-2">
+            <span className="flex-1 min-w-[220px]">
+              <b>Tampilan 3D sedang tidak tersedia di browser ini</b> (grafis/WebGL dimatikan Chrome), jadi rangka ditampilkan sebagai gambar biasa. Semua
+              pengaturan tetap bisa dipakai. Untuk 3D lagi: tutup Chrome lewat menu ⋮ → Keluar, lalu buka lagi.
+            </span>
+            <button onClick={() => setAttempt((a) => a + 1)} className="shrink-0 px-3 py-1.5 rounded-lg bg-sky-600 text-white font-semibold cursor-pointer">
+              Coba muat ulang 3D
+            </button>
+          </div>
         </div>
       )}
 

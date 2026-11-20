@@ -9,8 +9,8 @@ import { buildProductModel } from './productModel';
  * Gambar kecil (thumbnail) produk dari model 3D aslinya: satu renderer tersembunyi dipakai bergantian,
  * gambar dibuat satu per satu (antrean) lalu disimpan di memori.
  */
-const TW = 360;
-const TH = 270;
+const TW = 400;
+const TH = 300;
 
 type Ctx = { renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera; group: THREE.Group };
 let ctx: Ctx | null | false = null; // false = WebGL tidak tersedia (dicoba lagi setelah RETRY_MS)
@@ -62,6 +62,20 @@ const pending = new Map<string, Promise<string | null>>();
 const wanters = new Map<string, Set<() => boolean>>(); // siapa saja yang masih menunggu gambar ini
 let queue: Promise<unknown> = Promise.resolve();
 
+/** Lepas konteks WebGL lama (dipakai saat server dev memuat ulang modul ini, supaya konteks tidak menumpuk) */
+function release() {
+  if (ctx) {
+    try {
+      ctx.renderer.dispose();
+      ctx.renderer.forceContextLoss();
+    } catch {
+      // abaikan
+    }
+  }
+  ctx = null;
+}
+if (import.meta.hot) import.meta.hot.dispose(release);
+
 function init(): Ctx | false {
   try {
     const canvas = document.createElement('canvas');
@@ -70,7 +84,7 @@ function init(): Ctx | false {
       e.preventDefault();
       ctx = null; // dibuat ulang saat gambar berikutnya diminta
     });
-    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    renderer.setPixelRatio(1); // ringan untuk GPU; gambar kecil tidak perlu resolusi layar retina
     renderer.setSize(TW, TH, false);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;

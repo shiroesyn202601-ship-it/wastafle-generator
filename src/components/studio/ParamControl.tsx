@@ -147,6 +147,7 @@ export const ParamControl: React.FC<Props> = (props) => {
 /** Gambar kecil satu pilihan; dibuat setelah pilihan lain berhenti berubah sebentar supaya tidak berat */
 const OptionPic: React.FC<{ product: ProductId; params: Params; alt: string }> = ({ product, params, alt }) => {
   const [url, setUrl] = useState<string | null>(() => cachedParamsThumbnail(product, params));
+  const [failed, setFailed] = useState(false); // WebGL tidak tersedia: tanpa gambar, cukup tulisan
   const key = JSON.stringify(params);
   useEffect(() => {
     let live = true; // per permintaan: gambar untuk pilihan yang sudah usang dilewati
@@ -156,7 +157,13 @@ const OptionPic: React.FC<{ product: ProductId; params: Params; alt: string }> =
       return;
     }
     const t = setTimeout(() => {
-      paramsThumbnail(product, params, () => live).then((u) => live && u && setUrl(u));
+      paramsThumbnail(product, params, () => live).then((u) => {
+        if (!live) return;
+        if (u) {
+          setUrl(u);
+          setFailed(false);
+        } else setFailed(true);
+      });
     }, 350);
     return () => {
       live = false;
@@ -164,6 +171,7 @@ const OptionPic: React.FC<{ product: ProductId; params: Params; alt: string }> =
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product, key]);
+  if (failed && !url) return null;
   return (
     <span className="block aspect-[4/3] rounded-lg bg-stone-100 overflow-hidden">
       {url ? <img src={url} alt={alt} className="w-full h-full object-contain" draggable={false} /> : <span className="block w-full h-full animate-pulse bg-stone-200/60" />}
