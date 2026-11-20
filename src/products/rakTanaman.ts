@@ -25,9 +25,17 @@ export const RAK_TANAMAN: ProductDef = {
   ],
   defaults: { panjang: 100, tingkat: 3, dalamTingkat: 25, naikTingkat: 25, pipa: '20', papan: 'kayu', warna: '#2f4a3a' },
   presets: [
-    { id: 'teras', name: 'Rak pot teras', desc: '100 cm, 3 tingkat', params: { panjang: 100, tingkat: 3, dalamTingkat: 25, naikTingkat: 25 } },
-    { id: 'kecil', name: 'Rak sukulen', desc: '60 cm, 4 tingkat rapat', params: { panjang: 60, tingkat: 4, dalamTingkat: 18, naikTingkat: 18, papan: 'multiplek', warna: '#e9e7e1' } },
-    { id: 'besar', name: 'Rak pot besar', desc: '150 cm, 3 tingkat dalam', params: { panjang: 150, tingkat: 3, dalamTingkat: 35, naikTingkat: 30, pipa: '30' } },
+    {
+      id: 'tangga',
+      name: 'Rak tanaman tangga',
+      desc: 'tingkat makin ke belakang makin tinggi',
+      params: {},
+      sizes: [
+        { label: 'Pot teras', desc: '100 cm, 3 tingkat', params: { panjang: 100, tingkat: 3, dalamTingkat: 25, naikTingkat: 25, pipa: '20', papan: 'kayu', warna: '#2f4a3a' } },
+        { label: 'Sukulen', desc: '60 cm, 4 tingkat rapat', params: { panjang: 60, tingkat: 4, dalamTingkat: 18, naikTingkat: 18, pipa: '20', papan: 'multiplek', warna: '#e9e7e1' } },
+        { label: 'Pot besar', desc: '150 cm, 3 tingkat dalam', params: { panjang: 150, tingkat: 3, dalamTingkat: 35, naikTingkat: 30, pipa: '30', papan: 'kayu', warna: '#2f4a3a' } },
+      ],
+    },
   ],
   summary: (p) => `${num(p, 'panjang')} cm · ${num(p, 'tingkat')} tingkat · tinggi ${num(p, 'tingkat') * num(p, 'naikTingkat')} cm`,
 

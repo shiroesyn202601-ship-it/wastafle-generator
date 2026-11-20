@@ -96,7 +96,7 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
   const applyPreset = (id: string) => {
     const preset = def.presets.find((p) => p.id === id);
     if (!preset) return;
-    commit({ ...design, presetId: id, params: { ...def.defaults, ...preset.params }, frame: { ...design.frame, customLayout: false, members: undefined, hinges: undefined } });
+    commit({ ...design, presetId: id, params: { ...def.defaults, ...preset.params, ...(preset.sizes?.[0]?.params || {}) }, frame: { ...design.frame, customLayout: false, members: undefined, hinges: undefined } });
     onToast(`Contoh "${preset.name}" dipakai. Tekan Undo untuk kembali.`);
   };
 
@@ -120,7 +120,10 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
     { id: 'ahli', label: 'Mode Ahli' },
     { id: 'hasil', label: 'Hasil' },
   ];
-  const presetName = def.presets.find((p) => p.id === design.presetId)?.name;
+  const preset = def.presets.find((p) => p.id === design.presetId);
+  const presetName = preset?.name;
+  /** Ukuran umum yang sedang terpakai (semua nilainya sama dengan desain sekarang) */
+  const activeSize = preset?.sizes?.find((sz) => Object.entries(sz.params).every(([k, v]) => design.params[k] === v));
 
   return (
     <div className="flex flex-col h-[100dvh] w-full bg-stone-100 text-stone-900 overflow-hidden">
@@ -265,6 +268,26 @@ export const ProductStudio: React.FC<Props> = ({ design, onChange, onHome, onToa
                 </div>
               )}
 
+              {step.id === 'ukuran' && preset?.sizes && preset.sizes.length > 1 && (
+                <div className="space-y-1.5">
+                  <div className="text-sm font-semibold text-stone-800">Ukuran umum untuk rangka ini</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {preset.sizes.map((sz) => (
+                      <button
+                        key={sz.label}
+                        onClick={() => setParams(sz.params)}
+                        aria-pressed={activeSize === sz}
+                        className={`p-2.5 rounded-xl border text-left cursor-pointer ${
+                          activeSize === sz ? 'border-sky-600 bg-sky-50 ring-1 ring-sky-600' : 'border-stone-300 bg-white hover:border-stone-400'
+                        }`}
+                      >
+                        <span className="block text-sm font-semibold text-stone-800">{sz.label}</span>
+                        <span className="block text-[11px] text-stone-500">{sz.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {visibleParams.length === 0 && (
                 <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-900">
                   Semua pilihan sudah diatur. Periksa catatan di bawah (kalau ada), lalu tekan <b>Lihat hasil</b> untuk biaya dan daftar potongan.

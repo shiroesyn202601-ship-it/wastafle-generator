@@ -32,10 +32,28 @@ export const TROLI: ProductDef = {
     pipa: '20', papan: 'multiplek', warna: '#1f2226', ukuranRoda: '3', remRoda: true,
   },
   presets: [
-    { id: 'saji', name: 'Troli saji', desc: '70 × 45 cm, 3 rak, roda 3"', params: { panjang: 70, lebar: 45, tinggiRak: 85, tingkat: 3, pegangan: true, pipa: '20', papan: 'hpl', warna: '#e9e7e1', ukuranRoda: '3' } },
-    { id: 'bengkel', name: 'Troli bengkel', desc: '90 × 55 cm, 3 rak, roda 4"', params: { panjang: 90, lebar: 55, tinggiRak: 85, tingkat: 3, pegangan: true, palang: '20x40', pipa: '30', papan: 'multiplek', ukuranRoda: '4', warna: '#7a3b2a' } },
-    { id: 'dapur', name: 'Troli dapur ramping', desc: '45 × 30 cm, 4 rak', params: { panjang: 45, lebar: 30, tinggiRak: 90, tingkat: 4, pegangan: true, tinggiPegangan: 102, pipa: '20', papan: 'multiplek', ukuranRoda: '3' } },
-    { id: 'barang', name: 'Troli barang (platform)', desc: '100 × 60 cm, 1 rak, roda 5"', params: { panjang: 100, lebar: 60, tinggiRak: 25, tingkat: 1, pegangan: true, tinggiPegangan: 95, palang: '20x40', pipa: '40', papan: 'multiplek', ukuranRoda: '5' } },
+    {
+      id: 'dorong',
+      name: 'Troli rak + pegangan',
+      desc: '4 roda, pegangan dorong di satu sisi',
+      params: { pegangan: true },
+      sizes: [
+        { label: 'Saji cafe', desc: '70 × 45 cm, 3 rak, roda 3"', params: { panjang: 70, lebar: 45, tinggiRak: 85, tingkat: 3, tinggiPegangan: 97, pipa: '20', palang: '20x20', papan: 'hpl', warna: '#e9e7e1', ukuranRoda: '3' } },
+        { label: 'Bengkel', desc: '90 × 55 cm, 3 rak, roda 4"', params: { panjang: 90, lebar: 55, tinggiRak: 85, tingkat: 3, tinggiPegangan: 97, palang: '20x40', pipa: '30', papan: 'multiplek', ukuranRoda: '4', warna: '#7a3b2a' } },
+        { label: 'Dapur ramping', desc: '45 × 30 cm, 4 rak', params: { panjang: 45, lebar: 30, tinggiRak: 90, tingkat: 4, tinggiPegangan: 102, pipa: '20', palang: '20x20', papan: 'multiplek', ukuranRoda: '3' } },
+        { label: 'Barang (platform)', desc: '100 × 60 cm, 1 rak, roda 5"', params: { panjang: 100, lebar: 60, tinggiRak: 25, tingkat: 1, tinggiPegangan: 95, palang: '20x40', pipa: '40', papan: 'multiplek', ukuranRoda: '5' } },
+      ],
+    },
+    {
+      id: 'tanpa-pegangan',
+      name: 'Troli rak tanpa pegangan',
+      desc: '4 roda, rak saja (didorong dari rangka)',
+      params: { pegangan: false },
+      sizes: [
+        { label: 'Rak saji kecil', desc: '60 × 40 cm, 3 rak', params: { panjang: 60, lebar: 40, tinggiRak: 80, tingkat: 3, pipa: '20', palang: '20x20', papan: 'kayu', ukuranRoda: '3' } },
+        { label: 'Meja samping beroda', desc: '45 × 45 cm, 2 rak', params: { panjang: 45, lebar: 45, tinggiRak: 60, tingkat: 2, pipa: '20', palang: '20x20', papan: 'kayu', ukuranRoda: '3' } },
+      ],
+    },
   ],
   summary: (p) => `${num(p, 'panjang')} × ${num(p, 'lebar')} cm · ${num(p, 'tingkat')} rak`,
 

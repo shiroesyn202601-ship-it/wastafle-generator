@@ -63,7 +63,7 @@ export function newDesign(id: ProductId, presetId?: string): FurnitureDesign {
   return {
     product: id,
     presetId: preset?.id,
-    params: { ...def.defaults, ...(preset?.params || {}) },
+    params: { ...def.defaults, ...(preset?.params || {}), ...(preset?.sizes?.[0]?.params || {}) },
     frame: { ...DEFAULT_KITCHEN_CONFIG.frame, customLayout: false, members: undefined, hinges: undefined, supports: [] },
   };
 }

@@ -142,6 +142,9 @@ export const HomeScreen: React.FC<Props> = ({ onPick, onKitchen, resume, onImpor
                         <span className="min-w-0">
                           <span className="block font-semibold text-sm">{pr.name}</span>
                           <span className="block text-xs text-stone-500">{pr.desc}</span>
+                          {pr.sizes && pr.sizes.length > 1 && (
+                            <span className="block text-[11px] text-sky-700 mt-0.5">{pr.sizes.map((s) => s.label).join(' · ')}</span>
+                          )}
                         </span>
                       </button>
                     ))}

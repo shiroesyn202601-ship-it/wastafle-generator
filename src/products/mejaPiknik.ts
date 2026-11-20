@@ -28,9 +28,17 @@ export const MEJA_PIKNIK: ProductDef = {
   ],
   defaults: { panjang: 180, lebarMeja: 70, tinggiMeja: 75, tinggiBangku: 45, lebarBangku: 30, jarakBangku: 15, pipa: '40', papan: 'kayu', warna: '#5f7d6e' },
   presets: [
-    { id: '4-orang', name: 'Meja piknik 4 orang', desc: '150 cm, rangka A', params: { panjang: 150, lebarMeja: 70 } },
-    { id: '6-orang', name: 'Meja piknik 6 orang', desc: '200 cm, rangka A', params: { panjang: 200, lebarMeja: 75 } },
-    { id: 'cafe', name: 'Meja cafe outdoor', desc: '180 cm, rangka kuning', params: { panjang: 180, lebarMeja: 65, warna: '#c9a227' } },
+    {
+      id: 'rangka-a',
+      name: 'Meja + 2 bangku rangka A',
+      desc: 'kaki miring bentuk A di tiap ujung',
+      params: {},
+      sizes: [
+        { label: '4 orang', desc: '150 cm', params: { panjang: 150, lebarMeja: 70, warna: '#5f7d6e' } },
+        { label: '6 orang', desc: '200 cm', params: { panjang: 200, lebarMeja: 75, warna: '#5f7d6e' } },
+        { label: '8 orang (rangka tengah)', desc: '240 cm', params: { panjang: 240, lebarMeja: 80, warna: '#1f2226' } },
+      ],
+    },
   ],
   summary: (p) => `${num(p, 'panjang')} cm · meja ${num(p, 'lebarMeja')} cm + 2 bangku`,
 

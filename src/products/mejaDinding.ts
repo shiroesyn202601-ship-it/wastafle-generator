@@ -36,9 +36,27 @@ export const MEJA_DINDING: ProductDef = {
   ],
   defaults: { panjang: 80, dalam: 40, tinggi: 75, lipat: true, jumlahEngsel: 'siku', pipa: '20', papan: 'hpl', warna: '#e9e7e1' },
   presets: [
-    { id: 'makan', name: 'Meja makan dinding', desc: '80 × 40 cm, lipat', params: { panjang: 80, dalam: 40, tinggi: 75 } },
-    { id: 'bar', name: 'Meja bar dinding', desc: '120 × 35 cm, tinggi 105 cm', params: { panjang: 120, dalam: 35, tinggi: 105, papan: 'kayu', warna: '#1f2226' } },
-    { id: 'kerja', name: 'Meja kerja dinding', desc: '100 × 50 cm, lipat', params: { panjang: 100, dalam: 50, tinggi: 75, papan: 'multiplek' } },
+    {
+      id: 'lipat',
+      name: 'Meja dinding lipat',
+      desc: 'rel tembok + daun meja dilipat turun',
+      params: { lipat: true },
+      sizes: [
+        { label: 'Makan 1–2 orang', desc: '80 × 40 cm, tinggi 75', params: { panjang: 80, dalam: 40, tinggi: 75, papan: 'hpl', warna: '#e9e7e1' } },
+        { label: 'Bar dinding', desc: '120 × 35 cm, tinggi 105', params: { panjang: 120, dalam: 35, tinggi: 105, papan: 'kayu', warna: '#1f2226' } },
+        { label: 'Kerja', desc: '100 × 50 cm, tinggi 75', params: { panjang: 100, dalam: 50, tinggi: 75, papan: 'multiplek', warna: '#e9e7e1' } },
+      ],
+    },
+    {
+      id: 'tetap',
+      name: 'Meja dinding tetap (ambalan)',
+      desc: 'rel tembok, daun tidak dilipat',
+      params: { lipat: false },
+      sizes: [
+        { label: 'Bar menghadap tembok', desc: '150 × 35 cm, tinggi 105', params: { panjang: 150, dalam: 35, tinggi: 105, papan: 'kayu', warna: '#1f2226' } },
+        { label: 'Meja kerja dinding', desc: '120 × 50 cm, tinggi 75', params: { panjang: 120, dalam: 50, tinggi: 75, papan: 'hpl' } },
+      ],
+    },
   ],
   summary: (p) => `${num(p, 'panjang')} × ${num(p, 'dalam')} cm, tinggi ${num(p, 'tinggi')} cm${bool(p, 'lipat') ? ' · lipat' : ''}`,
 

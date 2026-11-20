@@ -28,11 +28,16 @@ export interface StepDef {
   keys: string[];
 }
 
+/**
+ * Contoh jadi = satu STRUKTUR rangka. Variasi yang hanya beda ukuran / warna / bahan tidak dibuat template
+ * baru, tetapi menjadi pilihan `sizes` di dalam template yang sama.
+ */
 export interface Preset {
   id: string;
   name: string;
-  desc: string;
-  params: Params;
+  desc: string; // ciri struktur, mis. "kaki tegak, palang H"
+  params: Params; // struktur + ukuran bawaan
+  sizes?: { label: string; desc: string; params: Params }[]; // ukuran / pemakaian umum dengan rangka yang sama
 }
 
 /** Papan / daun meja / alas rak (kotak dalam cm, koordinat sama dengan rangka) */
