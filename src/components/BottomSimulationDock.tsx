@@ -29,7 +29,9 @@ export const BottomSimulationDock: React.FC<Props> = ({ config, onChange }) => {
     showSafetyClearance,
     showFrameOnly,
     hideTopTable,
+    hideWoodBoards,
   } = config;
+  const hasWoodBoards = (config.frame?.members || config.frame?.autoMembers || []).some((m) => m.material === 'wood');
 
   const isAnyOpen = drawersOpenPercent > 0 || doorsOpenPercent > 0;
 
@@ -220,6 +222,26 @@ export const BottomSimulationDock: React.FC<Props> = ({ config, onChange }) => {
                   {hideTopTable ? 'HIDE' : 'SHOW'}
                 </span>
               </button>
+
+              {hasWoodBoards && (
+                <button
+                  onClick={() => onChange({ hideWoodBoards: !hideWoodBoards })}
+                  className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                    hideWoodBoards
+                      ? 'bg-rose-500/20 border border-rose-500/60 text-rose-700 shadow-sm shadow-rose-500/10'
+                      : 'bg-stone-100 border border-stone-200 text-stone-700 hover:border-stone-300 hover:text-stone-900'
+                  }`}
+                  title="Tampilkan / sembunyikan papan kayu di rangka"
+                >
+                  <span className="flex items-center gap-2 text-[11px]">
+                    <Layers className="w-3.5 h-3.5 text-amber-700" />
+                    Papan Kayu
+                  </span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-stone-50">
+                    {hideWoodBoards ? 'HIDE' : 'SHOW'}
+                  </span>
+                </button>
+              )}
 
               <button
                 onClick={() => {

@@ -47,18 +47,27 @@ export function buildFrameGroup(
   /** Papan kayu: motif FJL sesuai pilihan top table, serat searah sisi terpanjang (1 tile tekstur = 100 cm) */
   const woodMesh = (b: FrameBox, origin?: THREE.Vector3) => {
     const sp = getFjlSpecies(cfg.countertopFjl);
-    const base = createFjlTexture(cfg.countertopFjl?.species || 'jati', sp.base, sp.light, sp.dark);
+    const tex = createFjlTexture(cfg.countertopFjl?.species || 'jati', sp.base, sp.light, sp.dark);
     const size = [0, 1, 2].map((i) => Math.max(0.2, b.max[i] - b.min[i]));
-    const long = size[0] >= size[2] ? 0 : 2;
-    const tex = base.clone();
-    tex.needsUpdate = true;
-    tex.repeat.set(size[long] / 100, size[long === 0 ? 2 : 0] / 100);
-    if (long === 2) {
-      tex.center.set(0.5, 0.5);
-      tex.rotation = Math.PI / 2;
+    const geo = new THREE.BoxGeometry(size[0] / 100, size[1] / 100, size[2] / 100);
+    // UV dalam meter-per-tile (1 tile = 100 cm) dari posisi titik, serat (u) searah sisi terpanjang papan
+    const alongX = size[0] >= size[2];
+    const pos = geo.attributes.position;
+    const nrm = geo.attributes.normal;
+    const uv = geo.attributes.uv;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+      const z = pos.getZ(i);
+      const ax = Math.abs(nrm.getX(i));
+      const ay = Math.abs(nrm.getY(i));
+      if (ay > 0.5) uv.setXY(i, alongX ? x : z, alongX ? z : x);
+      else if (ax > 0.5) uv.setXY(i, z, y);
+      else uv.setXY(i, x, y);
     }
+    uv.needsUpdate = true;
     const woodMat = new THREE.MeshStandardMaterial({ map: tex, roughness: cfg.countertopFjl?.coat === 'glossy' ? 0.2 : 0.5, metalness: 0.03 });
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(size[0] / 100, size[1] / 100, size[2] / 100), woodMat);
+    const mesh = new THREE.Mesh(geo, woodMat);
     const c = toWorld([0, 1, 2].map((i) => (b.min[i] + b.max[i]) / 2));
     mesh.position.copy(origin ? c.sub(origin) : c);
     mesh.castShadow = true;
@@ -68,7 +77,10 @@ export function buildFrameGroup(
   /** Mesh satu batang utuh (lurus atau miring); origin = titik pivot bila menjadi anak pivot engsel */
   const memberMesh = (m: FrameMember, origin?: THREE.Vector3) => {
     const sec = memberSectionCm(m, cfg);
-    if (!m.end && m.material === 'wood') return woodMesh(memberBox(m, sec), origin);
+    if (!m.end && m.material === 'wood') {
+      if (cfg.hideWoodBoards) return new THREE.Mesh();
+      return woodMesh(memberBox(m, sec), origin);
+    }
     if (!m.end) return boxMesh(memberBox(m, sec), origin);
     // Prisma 8 sudut (ujung dipotong miring) dalam koordinat dunia relatif ke origin
     const cs = memberCorners(m, sec).map((p) => {

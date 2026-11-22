@@ -469,6 +469,7 @@ export interface KitchenConfig {
   doorsOpenPercent: number; // 0 (closed) to 100 (fully rotated open)
   showXRayWireframe: boolean;
   hideTopTable?: boolean; // Sembunyikan top table (countertop) di tampilan 3D
+  hideWoodBoards?: boolean; // Sembunyikan papan kayu di rangka (batang material 'wood') di tampilan 3D
   /** Produk non-dapur: papan/dudukan/sandaran persis seperti model 3D (dipakai gambar export); menggantikan top table */
   productBoards?: { box: { min: number[]; max: number[] }; shape?: 'round'; rotX?: number; color: string }[];
   productTitle?: string; // judul di lembar export (mis. "Stool bar bersandaran")
