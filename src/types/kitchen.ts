@@ -357,6 +357,9 @@ export interface FrameMember {
   // dan `length` = jarak kedua titik. Penampang: tubeSize = sisi ke samping (tegak lurus bidang miring),
   // tubeH = sisi di bidang miring.
   end?: { x: number; y: number; z: number };
+  // 'wood' = papan kayu (motif FJL sesuai countertopFjl), mis. papan dudukan di atas rangka.
+  // Penampang tetap dari tubeSize/tubeH (mm), contoh papan 42 cm × 18 mm: tubeSize 420, tubeH 18.
+  material?: 'wood';
 }
 
 // Engsel pada batang rangka: batang dibelah di titik `pos`, potongan di sisi `side` bisa ditekuk

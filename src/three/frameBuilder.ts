@@ -3,6 +3,8 @@ import { KitchenConfig } from '../types/kitchen';
 import { getFrameMembers, getFootMembers, memberTubeCm, memberSectionCm, memberBox, memberCorners, Box3 as FrameBox } from '../utils/frameLayout';
 import { FrameMember } from '../types/kitchen';
 import { getValidHinges, computeHingeLimit, HINGE_TYPES, HingeLimit } from '../utils/frameHinges';
+import { createFjlTexture } from '../utils/proceduralTextures';
+import { getFjlSpecies } from '../utils/finishes';
 
 /** Bagian rangka yang bisa ditekuk (pivot engsel) + status animasinya */
 export interface HingePart {
@@ -42,9 +44,31 @@ export function buildFrameGroup(
     mesh.castShadow = true;
     return mesh;
   };
+  /** Papan kayu: motif FJL sesuai pilihan top table, serat searah sisi terpanjang (1 tile tekstur = 100 cm) */
+  const woodMesh = (b: FrameBox, origin?: THREE.Vector3) => {
+    const sp = getFjlSpecies(cfg.countertopFjl);
+    const base = createFjlTexture(cfg.countertopFjl?.species || 'jati', sp.base, sp.light, sp.dark);
+    const size = [0, 1, 2].map((i) => Math.max(0.2, b.max[i] - b.min[i]));
+    const long = size[0] >= size[2] ? 0 : 2;
+    const tex = base.clone();
+    tex.needsUpdate = true;
+    tex.repeat.set(size[long] / 100, size[long === 0 ? 2 : 0] / 100);
+    if (long === 2) {
+      tex.center.set(0.5, 0.5);
+      tex.rotation = Math.PI / 2;
+    }
+    const woodMat = new THREE.MeshStandardMaterial({ map: tex, roughness: cfg.countertopFjl?.coat === 'glossy' ? 0.2 : 0.5, metalness: 0.03 });
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(size[0] / 100, size[1] / 100, size[2] / 100), woodMat);
+    const c = toWorld([0, 1, 2].map((i) => (b.min[i] + b.max[i]) / 2));
+    mesh.position.copy(origin ? c.sub(origin) : c);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    return mesh;
+  };
   /** Mesh satu batang utuh (lurus atau miring); origin = titik pivot bila menjadi anak pivot engsel */
   const memberMesh = (m: FrameMember, origin?: THREE.Vector3) => {
     const sec = memberSectionCm(m, cfg);
+    if (!m.end && m.material === 'wood') return woodMesh(memberBox(m, sec), origin);
     if (!m.end) return boxMesh(memberBox(m, sec), origin);
     // Prisma 8 sudut (ujung dipotong miring) dalam koordinat dunia relatif ke origin
     const cs = memberCorners(m, sec).map((p) => {
