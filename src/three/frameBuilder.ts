@@ -30,7 +30,10 @@ export function buildFrameGroup(
   plinthH: number,
   mat: THREE.Material,
   hingeParts: HingePart[],
-  hingeAnim: Map<string, HingeAnimState>
+  hingeAnim: Map<string, HingeAnimState>,
+  // Bahan papan kayu (batang material 'wood'): bahan top table dari scene; null = papan disembunyikan;
+  // tidak diisi = motif FJL dari countertopFjl
+  boardMat?: THREE.Material | null
 ): THREE.Group {
   const frameGroup = new THREE.Group();
   const members = getFrameMembers(cfg);
@@ -66,7 +69,7 @@ export function buildFrameGroup(
       else uv.setXY(i, x, y);
     }
     uv.needsUpdate = true;
-    const woodMat = new THREE.MeshStandardMaterial({ map: tex, roughness: cfg.countertopFjl?.coat === 'glossy' ? 0.2 : 0.5, metalness: 0.03 });
+    const woodMat = boardMat || new THREE.MeshStandardMaterial({ map: tex, roughness: cfg.countertopFjl?.coat === 'glossy' ? 0.2 : 0.5, metalness: 0.03 });
     const mesh = new THREE.Mesh(geo, woodMat);
     const c = toWorld([0, 1, 2].map((i) => (b.min[i] + b.max[i]) / 2));
     mesh.position.copy(origin ? c.sub(origin) : c);
@@ -78,7 +81,7 @@ export function buildFrameGroup(
   const memberMesh = (m: FrameMember, origin?: THREE.Vector3) => {
     const sec = memberSectionCm(m, cfg);
     if (!m.end && m.material === 'wood') {
-      if (cfg.hideWoodBoards) return new THREE.Mesh();
+      if (boardMat === null) return new THREE.Mesh();
       return woodMesh(memberBox(m, sec), origin);
     }
     if (!m.end) return boxMesh(memberBox(m, sec), origin);

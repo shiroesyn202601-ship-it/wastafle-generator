@@ -357,7 +357,8 @@ export interface FrameMember {
   // dan `length` = jarak kedua titik. Penampang: tubeSize = sisi ke samping (tegak lurus bidang miring),
   // tubeH = sisi di bidang miring.
   end?: { x: number; y: number; z: number };
-  // 'wood' = papan kayu (motif FJL sesuai countertopFjl), mis. papan dudukan di atas rangka.
+  // 'wood' = papan (top table) di rangka: di scene meja dapur memakai bahan top table & ikut tombol Top Table,
+  // menggantikan slab top table biasa.
   // Penampang tetap dari tubeSize/tubeH (mm), contoh papan 42 cm × 18 mm: tubeSize 420, tubeH 18.
   material?: 'wood';
 }
@@ -468,9 +469,7 @@ export interface KitchenConfig {
   drawersOpenPercent: number; // 0 (closed) to 100 (fully pulled out)
   doorsOpenPercent: number; // 0 (closed) to 100 (fully rotated open)
   showXRayWireframe: boolean;
-  hideTopTable?: boolean; // Sembunyikan top table (countertop) di tampilan 3D
-  hideWoodBoards?: boolean; // Sembunyikan papan kayu di rangka (batang material 'wood') di tampilan 3D
-  /** Produk non-dapur: papan/dudukan/sandaran persis seperti model 3D (dipakai gambar export); menggantikan top table */
+  hideTopTable?: boolean; // Sembunyikan top table (countertop) di tampilan 3D  /** Produk non-dapur: papan/dudukan/sandaran persis seperti model 3D (dipakai gambar export); menggantikan top table */
   productBoards?: { box: { min: number[]; max: number[] }; shape?: 'round'; rotX?: number; color: string }[];
   productTitle?: string; // judul di lembar export (mis. "Stool bar bersandaran")
   showDimensions3D: boolean;

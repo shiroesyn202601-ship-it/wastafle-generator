@@ -791,7 +791,9 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
     topMesh.position.set(0, H, 0);
     topMesh.castShadow = true;
     topMesh.receiveShadow = true;
-    if (!config.hideTopTable) kitchenGroup.add(topMesh);
+    // Rangka berpapan kayu (batang material 'wood'): papan itulah top table-nya, slab biasa tidak dipasang
+    const frameHasBoards = getFrameMembers(config).some((m) => m.material === 'wood');
+    if (!config.hideTopTable && !frameHasBoards) kitchenGroup.add(topMesh);
 
     // 3. BACKSPLASH
     if (config.backsplashEnabled && config.backsplashHeight > 0) {
@@ -868,7 +870,7 @@ export const ThreeKitchenScene: React.FC<Props> = ({ config }) => {
     const columnCount = config.columns.length;
 
     if (isHollowChassis || isFrameOnly) {
-      kitchenGroup.add(buildFrameGroup(config, leftX, backZ, plinthH, frameMat, hingePartsRef.current, hingeAnimRef.current));
+      kitchenGroup.add(buildFrameGroup(config, leftX, backZ, plinthH, frameMat, hingePartsRef.current, hingeAnimRef.current, config.hideTopTable ? null : countertopMat));
     }
 
     // 6. CARCASE SOLID SIDE ENCLOSURE (FIX FOR PEEK-THROUGH GAP)
